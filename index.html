@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>น้อง AIDE - ระบบบริหารจัดการงานพนักงานช่วยเหลือคนไข้</title>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="nav-left">
+            <img src="https://img2.pic.in.th/LINE_ALBUM_442025_251220_1.jpg" alt="Hospital Logo" class="hosp-logo">
+            <span class="app-title">น้อง AIDE</span>
+        </div>
+        
+        <div class="nav-right" id="navMenu">
+            <span id="currentWardDisplay" class="ward-badge hidden"><i class="fas fa-hospital-user"></i> <span id="wardNameText"></span></span>
+            <button id="logoutBtn" class="logout-btn hidden" onclick="logout()"><i class="fas fa-sign-out-alt"></i> เปลี่ยนหน่วยงาน</button>
+        </div>
+        
+        <div class="hamburger" onclick="toggleMenu()">
+            <i class="fas fa-bars"></i>
+        </div>
+    </nav>
+
+    <section id="loginSection" class="section-container">
+        <div class="login-card">
+            <h2><i class="fas fa-map-marker-alt" style="color: var(--accent);"></i> เลือกหน่วยงานของคุณ</h2>
+            <p>กรุณาระบุหน่วยงานที่ปฏิบัติงานเพื่อเข้าสู่ระบบ</p>
+            
+            <div class="input-group">
+                <input type="text" id="wardInput" list="wardsList" placeholder="พิมพ์เพื่อค้นหาหน่วยงาน..." autocomplete="off">
+                <datalist id="wardsList">
+                    </datalist>
+            </div>
+            
+            <button class="btn-primary" onclick="enterSystem()">เข้าสู่ระบบ</button>
+        </div>
+    </section>
+
+    <section id="dashboardSection" class="section-container hidden">
+        <div class="dashboard-content">
+            <img src="https://img1.pic.in.th/images/-AIDE.png" alt="น้อง AIDE Character" class="mascot floating-anim">
+            
+            <h1 class="welcome-text">
+                <span class="typewriter">ยินดีต้อนรับสู่แอพ น้อง AIDE</span><br>
+                <span class="fade-in-text">กรุณาเลือกระบบที่ต้องการใช้งาน</span>
+            </h1>
+
+            <div class="menu-grid">
+                <a href="#" class="menu-card" onclick="openSystem('equipment.html')">
+                    <div class="icon-circle"><i class="fas fa-stethoscope"></i></div>
+                    <h3>ตรวจนับครุภัณฑ์</h3>
+                    <p>ระบบตรวจนับครุภัณฑ์ทางการแพทย์</p>
+                </a>
+
+                <a href="#" class="menu-card" onclick="openSystem('cloth-stock.html')">
+                    <div class="icon-circle"><i class="fas fa-tshirt"></i></div>
+                    <h3>Stock ผ้า</h3>
+                    <p>ระบบตรวจนับ Stock ผ้าในหน่วยงาน</p>
+                </a>
+
+                <a href="#" class="menu-card" onclick="openSystem('cloth-exchange.html')">
+                    <div class="icon-circle"><i class="fas fa-sync-alt"></i></div>
+                    <h3>แลกผ้าสะอาด</h3>
+                    <p>ระบบส่งแลกผ้าสะอาด</p>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <script src="script.js"></script>
+</body>
+</html>
