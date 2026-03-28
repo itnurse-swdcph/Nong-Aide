@@ -2,8 +2,18 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>น้อง AIDE - ระบบบริหารจัดการงานพนักงานช่วยเหลือคนไข้</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>น้อง AIDE SWD - รพ.สมเด็จพระยุพราชสว่างแดนดิน</title>
+    
+    <link rel="icon" type="image/jpeg" href="https://img2.pic.in.th/LINE_ALBUM_442025_251220_1.jpg">
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#003366">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="น้อง AIDE SWD">
+    <link rel="apple-touch-icon" href="https://img1.pic.in.th/images/d3d84a92-0f67-41d8-b492-a85878230d2c.png">
+
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -14,7 +24,10 @@
     <nav class="navbar">
         <div class="nav-left">
             <img src="https://img2.pic.in.th/LINE_ALBUM_442025_251220_1.jpg" alt="Hospital Logo" class="hosp-logo">
-            <span class="app-title">น้อง AIDE</span>
+            <div class="brand-text">
+                <span class="app-title">น้อง AIDE</span>
+                <span class="app-subtitle hide-on-mobile">รพ.สมเด็จพระยุพราชสว่างแดนดิน</span>
+            </div>
         </div>
         
         <div class="nav-right" id="navMenu">
@@ -29,8 +42,13 @@
 
     <section id="loginSection" class="section-container">
         <div class="login-card">
-            <h2><i class="fas fa-map-marker-alt" style="color: var(--accent);"></i> เลือกหน่วยงานของคุณ</h2>
-            <p>กรุณาระบุหน่วยงานที่ปฏิบัติงานเพื่อเข้าสู่ระบบ</p>
+            <h1 class="main-header">น้อง AIDE</h1>
+            <h2 class="sub-header">ระบบบริหารจัดการงานพนักงานช่วยเหลือคนไข้</h2>
+            <p class="hosp-name-header">โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน</p>
+            
+            <hr class="divider">
+            
+            <h3><i class="fas fa-map-marker-alt" style="color: var(--accent);"></i> เลือกหน่วยงานของคุณ</h3>
             
             <div class="input-group">
                 <input type="text" id="wardInput" list="wardsList" placeholder="พิมพ์เพื่อค้นหาหน่วยงาน..." autocomplete="off">
@@ -44,30 +62,27 @@
 
     <section id="dashboardSection" class="section-container hidden">
         <div class="dashboard-content">
-            <img src="https://img1.pic.in.th/images/-AIDE.png" alt="น้อง AIDE Character" class="mascot floating-anim">
+            <img src="https://img2.pic.in.th/c8c1a069-bdac-4132-9878-cd81856adf30.png" alt="น้อง AIDE Character" class="mascot floating-anim">
             
             <h1 class="welcome-text">
-                <span class="typewriter">ยินดีต้อนรับสู่แอพ น้อง AIDE</span><br>
-                <span class="fade-in-text">กรุณาเลือกระบบที่ต้องการใช้งาน</span>
+                <span class="fade-in-text">ยินดีต้อนรับสู่ "น้อง AIDE"</span><br>
+                <span class="sub-welcome">กรุณาเลือกระบบที่ต้องการใช้งาน</span>
             </h1>
 
             <div class="menu-grid">
                 <a href="#" class="menu-card" onclick="openSystem('equipment.html')">
                     <div class="icon-circle"><i class="fas fa-stethoscope"></i></div>
                     <h3>ตรวจนับครุภัณฑ์</h3>
-                    <p>ระบบตรวจนับครุภัณฑ์ทางการแพทย์</p>
                 </a>
 
                 <a href="#" class="menu-card" onclick="openSystem('cloth-stock.html')">
                     <div class="icon-circle"><i class="fas fa-tshirt"></i></div>
                     <h3>Stock ผ้า</h3>
-                    <p>ระบบตรวจนับ Stock ผ้าในหน่วยงาน</p>
                 </a>
 
                 <a href="#" class="menu-card" onclick="openSystem('cloth-exchange.html')">
                     <div class="icon-circle"><i class="fas fa-sync-alt"></i></div>
                     <h3>แลกผ้าสะอาด</h3>
-                    <p>ระบบส่งแลกผ้าสะอาด</p>
                 </a>
             </div>
         </div>
