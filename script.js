@@ -1,7 +1,17 @@
-// 🔴 ใส่ URL Web App ที่ได้จาก Google Apps Script ตรงนี้
+// 🔴 ใส่ URL Web App ที่ได้จาก Google Apps Script ตรงนี้ (ใช้ URL เดิมที่เคยทำ)
 const API_URL = "https://script.google.com/macros/s/AKfycbx_xuBauWvjIYplrefNTSf6J0Y9ZzAv-FQhOvPk1SYC1qOU7C3sdrU6LL4wQI3Uz9dTeg/exec"; 
 
 let wardList = [];
+
+// --- PWA Service Worker Registration (4. บันทึกหน้าจอเป็นแอพ) ---
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+            .then(reg => console.log('Service Worker registered', reg))
+            .catch(err => console.log('Service Worker not registered', err));
+    });
+}
+// ----------------------------------------------------------------
 
 // เมื่อโหลดหน้าเว็บ
 document.addEventListener("DOMContentLoaded", () => {
@@ -11,6 +21,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // ดึงข้อมูลหน่วยงานจาก Backend
 async function fetchWards() {
+    if (API_URL === "YOUR_WEB_APP_URL_FROM_GAS_HERE") return; // ป้องกัน Error ถ้ายังไม่ได้ใส่ URL
+
     try {
         const response = await fetch(API_URL);
         const result = await response.json();
@@ -81,10 +93,16 @@ function showDashboard(wardName) {
     document.getElementById("currentWardDisplay").classList.remove("hidden");
     document.getElementById("logoutBtn").classList.remove("hidden");
     document.getElementById("wardNameText").innerText = wardName;
+    
+    // ปิดเมนูมือถือถ้าเปิดอยู่
+    document.getElementById("navMenu").classList.remove("active");
 }
 
 // ฟังก์ชันออกจากระบบ (เปลี่ยนตึก)
 function logout() {
+    // ปิดเมนูมือถือถ้าเปิดอยู่
+    document.getElementById("navMenu").classList.remove("active");
+
     Swal.fire({
         title: 'เปลี่ยนหน่วยงาน?',
         text: "คุณต้องการออกจากหน่วยงานปัจจุบันใช่หรือไม่",
