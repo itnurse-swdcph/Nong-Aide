@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ระบบตรวจนับครุภัณฑ์ - น้อง AIDE</title>
+    <link rel="icon" type="image/jpeg" href="https://img2.pic.in.th/LINE_ALBUM_442025_251220_1.jpg">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="style.css"> <style>
+        /* เพิ่ม CSS เฉพาะหน้าตรวจนับ */
+        .header-section { background: var(--white); padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: var(--shadow); text-align: center; }
+        .action-bar { display: flex; gap: 10px; margin-bottom: 20px; }
+        .search-box { flex: 1; padding: 12px; border: 2px solid #e0e6ed; border-radius: 10px; font-family: 'Prompt'; }
+        .scan-btn { background: var(--accent); color: var(--primary); border: none; padding: 12px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; }
+        .item-card { background: var(--white); padding: 15px; border-radius: 10px; margin-bottom: 15px; border-left: 5px solid var(--primary); box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center;}
+        .item-details h4 { color: var(--primary); margin-bottom: 5px; }
+        .item-details p { font-size: 0.85rem; color: #666; margin: 2px 0; }
+        .status-badge { padding: 5px 10px; border-radius: 15px; font-size: 0.8rem; font-weight: 600; }
+        .status-normal { background: #d4edda; color: #155724; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-left">
+            <span class="app-title" style="cursor: pointer;" onclick="window.close()"><i class="fas fa-arrow-left"></i> กลับหน้าหลัก</span>
+        </div>
+        <div class="nav-right">
+            <span class="ward-badge"><i class="fas fa-hospital-user"></i> <span id="displayWard">กำลังโหลด...</span></span>
+        </div>
+    </nav>
+
+    <div class="section-container" style="align-items: flex-start; padding-top: 30px;">
+        <div style="width: 100%; max-width: 800px;">
+            
+            <div class="header-section">
+                <h2 style="color: var(--primary);"><i class="fas fa-clipboard-check"></i> รายการครุภัณฑ์ที่ต้องตรวจนับ</h2>
+                <p id="wardSubtitle" style="color: var(--secondary);">หน่วยงาน: -</p>
+            </div>
+
+            <div class="action-bar">
+                <input type="text" class="search-box" placeholder="ค้นหาชื่อ, เลขครุภัณฑ์, ตำแหน่งย่อย...">
+                <button class="scan-btn"><i class="fas fa-qrcode"></i> สแกน QR</button>
+            </div>
+
+            <div id="equipmentList">
+                <div style="text-align: center; padding: 20px; color: #666;">
+                    <i class="fas fa-spinner fa-spin fa-2x"></i><br>กำลังดึงข้อมูลครุภัณฑ์...
+                </div>
+                </div>
+
+        </div>
+    </div>
+
+    <script>
+        // ดึงชื่อหน่วยงานจาก URL Parameter (?ward=ชื่อตึก)
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentWard = urlParams.get('ward');
+
+        // URL จาก GAS ของระบบตรวจนับครุภัณฑ์ (ต้องเอาจากที่ Deploy ใหม่)
+        const EQUIPMENT_API = "ใส่_URL_WEB_APP_ของ_ระบบครุภัณฑ์_ตรงนี้";
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (currentWard) {
+                document.getElementById('displayWard').innerText = currentWard;
+                document.getElementById('wardSubtitle').innerText = `หน่วยงาน: ${currentWard}`;
+                fetchEquipment();
+            } else {
+                Swal.fire('ข้อผิดพลาด', 'ไม่พบข้อมูลหน่วยงาน กรุณาเข้าสู่ระบบจากหน้าหลัก', 'error')
+                .then(() => window.close());
+            }
+        });
+
+        async function fetchEquipment() {
+            if (EQUIPMENT_API === "ใส่_URL_WEB_APP_ของ_ระบบครุภัณฑ์_ตรงนี้") return;
+
+            try {
+                // ส่ง Request ไปดึงข้อมูล พร้อมระบุ Action และ Ward
+                const response = await fetch(`${EQUIPMENT_API}?action=getItemsByWard&ward=${encodeURIComponent(currentWard)}`);
+                const result = await response.json();
+
+                const listContainer = document.getElementById('equipmentList');
+                listContainer.innerHTML = ''; // เคลียร์ Loading
+
+                if (result.status === 'success' && result.data.length > 0) {
+                    result.data.forEach(item => {
+                        // สร้าง Card สำหรับแต่ละไอเทม
+                        const card = document.createElement('div');
+                        card.className = 'item-card';
+                        card.innerHTML = `
+                            <div class="item-details">
+                                <h4>${item['ชื่อครุภัณฑ์']}</h4>
+                                <p><i class="fas fa-barcode"></i> เลขครุภัณฑ์: ${item['เลขครุภัณฑ์']}</p>
+                                <p><i class="fas fa-map-marker-alt"></i> ตำแหน่ง: ${item['ตำแหน่งย่อย (Sub-location)'] || 'ไม่ได้ระบุ'}</p>
+                            </div>
+                            <div>
+                                <span class="status-badge status-normal">${item['สถานะ']}</span>
+                                <button style="margin-left: 10px; padding: 5px 10px; border-radius: 5px; border: 1px solid var(--primary); background: transparent; color: var(--primary); cursor: pointer;">
+                                    จัดการ
+                                </button>
+                            </div>
+                        `;
+                        listContainer.appendChild(card);
+                    });
+                } else {
+                    listContainer.innerHTML = '<div style="text-align: center; padding: 20px; color: #e74c3c;">ไม่พบรายการครุภัณฑ์ในหน่วยงานนี้</div>';
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                document.getElementById('equipmentList').innerHTML = '<div style="text-align: center; color: red;">เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล</div>';
+            }
+        }
+    </script>
+</body>
+</html>
