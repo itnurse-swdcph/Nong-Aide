@@ -13,28 +13,61 @@
     
     <link rel="stylesheet" href="style.css"> 
     <style>
-        .header-section { background: var(--white); padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: var(--shadow); text-align: center; }
-        .action-bar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;}
-        .search-box { flex: 1; padding: 12px; border: 2px solid #e0e6ed; border-radius: 10px; font-family: 'Prompt'; min-width: 200px;}
-        .scan-btn { background: var(--accent); color: var(--primary); border: none; padding: 12px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; white-space: nowrap;}
+        .page-title { text-align: center; color: var(--primary); margin: 10px 0 25px 0; font-size: 1.8rem; font-weight: 600; }
+        .page-subtitle { color: var(--secondary); font-size: 1.1rem; font-weight: 400; display: block; margin-top: 5px; }
+
+        /* Dashboard Grid */
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .stat-card { background: var(--white); padding: 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; text-align: center; border-bottom: 4px solid #ccc; transition: transform 0.3s; }
+        .stat-card:hover { transform: translateY(-5px); }
+        .stat-card i { font-size: 2rem; margin-bottom: 10px; }
+        .stat-num { font-size: 1.8rem; font-weight: 600; line-height: 1; margin-bottom: 5px; color: var(--text-main); }
+        .stat-label { font-size: 0.85rem; color: #666; }
         
-        .item-card { background: var(--white); padding: 15px; border-radius: 10px; margin-bottom: 15px; border-left: 5px solid var(--primary); box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;}
-        .item-details { flex: 1; min-width: 200px; }
-        .item-details h4 { color: var(--primary); margin-bottom: 5px; }
-        .item-details p { font-size: 0.85rem; color: #666; margin: 2px 0; }
-        .item-actions { display: flex; align-items: center; gap: 10px; }
+        /* Dashboard Colors */
+        .card-total { border-color: var(--primary); } .card-total i { color: var(--primary); }
+        .card-normal { border-color: #28a745; } .card-normal i { color: #28a745; }
+        .card-broken { border-color: #dc3545; } .card-broken i { color: #dc3545; }
+        .card-disposed { border-color: #6c757d; } .card-disposed i { color: #6c757d; }
+
+        .action-bar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; background: var(--white); padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .search-box { flex: 1; padding: 12px 15px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Prompt'; min-width: 200px; outline: none; transition: 0.3s; }
+        .search-box:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,51,102,0.1); }
         
-        .status-badge { padding: 5px 10px; border-radius: 15px; font-size: 0.8rem; font-weight: 600; }
-        .status-normal { background: #d4edda; color: #155724; }
-        .status-broken { background: #f8d7da; color: #721c24; }
-        .status-borrowed { background: #fff3cd; color: #856404; }
+        .btn { padding: 10px 15px; border-radius: 8px; font-weight: 500; cursor: pointer; border: none; font-family: 'Prompt'; transition: 0.2s; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: #002244; }
+        .btn-accent { background: var(--accent); color: var(--primary); }
+        .btn-accent:hover { background: #e6c200; }
+        .btn-outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); }
+        .btn-outline:hover { background: var(--primary); color: white; }
+        .btn-success { background: #28a745; color: white; }
         
-        #qr-reader { width: 100%; max-width: 400px; margin: 0 auto 20px auto; display: none; border-radius: 10px; overflow: hidden; border: 2px solid var(--primary); }
+        .item-card { background: var(--white); padding: 20px; border-radius: 12px; margin-bottom: 15px; border-left: 5px solid var(--primary); box-shadow: 0 3px 10px rgba(0,0,0,0.06); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;}
+        .item-details { flex: 1; min-width: 250px; }
+        .item-details h4 { color: var(--primary); margin-bottom: 8px; font-size: 1.1rem; }
+        .item-info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 5px; }
+        .item-details p { font-size: 0.85rem; color: #555; margin: 0; display: flex; align-items: center; gap: 6px; }
+        .item-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
         
-        /* Custom SweetAlert Form */
+        .status-badge { padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 500; display: inline-flex; align-items: center; gap: 5px;}
+        .status-normal { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9;}
+        .status-broken { background: #ffebee; color: #c62828; border: 1px solid #ffcdd2;}
+        .status-borrowed { background: #fff8e1; color: #f57f17; border: 1px solid #ffecb3;}
+        .status-disposed { background: #f5f5f5; color: #616161; border: 1px solid #e0e0e0;}
+        
+        #qr-reader { width: 100%; max-width: 400px; margin: 0 auto 20px auto; display: none; border-radius: 12px; overflow: hidden; border: 2px solid var(--primary); }
+        
+        /* Custom SweetAlert Modal Styles */
         .swal-form-group { text-align: left; margin-bottom: 15px; }
         .swal-form-group label { font-weight: 500; font-size: 0.9rem; color: var(--primary); display: block; margin-bottom: 5px; }
-        .swal-input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-family: 'Prompt'; }
+        .swal-input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Prompt'; font-size: 0.95rem; outline: none; }
+        .swal-input:focus { border-color: var(--primary); }
+        
+        /* Table for Details Modal */
+        .details-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; }
+        .details-table th { background: #f4f7f9; padding: 10px; border: 1px solid #eee; width: 40%; color: var(--primary); font-weight: 500; }
+        .details-table td { padding: 10px; border: 1px solid #eee; color: #444; }
     </style>
 </head>
 <body>
@@ -47,24 +80,48 @@
         </div>
     </nav>
 
-    <div class="section-container" style="align-items: flex-start; padding-top: 30px;">
-        <div style="width: 100%; max-width: 800px;">
+    <div class="section-container" style="align-items: flex-start; padding-top: 20px;">
+        <div style="width: 100%; max-width: 900px;">
             
-            <div class="header-section">
-                <h2 style="color: var(--primary);"><i class="fas fa-clipboard-check"></i> รายการครุภัณฑ์ที่ต้องตรวจนับ</h2>
-                <p id="wardSubtitle" style="color: var(--secondary);">หน่วยงาน: -</p>
+            <h1 class="page-title">
+                <i class="fas fa-microscope"></i> ระบบตรวจนับครุภัณฑ์ทางการแพทย์
+                <span class="page-subtitle" id="wardSubtitle">หน่วยงาน: -</span>
+            </h1>
+
+            <div class="dashboard-grid">
+                <div class="stat-card card-total">
+                    <i class="fas fa-boxes"></i>
+                    <span class="stat-num" id="stat-total">0</span>
+                    <span class="stat-label">รายการทั้งหมด</span>
+                </div>
+                <div class="stat-card card-normal">
+                    <i class="fas fa-check-circle"></i>
+                    <span class="stat-num" id="stat-normal">0</span>
+                    <span class="stat-label">ปกติ/พร้อมใช้งาน</span>
+                </div>
+                <div class="stat-card card-broken">
+                    <i class="fas fa-wrench"></i>
+                    <span class="stat-num" id="stat-broken">0</span>
+                    <span class="stat-label">ชำรุดส่งซ่อม</span>
+                </div>
+                <div class="stat-card card-disposed">
+                    <i class="fas fa-trash-alt"></i>
+                    <span class="stat-num" id="stat-disposed">0</span>
+                    <span class="stat-label">จำหน่ายแล้ว</span>
+                </div>
             </div>
 
             <div class="action-bar">
-                <input type="text" id="searchInput" class="search-box" placeholder="ค้นหาชื่อ, เลขครุภัณฑ์, ตำแหน่งย่อย...">
-                <button class="scan-btn" onclick="toggleScanner()"><i class="fas fa-qrcode"></i> สแกน QR</button>
+                <input type="text" id="searchInput" class="search-box" placeholder="ค้นหาชื่อ, เลขครุภัณฑ์, ตำแหน่ง...">
+                <button class="btn btn-accent" onclick="toggleScanner()"><i class="fas fa-qrcode"></i> สแกน QR</button>
+                <button class="btn btn-success" onclick="exportToCSV()"><i class="fas fa-file-excel"></i> ดาวน์โหลดรายงาน</button>
             </div>
 
             <div id="qr-reader"></div>
 
             <div id="equipmentList">
-                <div style="text-align: center; padding: 20px; color: #666;">
-                    <i class="fas fa-spinner fa-spin fa-2x"></i><br>กำลังดึงข้อมูลครุภัณฑ์...
+                <div style="text-align: center; padding: 40px; color: #666;">
+                    <i class="fas fa-spinner fa-spin fa-3x"></i><br><br>กำลังดึงข้อมูลครุภัณฑ์...
                 </div>
             </div>
 
@@ -76,9 +133,9 @@
         const currentWard = urlParams.get('ward');
         
         // 🔴 วาง URL GAS ของคุณตรงนี้
-        const EQUIPMENT_API = "https://script.google.com/macros/s/AKfycbyx7gZYzGOotSCBwm-vhQDT0K_2vTQEuY7JoyRHhiqzyHQHEOBxHUjc1HYCtNclBYOLCw/exec"; 
+        const EQUIPMENT_API = "ใส่_URL_WEB_APP_ของ_ระบบครุภัณฑ์_ตรงนี้"; 
 
-        let allEquipment = []; // เก็บข้อมูลทั้งหมดไว้ค้นหา
+        let allEquipment = []; 
         let html5QrcodeScanner = null;
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -88,7 +145,6 @@
                 fetchEquipment();
             }
 
-            // ระบบค้นหา Real-time
             document.getElementById('searchInput').addEventListener('input', function(e) {
                 const searchTerm = e.target.value.toLowerCase();
                 const filtered = allEquipment.filter(item => 
@@ -109,20 +165,39 @@
                 try {
                     const result = JSON.parse(textData); 
                     if (result.status === 'success' && result.data.length > 0) {
-                        allEquipment = result.data; // เก็บลงตัวแปร Global
-                        renderEquipmentList(allEquipment); // สร้างหน้าจอ
+                        allEquipment = result.data; 
+                        updateDashboardStats(); // อัปเดตตัวเลข Dashboard
+                        renderEquipmentList(allEquipment); 
                     } else {
-                        document.getElementById('equipmentList').innerHTML = '<div style="text-align: center; padding: 20px; color: var(--primary);">✅ ไม่พบรายการที่ต้องตรวจนับ</div>';
+                        document.getElementById('equipmentList').innerHTML = '<div style="text-align: center; padding: 30px; background: #fff; border-radius: 12px; color: var(--primary);"><i class="fas fa-box-open fa-3x" style="color: #ddd; margin-bottom: 15px;"></i><br>ไม่พบรายการที่ต้องตรวจนับในหน่วยงานนี้</div>';
                     }
                 } catch (jsonError) {
                     document.getElementById('equipmentList').innerHTML = '<div style="text-align: center; color: red;">เกิดข้อผิดพลาดจากฐานข้อมูล</div>';
                 }
             } catch (error) {
-                document.getElementById('equipmentList').innerHTML = '<div style="text-align: center; color: red;">ข้อผิดพลาดในการเชื่อมต่อ</div>';
+                document.getElementById('equipmentList').innerHTML = '<div style="text-align: center; color: red;">ข้อผิดพลาดในการเชื่อมต่ออินเทอร์เน็ต</div>';
             }
         }
 
-        // ฟังก์ชันวาดรายการครุภัณฑ์บนหน้าจอ
+        // อัปเดตตัวเลขบน Dashboard
+        function updateDashboardStats() {
+            let normalCount = 0;
+            let brokenCount = 0;
+            let disposedCount = 0;
+
+            allEquipment.forEach(item => {
+                const status = item['สถานะ'];
+                if (status === 'ปกติ' || status === 'ปกติ/พร้อมใช้งาน') normalCount++;
+                else if (status === 'ชำรุดส่งซ่อม') brokenCount++;
+                else if (status === 'จำหน่าย' || status === 'แทงจำหน่าย') disposedCount++;
+            });
+
+            document.getElementById('stat-total').innerText = allEquipment.length;
+            document.getElementById('stat-normal').innerText = normalCount;
+            document.getElementById('stat-broken').innerText = brokenCount;
+            document.getElementById('stat-disposed').innerText = disposedCount;
+        }
+
         function renderEquipmentList(data) {
             const listContainer = document.getElementById('equipmentList');
             listContainer.innerHTML = ''; 
@@ -133,22 +208,32 @@
             }
 
             data.forEach((item, index) => {
-                // กำหนดสีของป้ายสถานะ
                 let statusClass = 'status-normal';
-                if(item['สถานะ'] === 'ชำรุดส่งซ่อม') statusClass = 'status-broken';
-                if(item['สถานะ'] === 'ถูกยืม') statusClass = 'status-borrowed';
+                let statusIcon = '<i class="fas fa-check-circle"></i>';
+                
+                if(item['สถานะ'] === 'ชำรุดส่งซ่อม') { statusClass = 'status-broken'; statusIcon = '<i class="fas fa-wrench"></i>'; }
+                if(item['สถานะ'] === 'ถูกยืม') { statusClass = 'status-borrowed'; statusIcon = '<i class="fas fa-exchange-alt"></i>'; }
+                if(item['สถานะ'] === 'จำหน่าย' || item['สถานะ'] === 'แทงจำหน่าย') { statusClass = 'status-disposed'; statusIcon = '<i class="fas fa-trash-alt"></i>'; }
+
+                const safeItemJson = JSON.stringify(item).replace(/"/g, '&quot;');
 
                 const card = document.createElement('div');
                 card.className = 'item-card';
                 card.innerHTML = `
                     <div class="item-details">
                         <h4>${item['ชื่อครุภัณฑ์'] || 'ไม่ระบุชื่อ'}</h4>
-                        <p><i class="fas fa-barcode"></i> เลขครุภัณฑ์: ${item['เลขครุภัณฑ์'] || '-'}</p>
-                        <p><i class="fas fa-map-marker-alt"></i> ตำแหน่ง: ${item['ตำแหน่งย่อย (Sub-location)'] || 'ไม่ได้ระบุ'}</p>
+                        <div class="item-info-grid">
+                            <p><i class="fas fa-barcode"></i> เลขครุภัณฑ์: <strong style="color:var(--text-main); margin-left:5px;">${item['เลขครุภัณฑ์'] || '-'}</strong></p>
+                            <p><i class="fas fa-map-marker-alt"></i> ตำแหน่ง: <strong style="color:var(--text-main); margin-left:5px;">${item['ตำแหน่งย่อย (Sub-location)'] || '-'}</strong></p>
+                            <p><i class="fas fa-clock"></i> ความถี่ตรวจนับ: <strong style="color:var(--primary); margin-left:5px;">${item['ความถี่การตรวจนับ (เดือน)'] || '-'} เดือน/ครั้ง</strong></p>
+                        </div>
                     </div>
                     <div class="item-actions">
-                        <span class="status-badge ${statusClass}">${item['สถานะ'] || 'ปกติ'}</span>
-                        <button onclick='openManageModal(${JSON.stringify(item).replace(/'/g, "&#39;")})' style="padding: 6px 12px; border-radius: 5px; border: 1px solid var(--primary); background: #fff; color: var(--primary); cursor: pointer; font-family: 'Prompt'; transition: 0.3s;">
+                        <span class="status-badge ${statusClass}">${statusIcon} ${item['สถานะ'] || 'ปกติ'}</span>
+                        <button class="btn btn-outline" onclick="showDetailsModal(${safeItemJson})">
+                            <i class="fas fa-info-circle"></i> รายละเอียด
+                        </button>
+                        <button class="btn btn-primary" onclick="openManageModal(${safeItemJson})">
                             <i class="fas fa-edit"></i> จัดการ
                         </button>
                     </div>
@@ -160,15 +245,10 @@
         // --- ระบบสแกน QR Code ---
         function toggleScanner() {
             const readerDiv = document.getElementById('qr-reader');
-            
             if (readerDiv.style.display === 'block') {
-                // ปิดกล้อง
                 readerDiv.style.display = 'none';
-                if(html5QrcodeScanner) {
-                    html5QrcodeScanner.clear();
-                }
+                if(html5QrcodeScanner) html5QrcodeScanner.clear();
             } else {
-                // เปิดกล้อง
                 readerDiv.style.display = 'block';
                 html5QrcodeScanner = new Html5QrcodeScanner("qr-reader", { fps: 10, qrbox: {width: 250, height: 250} }, false);
                 html5QrcodeScanner.render(onScanSuccess, onScanFailure);
@@ -176,71 +256,81 @@
         }
 
         function onScanSuccess(decodedText, decodedResult) {
-            // เมื่อสแกนติด ให้นำเลขไปใส่ช่องค้นหาและกรองข้อมูล
             document.getElementById('searchInput').value = decodedText;
-            
             const filtered = allEquipment.filter(item => String(item['เลขครุภัณฑ์']).includes(decodedText));
             renderEquipmentList(filtered);
-
-            // ปิดกล้องอัตโนมัติ
             toggleScanner();
-            
-            // แจ้งเตือนสแกนสำเร็จ
+            Swal.fire({ icon: 'success', title: 'ค้นพบรายการ', text: `สแกนรหัส: ${decodedText}`, timer: 1500, showConfirmButton: false });
+        }
+        function onScanFailure(error) {}
+
+        // --- Modal แสดงรายละเอียดทั้งหมด ---
+        function showDetailsModal(item) {
             Swal.fire({
-                icon: 'success',
-                title: 'สแกนสำเร็จ',
-                text: `เลขครุภัณฑ์: ${decodedText}`,
-                timer: 1500,
-                showConfirmButton: false
+                title: 'รายละเอียดครุภัณฑ์',
+                width: 600,
+                html: `
+                    <table class="details-table">
+                        <tbody>
+                            <tr><th><i class="fas fa-fingerprint"></i> RMC No</th><td>${item['RMC No'] || '-'}</td></tr>
+                            <tr><th><i class="fas fa-barcode"></i> เลขครุภัณฑ์</th><td>${item['เลขครุภัณฑ์'] || '-'}</td></tr>
+                            <tr><th><i class="fas fa-box"></i> ชื่อครุภัณฑ์</th><td>${item['ชื่อครุภัณฑ์'] || '-'}</td></tr>
+                            <tr><th><i class="fas fa-tag"></i> ยี่ห้อ / รุ่น</th><td>${item['ยี่ห้อ'] || '-'} / ${item['ชื่อรุ่น'] || '-'}</td></tr>
+                            <tr><th><i class="fas fa-list"></i> ประเภท</th><td>${item['ประเภทครุภัณฑ์'] || '-'}</td></tr>
+                            <tr><th><i class="fas fa-hospital"></i> เจ้าของ / ใช้งานที่</th><td>${item['หน่วยงาน'] || '-'} / ${item['ใช้งานที่'] || '-'}</td></tr>
+                            <tr><th><i class="fas fa-map-pin"></i> ตำแหน่งย่อย</th><td>${item['ตำแหน่งย่อย (Sub-location)'] || '-'}</td></tr>
+                            <tr><th><i class="fas fa-exclamation-triangle"></i> RISK LEVEL</th><td>${item['RISK LEVEL'] || '-'}</td></tr>
+                            <tr><th><i class="fas fa-history"></i> ความถี่การตรวจนับ</th><td>${item['ความถี่การตรวจนับ (เดือน)'] || '-'} เดือน/ครั้ง</td></tr>
+                        </tbody>
+                    </table>
+                `,
+                confirmButtonColor: '#003366',
+                confirmButtonText: '<i class="fas fa-times"></i> ปิดหน้าต่าง'
             });
         }
 
-        function onScanFailure(error) {
-            // ไม่ต้องทำอะไร ปล่อยให้มันสแกนต่อไป
-        }
-
-        // --- ระบบอัปเดตสถานะ (Modal) ---
+        // --- Modal อัปเดตสถานะ ---
         function openManageModal(item) {
             Swal.fire({
-                title: 'อัปเดตสถานะการตรวจนับ',
+                title: 'อัปเดตสถานะ',
                 html: `
                     <div style="text-align: left; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee;">
-                        <b style="color: var(--primary);">${item['ชื่อครุภัณฑ์']}</b><br>
-                        <small>เลข: ${item['เลขครุภัณฑ์']}</small>
+                        <b style="color: var(--primary); font-size:1.1rem;">${item['ชื่อครุภัณฑ์']}</b><br>
+                        <small style="color:#666;"><i class="fas fa-barcode"></i> เลข: ${item['เลขครุภัณฑ์']}</small>
                     </div>
                     
                     <div class="swal-form-group">
-                        <label>สถานะปัจจุบัน:</label>
+                        <label><i class="fas fa-flag"></i> สถานะปัจจุบัน:</label>
                         <select id="update-status" class="swal-input" onchange="toggleExtraInputs()">
-                            <option value="ปกติ" ${item['สถานะ'] === 'ปกติ' ? 'selected' : ''}>✅ ปกติ/พร้อมใช้งาน</option>
-                            <option value="ชำรุดส่งซ่อม" ${item['สถานะ'] === 'ชำรุดส่งซ่อม' ? 'selected' : ''}>🛠️ ชำรุดส่งซ่อม</option>
-                            <option value="ถูกยืม" ${item['สถานะ'] === 'ถูกยืม' ? 'selected' : ''}>🔄 ถูกยืมใช้งาน</option>
-                            <option value="จำหน่าย" ${item['สถานะ'] === 'จำหน่าย' ? 'selected' : ''}>🗑️ จำหน่าย/แทงจำหน่าย</option>
+                            <option value="ปกติ" ${item['สถานะ'] === 'ปกติ' ? 'selected' : ''}>ปกติ/พร้อมใช้งาน</option>
+                            <option value="ชำรุดส่งซ่อม" ${item['สถานะ'] === 'ชำรุดส่งซ่อม' ? 'selected' : ''}>ชำรุดส่งซ่อม</option>
+                            <option value="ถูกยืม" ${item['สถานะ'] === 'ถูกยืม' ? 'selected' : ''}>ถูกยืมใช้งาน</option>
+                            <option value="จำหน่าย" ${item['สถานะ'] === 'จำหน่าย' ? 'selected' : ''}>จำหน่าย/แทงจำหน่าย</option>
                         </select>
                     </div>
 
                     <div id="borrow-div" class="swal-form-group" style="display: ${item['สถานะ'] === 'ถูกยืม' ? 'block' : 'none'};">
-                        <label>ยืมไปที่หน่วยงานใด:</label>
-                        <input type="text" id="update-borrow" class="swal-input" placeholder="ระบุหน่วยงานปลายทาง" value="${item['ใช้งานที่'] || ''}">
+                        <label><i class="fas fa-hospital"></i> ยืมไปที่หน่วยงานใด:</label>
+                        <input type="text" id="update-borrow" class="swal-input" placeholder="ระบุชื่อหน่วยงาน" value="${item['ใช้งานที่'] || ''}">
                     </div>
 
                     <div id="photo-div" class="swal-form-group" style="display: ${item['สถานะ'] === 'ชำรุดส่งซ่อม' ? 'block' : 'none'};">
-                        <label>แนบภาพถ่ายจุดที่ชำรุด:</label>
+                        <label><i class="fas fa-camera"></i> แนบภาพถ่ายจุดที่ชำรุด:</label>
                         <input type="file" id="update-photo" class="swal-input" accept="image/*">
                     </div>
 
                     <div class="swal-form-group">
-                        <label>ตำแหน่งย่อย (Sub-location):</label>
+                        <label><i class="fas fa-map-marker-alt"></i> ตำแหน่งย่อย (Sub-location):</label>
                         <input type="text" id="update-subloc" class="swal-input" value="${item['ตำแหน่งย่อย (Sub-location)'] || ''}" placeholder="เช่น เตียง 1, รถ Emergency">
                     </div>
 
                     <div class="swal-form-group">
-                        <label>หมายเหตุ:</label>
-                        <textarea id="update-note" class="swal-input" rows="2" placeholder="ระบุข้อมูลเพิ่มเติม (ถ้ามี)"></textarea>
+                        <label><i class="fas fa-comment-dots"></i> หมายเหตุการตรวจนับ:</label>
+                        <textarea id="update-note" class="swal-input" rows="2" placeholder="ระบุข้อมูลเพิ่มเติม..."></textarea>
                     </div>
                 `,
                 showCancelButton: true,
-                confirmButtonText: 'บันทึกการตรวจนับ',
+                confirmButtonText: '<i class="fas fa-save"></i> บันทึกข้อมูล',
                 cancelButtonText: 'ยกเลิก',
                 confirmButtonColor: '#003366',
                 preConfirm: () => {
@@ -249,23 +339,57 @@
                         status: document.getElementById('update-status').value,
                         borrowedWard: document.getElementById('update-borrow').value,
                         subLocation: document.getElementById('update-subloc').value,
-                        note: document.getElementById('update-note').value,
-                        // ภาพถ่ายจะถูกดึงไปอัปโหลดในสเต็ปถัดไป
+                        note: document.getElementById('update-note').value
                     }
                 }
             }).then((result) => {
                 if (result.isConfirmed) {
-                    console.log("ข้อมูลที่จะส่งไปบันทึก:", result.value);
-                    Swal.fire('จำลองการบันทึก', 'เดี๋ยวเราจะเขียนโค้ดส่งข้อมูลนี้กลับไปที่ Google Sheets ในขั้นตอนต่อไปครับ!', 'info');
+                    Swal.fire('จำลองการบันทึก', 'เตรียมส่งข้อมูลไป Google Sheets...', 'info');
                 }
             });
         }
 
-        // ซ่อน/แสดงช่องกรอกข้อมูลตามสถานะที่เลือก
         function toggleExtraInputs() {
             const status = document.getElementById('update-status').value;
             document.getElementById('borrow-div').style.display = (status === 'ถูกยืม') ? 'block' : 'none';
             document.getElementById('photo-div').style.display = (status === 'ชำรุดส่งซ่อม') ? 'block' : 'none';
+        }
+
+        // --- ระบบ Export Excel/CSV ---
+        function exportToCSV() {
+            if (allEquipment.length === 0) {
+                Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลให้ดาวน์โหลด', 'warning');
+                return;
+            }
+            
+            // ใส่ BOM เพื่อให้เปิดใน Excel แล้วภาษาไทยไม่เพี้ยน
+            let csvContent = "\uFEFF"; 
+            
+            // ดึงหัวคอลัมน์
+            const headers = Object.keys(allEquipment[0]);
+            csvContent += headers.join(",") + "\n";
+            
+            // ดึงข้อมูลแต่ละบรรทัด
+            allEquipment.forEach(row => {
+                let values = headers.map(header => {
+                    let val = row[header] === null || row[header] === undefined ? "" : String(row[header]);
+                    // ป้องกัน comma ภายในข้อความทำไฟล์พัง
+                    val = val.replace(/"/g, '""');
+                    return `"${val}"`;
+                });
+                csvContent += values.join(",") + "\n";
+            });
+            
+            // สร้างลิงก์ดาวน์โหลด
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `สรุปครุภัณฑ์_${currentWard}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
     </script>
 </body>
