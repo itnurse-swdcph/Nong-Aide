@@ -58,7 +58,7 @@
         const urlParams = new URLSearchParams(window.location.search);
         const currentWard = urlParams.get('ward');
 
-        // URL จาก GAS ของระบบตรวจนับครุภัณฑ์ (ต้องเอาจากที่ Deploy ใหม่)
+        // URL จาก GAS ของระบบตรวจนับครุภัณฑ์
         const EQUIPMENT_API = "https://script.google.com/macros/s/AKfycbyx7gZYzGOotSCBwm-vhQDT0K_2vTQEuY7JoyRHhiqzyHQHEOBxHUjc1HYCtNclBYOLCw/exec";
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -73,42 +73,58 @@
         });
 
         async function fetchEquipment() {
-            if (EQUIPMENT_API === "ใส่_URL_WEB_APP_ของ_ระบบครุภัณฑ์_ตรงนี้") return;
-
             try {
                 // ส่ง Request ไปดึงข้อมูล พร้อมระบุ Action และ Ward
-                const response = await fetch(`${EQUIPMENT_API}?action=getItemsByWard&ward=${encodeURIComponent(currentWard)}`);
-                const result = await response.json();
+                const url = `${EQUIPMENT_API}?action=getItemsByWard&ward=${encodeURIComponent(currentWard)}`;
+                const response = await fetch(url);
+                
+                // อ่านข้อมูลที่ส่งกลับมาเป็น Text ก่อน เพื่อเช็คว่าพังที่ GAS หรือไม่
+                const textData = await response.text(); 
+                
+                try {
+                    // ลองแปลงเป็น JSON
+                    const result = JSON.parse(textData); 
+                    
+                    const listContainer = document.getElementById('equipmentList');
+                    listContainer.innerHTML = ''; // เคลียร์หน้า Loading
 
-                const listContainer = document.getElementById('equipmentList');
-                listContainer.innerHTML = ''; // เคลียร์ Loading
-
-                if (result.status === 'success' && result.data.length > 0) {
-                    result.data.forEach(item => {
-                        // สร้าง Card สำหรับแต่ละไอเทม
-                        const card = document.createElement('div');
-                        card.className = 'item-card';
-                        card.innerHTML = `
-                            <div class="item-details">
-                                <h4>${item['ชื่อครุภัณฑ์']}</h4>
-                                <p><i class="fas fa-barcode"></i> เลขครุภัณฑ์: ${item['เลขครุภัณฑ์']}</p>
-                                <p><i class="fas fa-map-marker-alt"></i> ตำแหน่ง: ${item['ตำแหน่งย่อย (Sub-location)'] || 'ไม่ได้ระบุ'}</p>
-                            </div>
-                            <div>
-                                <span class="status-badge status-normal">${item['สถานะ']}</span>
-                                <button style="margin-left: 10px; padding: 5px 10px; border-radius: 5px; border: 1px solid var(--primary); background: transparent; color: var(--primary); cursor: pointer;">
-                                    จัดการ
-                                </button>
-                            </div>
-                        `;
-                        listContainer.appendChild(card);
-                    });
-                } else {
-                    listContainer.innerHTML = '<div style="text-align: center; padding: 20px; color: #e74c3c;">ไม่พบรายการครุภัณฑ์ในหน่วยงานนี้</div>';
+                    if (result.status === 'success' && result.data.length > 0) {
+                        result.data.forEach(item => {
+                            // สร้าง Card สำหรับแต่ละไอเทม
+                            const card = document.createElement('div');
+                            card.className = 'item-card';
+                            card.innerHTML = `
+                                <div class="item-details">
+                                    <h4>${item['ชื่อครุภัณฑ์'] || 'ไม่ระบุชื่อ'}</h4>
+                                    <p><i class="fas fa-barcode"></i> เลขครุภัณฑ์: ${item['เลขครุภัณฑ์'] || '-'}</p>
+                                    <p><i class="fas fa-map-marker-alt"></i> ตำแหน่ง: ${item['ตำแหน่งย่อย (Sub-location)'] || 'ไม่ได้ระบุ'}</p>
+                                </div>
+                                <div>
+                                    <span class="status-badge status-normal">${item['สถานะ'] || 'ปกติ'}</span>
+                                    <button style="margin-left: 10px; padding: 5px 10px; border-radius: 5px; border: 1px solid var(--primary); background: transparent; color: var(--primary); cursor: pointer;">
+                                        จัดการ
+                                    </button>
+                                </div>
+                            `;
+                            listContainer.appendChild(card);
+                        });
+                    } else {
+                        listContainer.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--primary);">✅ ไม่พบรายการครุภัณฑ์ที่ต้องตรวจนับในหน่วยงานนี้</div>';
+                    }
+                } catch (jsonError) {
+                    // ถ้าแปลง JSON ไม่ได้ แสดงว่า GAS ตอบกลับมาผิดปกติ (เช่น Error หรือหน้า Login)
+                    console.error("ไม่ใช่ข้อมูล JSON! สิ่งที่ GAS ส่งกลับมาคือ:", textData);
+                    document.getElementById('equipmentList').innerHTML = `
+                        <div style="text-align: center; padding: 20px; color: red;">
+                            <i class="fas fa-exclamation-triangle fa-2x"></i><br>
+                            <b>เกิดข้อผิดพลาดจาก Google Apps Script</b><br>
+                            <small>(โปรดตรวจสอบว่า Deploy สิทธิ์เป็น Anyone หรือยัง และชื่อ Sheet ตรงกันหรือไม่)</small>
+                        </div>`;
                 }
+
             } catch (error) {
-                console.error("Error:", error);
-                document.getElementById('equipmentList').innerHTML = '<div style="text-align: center; color: red;">เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล</div>';
+                console.error("Error Network:", error);
+                document.getElementById('equipmentList').innerHTML = '<div style="text-align: center; color: red;">เกิดข้อผิดพลาดในการเชื่อมต่ออินเทอร์เน็ต</div>';
             }
         }
     </script>
