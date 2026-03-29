@@ -24,7 +24,6 @@
         .stat-num { font-size: 1.8rem; font-weight: 600; line-height: 1; margin-bottom: 5px; color: var(--text-main); }
         .stat-label { font-size: 0.85rem; color: #666; }
         
-        /* Dashboard Colors */
         .card-total { border-color: var(--primary); } .card-total i { color: var(--primary); }
         .card-normal { border-color: #28a745; } .card-normal i { color: #28a745; }
         .card-broken { border-color: #dc3545; } .card-broken i { color: #dc3545; }
@@ -34,7 +33,7 @@
         .search-box { flex: 1; padding: 12px 15px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Prompt'; min-width: 200px; outline: none; transition: 0.3s; }
         .search-box:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,51,102,0.1); }
         
-        .btn { padding: 10px 15px; border-radius: 8px; font-weight: 500; cursor: pointer; border: none; font-family: 'Prompt'; transition: 0.2s; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+        .btn { padding: 10px 15px; border-radius: 8px; font-weight: 500; cursor: pointer; border: none; font-family: 'Prompt'; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
         .btn-primary { background: var(--primary); color: white; }
         .btn-primary:hover { background: #002244; }
         .btn-accent { background: var(--accent); color: var(--primary); }
@@ -42,29 +41,52 @@
         .btn-outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); }
         .btn-outline:hover { background: var(--primary); color: white; }
         .btn-success { background: #28a745; color: white; }
+        .btn-sm { padding: 6px 12px; font-size: 0.85rem; }
         
-        .item-card { background: var(--white); padding: 20px; border-radius: 12px; margin-bottom: 15px; border-left: 5px solid var(--primary); box-shadow: 0 3px 10px rgba(0,0,0,0.06); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;}
-        .item-details { flex: 1; min-width: 250px; }
-        .item-details h4 { color: var(--primary); margin-bottom: 8px; font-size: 1.1rem; }
-        .item-info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 5px; }
-        .item-details p { font-size: 0.85rem; color: #555; margin: 0; display: flex; align-items: center; gap: 6px; }
+        /* Tabs Style */
+        .tabs-container { display: flex; border-bottom: 2px solid #ddd; margin-bottom: 20px; gap: 10px; overflow-x: auto;}
+        .tab-btn { background: transparent; border: none; padding: 12px 20px; font-family: 'Prompt'; font-size: 1.05rem; font-weight: 500; color: #666; cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; transition: 0.3s; }
+        .tab-btn:hover { color: var(--primary); }
+        .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+        .section-heading { color: var(--primary); font-size: 1.2rem; font-weight: 600; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+
+        /* จัด Layout Item Card ใหม่ให้ไม่เบียด */
+        .item-card { background: var(--white); padding: 20px; border-radius: 12px; margin-bottom: 15px; border-left: 5px solid var(--primary); box-shadow: 0 3px 10px rgba(0,0,0,0.06); display: flex; flex-direction: column; gap: 15px;}
+        @media (min-width: 768px) {
+            .item-card { flex-direction: row; justify-content: space-between; align-items: center; }
+        }
+        .item-details { flex: 1; }
+        .item-details h4 { color: var(--primary); margin-bottom: 10px; font-size: 1.1rem; line-height: 1.4; }
+        
+        .info-row { display: flex; flex-wrap: wrap; gap: 15px; font-size: 0.9rem; color: #555; }
+        .info-item { display: flex; align-items: baseline; gap: 5px; background: #f8f9fa; padding: 6px 12px; border-radius: 8px; border: 1px solid #eee; }
+        .info-item i { color: var(--primary); width: 15px; text-align: center;}
+        .info-item strong { color: var(--text-main); word-break: break-all; }
+        
         .item-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
         
-        .status-badge { padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 500; display: inline-flex; align-items: center; gap: 5px;}
+        .status-badge { padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 500; display: inline-flex; align-items: center; gap: 5px;}
         .status-normal { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9;}
         .status-broken { background: #ffebee; color: #c62828; border: 1px solid #ffcdd2;}
         .status-borrowed { background: #fff8e1; color: #f57f17; border: 1px solid #ffecb3;}
         .status-disposed { background: #f5f5f5; color: #616161; border: 1px solid #e0e0e0;}
         
+        /* Table Style (รายการทั้งหมด) */
+        .table-responsive { overflow-x: auto; background: var(--white); border-radius: 12px; box-shadow: 0 3px 10px rgba(0,0,0,0.06); }
+        .data-table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        .data-table th { background: var(--primary); color: white; padding: 12px 15px; text-align: left; font-weight: 500; white-space: nowrap; }
+        .data-table td { padding: 12px 15px; border-bottom: 1px solid #eee; color: #444; vertical-align: middle; }
+        .data-table tbody tr:hover { background: #f8f9fa; }
+
         #qr-reader { width: 100%; max-width: 400px; margin: 0 auto 20px auto; display: none; border-radius: 12px; overflow: hidden; border: 2px solid var(--primary); }
+        .hidden { display: none !important; }
         
-        /* Custom SweetAlert Modal Styles */
+        /* Modal Styles */
         .swal-form-group { text-align: left; margin-bottom: 15px; }
         .swal-form-group label { font-weight: 500; font-size: 0.9rem; color: var(--primary); display: block; margin-bottom: 5px; }
         .swal-input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Prompt'; font-size: 0.95rem; outline: none; }
         .swal-input:focus { border-color: var(--primary); }
-        
-        /* Table for Details Modal */
         .details-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; }
         .details-table th { background: #f4f7f9; padding: 10px; border: 1px solid #eee; width: 40%; color: var(--primary); font-weight: 500; }
         .details-table td { padding: 10px; border: 1px solid #eee; color: #444; }
@@ -81,7 +103,7 @@
     </nav>
 
     <div class="section-container" style="align-items: flex-start; padding-top: 20px;">
-        <div style="width: 100%; max-width: 900px;">
+        <div style="width: 100%; max-width: 1000px;">
             
             <h1 class="page-title">
                 <i class="fas fa-microscope"></i> ระบบตรวจนับครุภัณฑ์ทางการแพทย์
@@ -112,16 +134,47 @@
             </div>
 
             <div class="action-bar">
-                <input type="text" id="searchInput" class="search-box" placeholder="ค้นหาชื่อ, เลขครุภัณฑ์, ตำแหน่ง...">
+                <input type="text" id="searchInput" class="search-box" placeholder="ค้นหาชื่อ, เลขครุภัณฑ์, ยี่ห้อ, ตำแหน่ง...">
                 <button class="btn btn-accent" onclick="toggleScanner()"><i class="fas fa-qrcode"></i> สแกน QR</button>
-                <button class="btn btn-success" onclick="exportToCSV()"><i class="fas fa-file-excel"></i> ดาวน์โหลดรายงาน</button>
+                <button class="btn btn-success" onclick="exportToCSV()"><i class="fas fa-file-excel"></i> ส่งออกไฟล์ (Excel)</button>
             </div>
 
             <div id="qr-reader"></div>
 
-            <div id="equipmentList">
-                <div style="text-align: center; padding: 40px; color: #666;">
-                    <i class="fas fa-spinner fa-spin fa-3x"></i><br><br>กำลังดึงข้อมูลครุภัณฑ์...
+            <div class="tabs-container">
+                <button class="tab-btn active" id="tab-inspection" onclick="switchTab('inspection')">
+                    <i class="fas fa-clipboard-check"></i> รายการที่ต้องตรวจนับ
+                </button>
+                <button class="tab-btn" id="tab-all" onclick="switchTab('all')">
+                    <i class="fas fa-list-ul"></i> รายการทั้งหมด (<span id="allCountTab">0</span>)
+                </button>
+            </div>
+
+            <div id="loadingState" style="text-align: center; padding: 40px; color: #666;">
+                <i class="fas fa-spinner fa-spin fa-3x"></i><br><br>กำลังดึงข้อมูลครุภัณฑ์...
+            </div>
+
+            <div id="view-inspection" class="hidden">
+                <h3 class="section-heading"><i class="far fa-calendar-alt"></i> รายการที่ต้องตรวจสอบประจำรอบเดือน <span id="currentMonthText"></span></h3>
+                <div id="equipmentList"></div>
+            </div>
+
+            <div id="view-all" class="hidden">
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>เลขครุภัณฑ์</th>
+                                <th>ชื่อครุภัณฑ์</th>
+                                <th>ยี่ห้อ / รุ่น</th>
+                                <th>ความถี่</th>
+                                <th>สถานะ</th>
+                                <th>จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="allEquipmentTableBody">
+                            </tbody>
+                    </table>
                 </div>
             </div>
 
@@ -133,28 +186,42 @@
         const currentWard = urlParams.get('ward');
         
         // 🔴 วาง URL GAS ของคุณตรงนี้
-        const EQUIPMENT_API = "https://script.google.com/macros/s/AKfycbyx7gZYzGOotSCBwm-vhQDT0K_2vTQEuY7JoyRHhiqzyHQHEOBxHUjc1HYCtNclBYOLCw/exec"; 
+        const EQUIPMENT_API = "ใส่_URL_WEB_APP_ของ_ระบบครุภัณฑ์_ตรงนี้"; 
 
         let allEquipment = []; 
+        let filteredEquipment = []; // สำหรับเก็บค่าที่ค้นหา
         let html5QrcodeScanner = null;
+        let currentActiveTab = 'inspection';
 
         document.addEventListener('DOMContentLoaded', () => {
+            // เซ็ตชื่อเดือนปัจจุบันภาษาไทย
+            setCurrentMonthHeading();
+
             if (currentWard) {
                 document.getElementById('displayWard').innerText = currentWard;
                 document.getElementById('wardSubtitle').innerText = `หน่วยงาน: ${currentWard}`;
                 fetchEquipment();
             }
 
+            // ระบบค้นหา
             document.getElementById('searchInput').addEventListener('input', function(e) {
                 const searchTerm = e.target.value.toLowerCase();
-                const filtered = allEquipment.filter(item => 
+                filteredEquipment = allEquipment.filter(item => 
                     String(item['ชื่อครุภัณฑ์'] || '').toLowerCase().includes(searchTerm) ||
                     String(item['เลขครุภัณฑ์'] || '').toLowerCase().includes(searchTerm) ||
+                    String(item['ยี่ห้อ'] || '').toLowerCase().includes(searchTerm) ||
                     String(item['ตำแหน่งย่อย (Sub-location)'] || '').toLowerCase().includes(searchTerm)
                 );
-                renderEquipmentList(filtered);
+                renderActiveView(); // อัปเดตการแสดงผลตาม Tab ที่เปิดอยู่
             });
         });
+
+        function setCurrentMonthHeading() {
+            const monthNames = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+            const d = new Date();
+            const currentMonthName = `${monthNames[d.getMonth()]} ${d.getFullYear() + 543}`;
+            document.getElementById('currentMonthText').innerText = currentMonthName;
+        }
 
         async function fetchEquipment() {
             try {
@@ -162,59 +229,85 @@
                 const response = await fetch(url);
                 const textData = await response.text(); 
                 
+                document.getElementById('loadingState').classList.add('hidden');
+                
                 try {
                     const result = JSON.parse(textData); 
                     if (result.status === 'success' && result.data.length > 0) {
                         allEquipment = result.data; 
-                        updateDashboardStats(); // อัปเดตตัวเลข Dashboard
-                        renderEquipmentList(allEquipment); 
+                        filteredEquipment = [...allEquipment];
+                        
+                        document.getElementById('allCountTab').innerText = allEquipment.length;
+                        updateDashboardStats(); 
+                        
+                        // เริ่มต้นแสดงผล Tab 1
+                        switchTab('inspection');
                     } else {
-                        document.getElementById('equipmentList').innerHTML = '<div style="text-align: center; padding: 30px; background: #fff; border-radius: 12px; color: var(--primary);"><i class="fas fa-box-open fa-3x" style="color: #ddd; margin-bottom: 15px;"></i><br>ไม่พบรายการที่ต้องตรวจนับในหน่วยงานนี้</div>';
+                        document.getElementById('view-inspection').innerHTML = '<div style="text-align: center; padding: 30px; background: #fff; border-radius: 12px; color: var(--primary);"><i class="fas fa-box-open fa-3x" style="color: #ddd; margin-bottom: 15px;"></i><br>ไม่พบรายการที่ต้องตรวจนับในหน่วยงานนี้</div>';
+                        document.getElementById('view-inspection').classList.remove('hidden');
                     }
                 } catch (jsonError) {
-                    document.getElementById('equipmentList').innerHTML = '<div style="text-align: center; color: red;">เกิดข้อผิดพลาดจากฐานข้อมูล</div>';
+                    document.getElementById('loadingState').innerHTML = '<div style="text-align: center; color: red;">เกิดข้อผิดพลาดจากฐานข้อมูล (JSON Parse Error)</div>';
+                    document.getElementById('loadingState').classList.remove('hidden');
                 }
             } catch (error) {
-                document.getElementById('equipmentList').innerHTML = '<div style="text-align: center; color: red;">ข้อผิดพลาดในการเชื่อมต่ออินเทอร์เน็ต</div>';
+                document.getElementById('loadingState').innerHTML = '<div style="text-align: center; color: red;">ข้อผิดพลาดในการเชื่อมต่ออินเทอร์เน็ต</div>';
+                document.getElementById('loadingState').classList.remove('hidden');
             }
         }
 
-        // อัปเดตตัวเลขบน Dashboard
         function updateDashboardStats() {
-            let normalCount = 0;
-            let brokenCount = 0;
-            let disposedCount = 0;
-
+            let normalCount = 0, brokenCount = 0, disposedCount = 0;
             allEquipment.forEach(item => {
                 const status = item['สถานะ'];
                 if (status === 'ปกติ' || status === 'ปกติ/พร้อมใช้งาน') normalCount++;
                 else if (status === 'ชำรุดส่งซ่อม') brokenCount++;
                 else if (status === 'จำหน่าย' || status === 'แทงจำหน่าย') disposedCount++;
             });
-
             document.getElementById('stat-total').innerText = allEquipment.length;
             document.getElementById('stat-normal').innerText = normalCount;
             document.getElementById('stat-broken').innerText = brokenCount;
             document.getElementById('stat-disposed').innerText = disposedCount;
         }
 
-        function renderEquipmentList(data) {
-            const listContainer = document.getElementById('equipmentList');
-            listContainer.innerHTML = ''; 
+        // --- ระบบจัดการ Tab ---
+        function switchTab(tabId) {
+            currentActiveTab = tabId;
+            
+            // อัปเดตสีปุ่ม Tab
+            document.getElementById('tab-inspection').classList.remove('active');
+            document.getElementById('tab-all').classList.remove('active');
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+
+            // ซ่อน/แสดง เนื้อหา
+            document.getElementById('view-inspection').classList.add('hidden');
+            document.getElementById('view-all').classList.add('hidden');
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+
+            renderActiveView();
+        }
+
+        function renderActiveView() {
+            if (currentActiveTab === 'inspection') {
+                renderInspectionCards(filteredEquipment);
+            } else {
+                renderAllItemsTable(filteredEquipment);
+            }
+        }
+
+        // --- การแสดงผล Tab 1: แบบการ์ด (ปรับ Layout ใหม่ไม่เบียด) ---
+        function renderInspectionCards(data) {
+            const container = document.getElementById('equipmentList');
+            container.innerHTML = ''; 
 
             if(data.length === 0) {
-                listContainer.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">ไม่พบข้อมูลที่ค้นหา</div>';
+                container.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">ไม่พบข้อมูลที่ค้นหา</div>';
                 return;
             }
 
-            data.forEach((item, index) => {
-                let statusClass = 'status-normal';
-                let statusIcon = '<i class="fas fa-check-circle"></i>';
-                
-                if(item['สถานะ'] === 'ชำรุดส่งซ่อม') { statusClass = 'status-broken'; statusIcon = '<i class="fas fa-wrench"></i>'; }
-                if(item['สถานะ'] === 'ถูกยืม') { statusClass = 'status-borrowed'; statusIcon = '<i class="fas fa-exchange-alt"></i>'; }
-                if(item['สถานะ'] === 'จำหน่าย' || item['สถานะ'] === 'แทงจำหน่าย') { statusClass = 'status-disposed'; statusIcon = '<i class="fas fa-trash-alt"></i>'; }
-
+            data.forEach((item) => {
+                let statusClass = getStatusClass(item['สถานะ']);
+                let statusIcon = getStatusIcon(item['สถานะ']);
                 const safeItemJson = JSON.stringify(item).replace(/"/g, '&quot;');
 
                 const card = document.createElement('div');
@@ -222,24 +315,69 @@
                 card.innerHTML = `
                     <div class="item-details">
                         <h4>${item['ชื่อครุภัณฑ์'] || 'ไม่ระบุชื่อ'}</h4>
-                        <div class="item-info-grid">
-                            <p><i class="fas fa-barcode"></i> เลขครุภัณฑ์: <strong style="color:var(--text-main); margin-left:5px;">${item['เลขครุภัณฑ์'] || '-'}</strong></p>
-                            <p><i class="fas fa-map-marker-alt"></i> ตำแหน่ง: <strong style="color:var(--text-main); margin-left:5px;">${item['ตำแหน่งย่อย (Sub-location)'] || '-'}</strong></p>
-                            <p><i class="fas fa-clock"></i> ความถี่ตรวจนับ: <strong style="color:var(--primary); margin-left:5px;">${item['ความถี่การตรวจนับ (เดือน)'] || '-'} เดือน/ครั้ง</strong></p>
+                        <div class="info-row">
+                            <span class="info-item"><i class="fas fa-barcode"></i> ลทบ: <strong>${item['เลขครุภัณฑ์'] || '-'}</strong></span>
+                            <span class="info-item"><i class="fas fa-map-marker-alt"></i> จุด: <strong>${item['ตำแหน่งย่อย (Sub-location)'] || '-'}</strong></span>
+                            <span class="info-item"><i class="fas fa-clock"></i> ความถี่: <strong>${item['ความถี่การตรวจนับ (เดือน)'] || '-'} เดือน</strong></span>
                         </div>
                     </div>
                     <div class="item-actions">
                         <span class="status-badge ${statusClass}">${statusIcon} ${item['สถานะ'] || 'ปกติ'}</span>
-                        <button class="btn btn-outline" onclick="showDetailsModal(${safeItemJson})">
+                        <button class="btn btn-outline btn-sm" onclick="showDetailsModal(${safeItemJson})">
                             <i class="fas fa-info-circle"></i> รายละเอียด
                         </button>
-                        <button class="btn btn-primary" onclick="openManageModal(${safeItemJson})">
+                        <button class="btn btn-primary btn-sm" onclick="openManageModal(${safeItemJson})">
                             <i class="fas fa-edit"></i> จัดการ
                         </button>
                     </div>
                 `;
-                listContainer.appendChild(card);
+                container.appendChild(card);
             });
+        }
+
+        // --- การแสดงผล Tab 2: แบบตาราง (รายการทั้งหมด) ---
+        function renderAllItemsTable(data) {
+            const tbody = document.getElementById('allEquipmentTableBody');
+            tbody.innerHTML = '';
+
+            if(data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px;">ไม่พบข้อมูลที่ค้นหา</td></tr>';
+                return;
+            }
+
+            data.forEach((item) => {
+                let statusClass = getStatusClass(item['สถานะ']);
+                const safeItemJson = JSON.stringify(item).replace(/"/g, '&quot;');
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${item['เลขครุภัณฑ์'] || '-'}</strong></td>
+                    <td>${item['ชื่อครุภัณฑ์'] || '-'}</td>
+                    <td>${item['ยี่ห้อ'] || '-'} / ${item['ชื่อรุ่น'] || '-'}</td>
+                    <td>${item['ความถี่การตรวจนับ (เดือน)'] || '-'} ด.</td>
+                    <td><span class="status-badge ${statusClass}" style="font-size:0.75rem;">${item['สถานะ'] || 'ปกติ'}</span></td>
+                    <td>
+                        <button class="btn btn-outline btn-sm" onclick="showDetailsModal(${safeItemJson})">
+                            <i class="fas fa-search"></i> ดูข้อมูล
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Utility: ดึงสีและไอคอนตามสถานะ
+        function getStatusClass(status) {
+            if(status === 'ชำรุดส่งซ่อม') return 'status-broken';
+            if(status === 'ถูกยืม') return 'status-borrowed';
+            if(status === 'จำหน่าย' || status === 'แทงจำหน่าย') return 'status-disposed';
+            return 'status-normal';
+        }
+        function getStatusIcon(status) {
+            if(status === 'ชำรุดส่งซ่อม') return '<i class="fas fa-wrench"></i>';
+            if(status === 'ถูกยืม') return '<i class="fas fa-exchange-alt"></i>';
+            if(status === 'จำหน่าย' || status === 'แทงจำหน่าย') return '<i class="fas fa-trash-alt"></i>';
+            return '<i class="fas fa-check-circle"></i>';
         }
 
         // --- ระบบสแกน QR Code ---
@@ -254,11 +392,10 @@
                 html5QrcodeScanner.render(onScanSuccess, onScanFailure);
             }
         }
-
-        function onScanSuccess(decodedText, decodedResult) {
+        function onScanSuccess(decodedText) {
             document.getElementById('searchInput').value = decodedText;
-            const filtered = allEquipment.filter(item => String(item['เลขครุภัณฑ์']).includes(decodedText));
-            renderEquipmentList(filtered);
+            // บังคับให้เกิด event 'input' เพื่อให้ระบบค้นหาทำงานทันที
+            document.getElementById('searchInput').dispatchEvent(new Event('input'));
             toggleScanner();
             Swal.fire({ icon: 'success', title: 'ค้นพบรายการ', text: `สแกนรหัส: ${decodedText}`, timer: 1500, showConfirmButton: false });
         }
@@ -357,35 +494,32 @@
 
         // --- ระบบ Export Excel/CSV ---
         function exportToCSV() {
-            if (allEquipment.length === 0) {
+            // ดึงข้อมูลตามหน้าที่ค้นหาอยู่ (ใช้ filteredEquipment)
+            const dataToExport = filteredEquipment;
+
+            if (dataToExport.length === 0) {
                 Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลให้ดาวน์โหลด', 'warning');
                 return;
             }
             
-            // ใส่ BOM เพื่อให้เปิดใน Excel แล้วภาษาไทยไม่เพี้ยน
             let csvContent = "\uFEFF"; 
-            
-            // ดึงหัวคอลัมน์
-            const headers = Object.keys(allEquipment[0]);
+            const headers = Object.keys(dataToExport[0]);
             csvContent += headers.join(",") + "\n";
             
-            // ดึงข้อมูลแต่ละบรรทัด
-            allEquipment.forEach(row => {
+            dataToExport.forEach(row => {
                 let values = headers.map(header => {
                     let val = row[header] === null || row[header] === undefined ? "" : String(row[header]);
-                    // ป้องกัน comma ภายในข้อความทำไฟล์พัง
                     val = val.replace(/"/g, '""');
                     return `"${val}"`;
                 });
                 csvContent += values.join(",") + "\n";
             });
             
-            // สร้างลิงก์ดาวน์โหลด
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
             const url = URL.createObjectURL(blob);
             link.setAttribute("href", url);
-            link.setAttribute("download", `สรุปครุภัณฑ์_${currentWard}.csv`);
+            link.setAttribute("download", `รายการครุภัณฑ์_${currentWard}.csv`);
             link.style.visibility = 'hidden';
             document.body.appendChild(link);
             link.click();
