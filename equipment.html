@@ -90,6 +90,11 @@
         .help-content h4 { color: var(--primary); margin-top: 15px; margin-bottom: 10px; border-bottom: 2px solid #eee; padding-bottom: 5px; font-size: 1.1rem;}
         .help-content ul { padding-left: 20px; margin-bottom: 10px; }
         .help-content li { margin-bottom: 8px; }
+        /* สไตล์สำหรับ Risk Level Badge */
+        .risk-badge { padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; margin-left: 8px; vertical-align: middle; display: inline-flex; align-items: center; gap: 4px; }
+        .risk-high { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
+        .risk-medium { background: #fef3c7; color: #d97706; border: 1px solid #fcd34d; }
+        .risk-low { background: #e0f2fe; color: #0284c7; border: 1px solid #7dd3fc; }
     </style>
 </head>
 <body>
@@ -366,6 +371,16 @@
                 let statusClass = getStatusClass(item['สถานะ']);
                 let statusIcon = getStatusIcon(item['สถานะ']);
                 const safeItemJson = JSON.stringify(item).replace(/"/g, '&quot;');
+                let riskLevel = item['RISK LEVEL'] ? String(item['RISK LEVEL']).trim().toLowerCase() : '';
+                let riskHtml = '';
+                
+                if (riskLevel === 'high') {
+                    riskHtml = `<span class="risk-badge risk-high"><i class="fas fa-exclamation-triangle"></i> High Risk</span>`;
+                } else if (riskLevel === 'medium') {
+                    riskHtml = `<span class="risk-badge risk-medium"><i class="fas fa-exclamation-circle"></i> Medium Risk</span>`;
+                } else if (riskLevel === 'low') {
+                    riskHtml = `<span class="risk-badge risk-low"><i class="fas fa-info-circle"></i> Low Risk</span>`;
+                }
 
                 const card = document.createElement('div');
                 card.className = 'item-card';
