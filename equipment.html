@@ -426,7 +426,7 @@
             });
         }
 
-        // --- Modal อัปเดตสถานะ ---
+        // --- Modal อัปเดตสถานะ (อัปเดตใหม่เชื่อม Backend) ---
         function openManageModal(item) {
             Swal.fire({
                 title: 'อัปเดตสถานะ',
@@ -470,21 +470,87 @@
                 confirmButtonText: '<i class="fas fa-save"></i> บันทึกข้อมูล',
                 cancelButtonText: 'ยกเลิก',
                 confirmButtonColor: '#003366',
-                preConfirm: () => {
-                    return {
-                        itemId: item['เลขครุภัณฑ์'],
-                        status: document.getElementById('update-status').value,
-                        borrowedWard: document.getElementById('update-borrow').value,
-                        subLocation: document.getElementById('update-subloc').value,
-                        note: document.getElementById('update-note').value
+                showLoaderOnConfirm: true,
+                preConfirm: async () => {
+                    // ดึงค่าจากฟอร์ม
+                    const status = document.getElementById('update-status').value;
+                    const borrowedWard = document.getElementById('update-borrow').value;
+                    const subLocation = document.getElementById('update-subloc').value;
+                    const note = document.getElementById('update-note').value;
+                    const photoInput = document.getElementById('update-photo');
+                    
+                    let imageBase64 = "";
+                    let mimeType = "";
+                    let imageName = "";
+
+                    // เช็คว่ามีการแนบไฟล์รูปมาหรือไม่
+                    if (status === 'ชำรุดส่งซ่อม' && photoInput.files.length > 0) {
+                        const file = photoInput.files[0];
+                        mimeType = file.type;
+                        imageName = `${item['เลขครุภัณฑ์']}_${new Date().getTime()}`; // ตั้งชื่อไฟล์ให้ไม่ซ้ำ
+                        
+                        // แปลงไฟล์เป็น Base64
+                        const reader = new FileReader();
+                        const promise = new Promise((resolve, reject) => {
+                            reader.onload = (e) => {
+                                // ตัดส่วนหัวของ Data URL ออกให้เหลือแต่ Base64
+                                resolve(e.target.result.split(',')[1]); 
+                            };
+                            reader.onerror = reject;
+                        });
+                        reader.readAsDataURL(file);
+                        imageBase64 = await promise;
                     }
-                }
+
+                    // สร้างก้อนข้อมูลเตรียมส่งให้ GAS
+                    const payload = {
+                        action: 'updateStatus',
+                        ward: currentWard, // ชื่อหน่วยงานที่กำลังล็อกอิน
+                        itemId: item['เลขครุภัณฑ์'],
+                        status: status,
+                        borrowedWard: borrowedWard,
+                        subLocation: subLocation,
+                        note: note,
+                        imageBase64: imageBase64,
+                        mimeType: mimeType,
+                        imageName: imageName
+                    };
+
+                    try {
+                        const response = await fetch(EQUIPMENT_API, {
+                            method: 'POST',
+                            body: JSON.stringify(payload)
+                        });
+                        const result = await response.json();
+                        
+                        if (result.status !== 'success') {
+                            throw new Error(result.message);
+                        }
+                        return result;
+                    } catch (error) {
+                        Swal.showValidationMessage(`การบันทึกขัดข้อง: ${error}`);
+                    }
+                },
+                allowOutsideClick: () => !Swal.isLoading()
             }).then((result) => {
                 if (result.isConfirmed) {
-                    Swal.fire('จำลองการบันทึก', 'เตรียมส่งข้อมูลไป Google Sheets...', 'info');
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'บันทึกสำเร็จ!',
+                        text: 'อัปเดตสถานะครุภัณฑ์เรียบร้อยแล้ว',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        // โหลดข้อมูลใหม่เพื่ออัปเดตหน้าจอให้เป็นปัจจุบัน
+                        document.getElementById('loadingState').classList.remove('hidden');
+                        document.getElementById('view-inspection').classList.add('hidden');
+                        document.getElementById('view-all').classList.add('hidden');
+                        fetchEquipment(); 
+                    });
                 }
             });
         }
+        
 
         function toggleExtraInputs() {
             const status = document.getElementById('update-status').value;
