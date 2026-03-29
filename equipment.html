@@ -371,6 +371,8 @@
                 let statusClass = getStatusClass(item['สถานะ']);
                 let statusIcon = getStatusIcon(item['สถานะ']);
                 const safeItemJson = JSON.stringify(item).replace(/"/g, '&quot;');
+
+                // --- ส่วนที่เพิ่มมา: จัดการ Risk Level ---
                 let riskLevel = item['RISK LEVEL'] ? String(item['RISK LEVEL']).trim().toLowerCase() : '';
                 let riskHtml = '';
                 
@@ -381,22 +383,23 @@
                 } else if (riskLevel === 'low') {
                     riskHtml = `<span class="risk-badge risk-low"><i class="fas fa-info-circle"></i> Low Risk</span>`;
                 }
+                // ------------------------------------
 
                 const card = document.createElement('div');
                 card.className = 'item-card';
                 card.innerHTML = `
                     <div class="item-details">
-                        <h4>${item['ชื่อครุภัณฑ์'] || 'ไม่ระบุชื่อ'}</h4>
+                        <h4>${item['ชื่อครุภัณฑ์'] || 'ไม่ระบุชื่อ'} ${riskHtml}</h4>
                         <div class="info-row">
-                            <span class="info-item"><i class="fas fa-barcode"></i> NO: <strong>${item['เลขครุภัณฑ์'] || '-'}</strong></span>
+                            <span class="info-item"><i class="fas fa-barcode"></i> ลทบ: <strong>${item['เลขครุภัณฑ์'] || '-'}</strong></span>
                             <span class="info-item"><i class="fas fa-map-marker-alt"></i> จุด: <strong>${item['ตำแหน่งย่อย (Sub-location)'] || '-'}</strong></span>
-                            <span class="info-item"><i class="fas fa-clock"></i> ความถี่: <strong>${item['ความถี่การตรวจนับ (เดือน)'] || '-'} เดือน</strong></span>
+                            <span class="info-item"><i class="fas fa-clock"></i> ความถี่: <strong>${item['ความถี่การตรวจนับ (เดือน)'] || '-'} ด.</strong></span>
                         </div>
                     </div>
                     <div class="item-actions">
                         <span class="status-badge ${statusClass}">${statusIcon} ${item['สถานะ'] || 'ปกติ'}</span>
                         <button class="btn btn-primary btn-sm" onclick="openManageModal(${safeItemJson})">
-                            <i class="fas fa-check"></i> บันทึกการตรวจ
+                            <i class="fas fa-check"></i> ดำเนินการตรวจ
                         </button>
                     </div>
                 `;
