@@ -924,9 +924,6 @@
         });
 
         function exitAdminMode() {
-            isAdminLoggedIn = false;
-            document.getElementById('btnAdminLogin').style.display = 'inline-block';
-            documentfunction exitAdminMode() {
             Swal.fire({ 
                 icon: 'info', 
                 title: 'ออกจากโหมดผู้ดูแลระบบ', 
@@ -940,13 +937,6 @@
                 } else {
                     window.location.reload();
                 }
-            });
-        }getElementById('tab-admin').classList.add('hidden-tab');
-            document.getElementById('wardSubtitle').innerText = `หน่วยงาน: ${currentWard}`; // คืนชื่อตึกเดิม
-            
-            Swal.fire({ icon: 'info', title: 'ออกจากโหมดผู้ดูแลระบบ', text: 'กำลังโหลดข้อมูลหน่วยงานของคุณกลับมา...', timer: 1500, showConfirmButton: false })
-            .then(() => {
-                fetchEquipment(); // โหลดข้อมูลเฉพาะตึกนั้นกลับมาใหม่
             });
         }
 
