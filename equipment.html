@@ -125,6 +125,30 @@
         .risk-high { background: #ffebee; color: #c62828; }
         .risk-medium { background: #fff8e1; color: #f57f17; }
         .risk-low { background: #e8f5e9; color: #2e7d32; }
+        /* --- สไตล์สำหรับระบบพิมพ์ QR Code --- */
+        #printArea { display: none; } /* ซ่อนบนหน้าจอปกติ */
+        
+        @media print {
+            body * { visibility: hidden; } /* ซ่อนทุกอย่างในหน้าเว็บ */
+            #printArea, #printArea * { visibility: visible; } /* แสดงเฉพาะพื้นที่ปริ้นท์ */
+            #printArea { 
+                display: grid !important; 
+                position: absolute; left: 0; top: 0; width: 100%; 
+                gap: 5mm; padding: 5mm;
+            }
+            .qr-label-container {
+                border: 1px dashed #aaa; 
+                padding: 3mm; 
+                text-align: center; 
+                display: flex; flex-direction: column; align-items: center; justify-content: center;
+                page-break-inside: avoid; /* ป้องกันการโดนตัดครึ่งเมื่อขึ้นหน้าใหม่ */
+                background: white;
+            }
+            .qr-label-container img { width: 100%; max-width: 85%; height: auto; }
+            .qr-label-title { font-size: 8pt; font-family: sans-serif; font-weight: bold; margin-top: 2px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
+            .qr-label-id { font-size: 7pt; font-family: sans-serif; color: #333; }
+            @page { margin: 0.5cm; size: A4 portrait; }
+        }
     </style>
 </head>
 <body>
@@ -225,16 +249,21 @@
             </div>
 
             <div id="view-admin" class="hidden">
-                <div class="admin-header-box">
-                    <h3 class="admin-title">
+                <div class="admin-header-box" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    <h3 class="admin-title" style="margin: 0; white-space: nowrap;">
                         <i class="fas fa-tools"></i> จัดการข้อมูลหลัก
                     </h3>
-                    <div class="admin-actions">
-                        <select id="adminWardFilter" class="swal-input" style="padding: 10px; font-size: 0.95rem; font-family: 'Prompt';" onchange="filterAdminByWard()">
+                    <div class="admin-actions" style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 10px; align-items: center; width: auto;">
+                        <select id="adminWardFilter" class="swal-input" style="padding: 8px 12px; font-size: 0.95rem; font-family: 'Prompt'; width: auto; margin: 0; min-width: 180px;" onchange="filterAdminByWard()">
                             <option value="all">ดูทุกหน่วยงาน (ทั้ง รพ.)</option>
                         </select>
-                        <button class="btn btn-primary" onclick="openAddEquipmentModal()"><i class="fas fa-plus"></i> เพิ่มครุภัณฑ์ใหม่</button>
-                        <button class="btn btn-outline" style="background: white;" onclick="exitAdminMode()">
+                        <button class="btn btn-warning" style="color: #000; width: auto;" onclick="openPrintQRModal()">
+                            <i class="fas fa-print"></i> พิมพ์ป้าย QR
+                        </button>
+                        <button class="btn btn-primary" style="width: auto;" onclick="openAddEquipmentModal()">
+                            <i class="fas fa-plus"></i> เพิ่มครุภัณฑ์ใหม่
+                        </button>
+                        <button class="btn btn-outline" style="background: white; width: auto;" onclick="exitAdminMode()">
                             <i class="fas fa-sign-out-alt"></i> ออกจากโหมดแอดมิน
                         </button>
                     </div>
@@ -254,6 +283,9 @@
                     <table class="admin-data-table">
                         <thead>
                             <tr>
+                                <th style="text-align: center; width: 40px;">
+                                    <input type="checkbox" id="selectAllQR" onclick="toggleAllQR()" style="transform: scale(1.3); cursor: pointer;">
+                                </th>
                                 <th>เลขครุภัณฑ์</th>
                                 <th>ชื่อครุภัณฑ์ / รุ่น</th>
                                 <th>หน่วยงาน</th>
@@ -270,6 +302,7 @@
 
         </div>
     </div>
+    <div id="printArea"></div>
 
     <script>
         const urlParams = new URLSearchParams(window.location.search);
@@ -978,6 +1011,9 @@
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
+                    <td style="text-align: center;">
+                        <input type="checkbox" class="qr-checkbox" value="${item['เลขครุภัณฑ์']}" style="transform: scale(1.3); cursor: pointer;">
+                    </td>
                     <td style="font-weight: 600; color: #333; font-size: 0.95rem;">${item['เลขครุภัณฑ์'] || '-'}</td>
                     <td>
                         <div style="font-weight: 500; color: #444; margin-bottom: 4px;">${item['ชื่อครุภัณฑ์'] || '-'}</div>
@@ -1215,6 +1251,109 @@
                     plugins: { legend: { position: 'right', labels: { font: { family: 'Prompt' } } } }
                 }
             });
+        }
+        // ==========================================
+        // ระบบสร้างและพิมพ์ QR Code
+        // ==========================================
+
+        // ฟังก์ชันเลือก/ยกเลิกเลือก ทั้งหมดในหน้า
+        function toggleAllQR() {
+            const selectAll = document.getElementById('selectAllQR').checked;
+            const checkboxes = document.querySelectorAll('.qr-checkbox');
+            checkboxes.forEach(cb => cb.checked = selectAll);
+        }
+
+        // ฟังก์ชันเปิดหน้าต่างตั้งค่าการพิมพ์
+        function openPrintQRModal() {
+            // เช็คว่าติ๊กเลือกอะไรมาบ้าง
+            const checkboxes = document.querySelectorAll('.qr-checkbox:checked');
+            const selectedIds = Array.from(checkboxes).map(cb => cb.value);
+
+            if (selectedIds.length === 0) {
+                Swal.fire('แจ้งเตือน', 'กรุณาติ๊กเลือกรายการที่ต้องการพิมพ์ QR Code อย่างน้อย 1 รายการ', 'warning');
+                return;
+            }
+
+            Swal.fire({
+                title: 'พิมพ์ป้าย QR Code',
+                html: `
+                    <div style="text-align:left; margin-bottom:10px;">
+                        <p style="color:var(--primary); font-weight:500;">จำนวนที่เลือก: ${selectedIds.length} รายการ</p>
+                        <label style="font-size:0.9rem;">เลือกขนาดของป้าย:</label>
+                        <select id="qrSizeSelect" class="swal-input" style="margin-top:5px;">
+                            <option value="1">ขนาด 1 นิ้ว (เล็ก - แปะเครื่องมือเล็ก)</option>
+                            <option value="1.5" selected>ขนาด 1.5 นิ้ว (กลาง - มาตรฐาน)</option>
+                            <option value="2">ขนาด 2 นิ้ว (ใหญ่ - แปะเครื่องมือใหญ่/เตียง)</option>
+                        </select>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: '<i class="fas fa-print"></i> สร้างและพิมพ์',
+                cancelButtonText: 'ยกเลิก',
+                confirmButtonColor: '#ffc107',
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const size = document.getElementById('qrSizeSelect').value;
+                    executePrintQR(selectedIds, size);
+                }
+            });
+        }
+
+        // ฟังก์ชันสร้างและสั่งพิมพ์
+        function executePrintQR(selectedIds, sizeInches) {
+            const printArea = document.getElementById('printArea');
+            printArea.innerHTML = ''; // ล้างของเก่า
+
+            // กำหนด CSS Grid ให้พอดีกับขนาดที่เลือก
+            let columns, widthMM;
+            if (sizeInches === "1") {
+                columns = "repeat(7, 1fr)"; // 7 ดวงต่อแถว
+                widthMM = "25.4mm";
+            } else if (sizeInches === "1.5") {
+                columns = "repeat(5, 1fr)"; // 5 ดวงต่อแถว
+                widthMM = "38.1mm";
+            } else {
+                columns = "repeat(4, 1fr)"; // 4 ดวงต่อแถว
+                widthMM = "50.8mm";
+            }
+
+            printArea.style.gridTemplateColumns = columns;
+            printArea.style.display = 'grid';
+
+            // กรองดึงเฉพาะข้อมูลที่ถูกเลือกมาสร้าง QR
+            const itemsToPrint = allEquipment.filter(item => selectedIds.includes(item['เลขครุภัณฑ์']));
+
+            let loadedImages = 0;
+            const totalImages = itemsToPrint.length;
+
+            itemsToPrint.forEach(item => {
+                const qrText = item['เลขครุภัณฑ์'];
+                // ดึงรูป QR จาก API ฟรีและเสถียร (qrserver)
+                const qrImgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrText)}`;
+                
+                const container = document.createElement('div');
+                container.className = 'qr-label-container';
+                container.style.width = widthMM;
+                container.style.height = widthMM;
+
+                container.innerHTML = `
+                    <div class="qr-label-title">${item['ชื่อครุภัณฑ์'] || '-'}</div>
+                    <img src="${qrImgSrc}" alt="QR" onload="checkImagesLoaded()">
+                    <div class="qr-label-id">ID: ${qrText}</div>
+                `;
+                printArea.appendChild(container);
+            });
+
+            // รอให้โหลดรูป QR ครบทุกอันก่อนค่อยสั่งพิมพ์ (เพื่อไม่ให้หน้าขาว)
+            window.checkImagesLoaded = function() {
+                loadedImages++;
+                if (loadedImages === totalImages) {
+                    setTimeout(() => {
+                        window.print();
+                        printArea.style.display = 'none'; // ปริ้นเสร็จ ซ่อนทิ้ง
+                    }, 500); // ดีเลย์นิดนึงให้ภาพเรนเดอร์สมบูรณ์
+                }
+            };
         }
     </script>
 </body>
