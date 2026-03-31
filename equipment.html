@@ -1289,7 +1289,7 @@
             });
         }
 
-        // ฟังก์ชันสร้างและสั่งพิมพ์
+        // ฟังก์ชันสร้างและสั่งพิมพ์ QR Code (อัปเดตใหม่)
         function executePrintQR(selectedIds, sizeInches) {
             const printArea = document.getElementById('printArea');
             printArea.innerHTML = ''; // ล้างของเก่า
@@ -1308,7 +1308,8 @@
             }
 
             printArea.style.gridTemplateColumns = columns;
-            printArea.style.display = 'grid';
+            
+            // ❌ ลบบรรทัด printArea.style.display = 'grid'; ออกไป เพื่อไม่ให้มันมาโชว์บนหน้าเว็บปกติ (ให้โชว์เฉพาะตอนปริ้นท์)
 
             // กรองดึงเฉพาะข้อมูลที่ถูกเลือกมาสร้าง QR
             const itemsToPrint = allEquipment.filter(item => selectedIds.includes(item['เลขครุภัณฑ์']));
@@ -1317,34 +1318,59 @@
             const totalImages = itemsToPrint.length;
 
             itemsToPrint.forEach(item => {
-                // 1. ดักจับกรณีไม่มีเลขครุภัณฑ์ (ป้องกัน API Error 400)
                 const qrText = item['เลขครุภัณฑ์'] ? String(item['เลขครุภัณฑ์']).trim() : 'NO-ID';
-                
-                // ดึงรูป QR จาก API
                 const qrImgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrText)}`;
+                
+                // ดึงค่ายี่ห้อและความถี่
+                const brand = item['ยี่ห้อ'] || '-';
+                const freq = item['ความถี่การตรวจนับ (เดือน)'] || '1';
                 
                 const container = document.createElement('div');
                 container.className = 'qr-label-container';
                 container.style.width = widthMM;
                 container.style.height = widthMM;
+                container.style.boxSizing = 'border-box';
+                container.style.overflow = 'hidden'; // ป้องกันข้อความล้นกรอบ
 
-                // 2. เพิ่ม onerror เผื่อรูปโหลดไม่ขึ้น จะได้ไม่ค้างหน้าขาว
+                // จัดเลย์เอาต์ใหม่ให้มี ชื่อ, ยี่ห้อ, และความถี่
                 container.innerHTML = `
-                    <div class="qr-label-title">${item['ชื่อครุภัณฑ์'] || '-'}</div>
-                    <img src="${qrImgSrc}" alt="QR" onload="checkImagesLoaded()" onerror="checkImagesLoaded()">
-                    <div class="qr-label-id">ID: ${qrText}</div>
+                    <div style="font-size: 7.5pt; font-weight: bold; line-height: 1.1; margin-bottom: 2px; height: auto; max-height: 16px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal;">
+                        ${item['ชื่อครุภัณฑ์'] || '-'}
+                    </div>
+                    <div style="font-size: 6pt; color: #444; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">
+                        ยี่ห้อ: ${brand}
+                    </div>
+                    <img src="${qrImgSrc}" alt="QR" onload="checkImagesLoaded()" onerror="checkImagesLoaded()" style="width: 100%; max-width: 55%; height: auto; margin: 0 auto;">
+                    <div style="font-size: 6.5pt; font-weight: bold; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">
+                        ID: ${qrText}
+                    </div>
+                    <div style="font-size: 6pt; color: #555; background: #eee; padding: 1px 4px; border-radius: 4px; margin-top: 1px; display: inline-block;">
+                        ตรวจทุก ${freq} เดือน
+                    </div>
                 `;
                 printArea.appendChild(container);
             });
 
-            // รอให้โหลดรูป QR ครบทุกอันก่อนค่อยสั่งพิมพ์ (เพื่อไม่ให้หน้าขาว)
+            // รอให้โหลดรูป QR ครบทุกอันก่อนค่อยสั่งพิมพ์
             window.checkImagesLoaded = function() {
                 loadedImages++;
                 if (loadedImages === totalImages) {
+                    
+                    // ขึ้น Loading สวยๆ ระหว่างรอสร้างหน้าปริ้นท์
+                    Swal.fire({
+                        title: 'กำลังเตรียมหน้าพิมพ์...',
+                        allowOutsideClick: false,
+                        didOpen: () => { Swal.showLoading(); }
+                    });
+
                     setTimeout(() => {
-                        window.print();
-                        printArea.style.display = 'none'; // ปริ้นเสร็จ ซ่อนทิ้ง
-                    }, 500); // ดีเลย์นิดนึงให้ภาพเรนเดอร์สมบูรณ์
+                        Swal.close(); // ปิดหน้าต่างโหลด
+                        window.print(); // เด้งหน้าต่างปริ้นท์
+                        
+                        // ทิ้งช่วง 1 วินาที แล้วล้างข้อมูล QR ทิ้ง เพื่อความสะอาดของหน้าเว็บ
+                        setTimeout(() => { printArea.innerHTML = ''; }, 1000);
+                        
+                    }, 800);
                 }
             };
         }
