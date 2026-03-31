@@ -95,6 +95,8 @@
         .risk-high { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
         .risk-medium { background: #fef3c7; color: #d97706; border: 1px solid #fcd34d; }
         .risk-low { background: #e0f2fe; color: #0284c7; border: 1px solid #7dd3fc; }
+        /* สไตล์สำหรับโหมดแอดมิน */
+        #tab-admin.hidden-tab { display: none; }
     </style>
 </head>
 <body>
@@ -154,6 +156,9 @@
                 <button class="tab-btn" id="tab-all" onclick="switchTab('all')">
                     <i class="fas fa-list-ul"></i> รายการทั้งหมด (<span id="allCountTab">0</span>)
                 </button>
+                <button class="tab-btn hidden-tab" id="tab-admin" onclick="switchTab('admin')">
+                    <i class="fas fa-cogs"></i> โหมดผู้ดูแลระบบ
+                </button>
             </div>
 
             <div id="loadingState" style="text-align: center; padding: 40px; color: #666;">
@@ -179,6 +184,40 @@
                             </tr>
                         </thead>
                         <tbody id="allEquipmentTableBody">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+            <div style="text-align: right; margin-top: 30px; margin-bottom: 20px;">
+                <button id="btnAdminLogin" class="btn btn-outline btn-sm" onclick="showAdminLogin()" style="color: #ccc; border-color: #eee;">
+                    <i class="fas fa-cog"></i> สำหรับผู้ดูแลระบบ
+                </button>
+            </div>
+
+            <div id="view-admin" class="hidden">
+                <div class="action-bar" style="background: #f8f9fa; border: 1px solid #ddd; justify-content: space-between;">
+                    <h3 style="color: var(--primary); margin: 0; display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-tools"></i> จัดการข้อมูลหลัก (Master Data)
+                    </h3>
+                    <div>
+                        <button class="btn btn-primary" onclick="openAddEquipmentModal()"><i class="fas fa-plus"></i> เพิ่มครุภัณฑ์ใหม่</button>
+                        <button class="btn btn-outline" onclick="exitAdminMode()"><i class="fas fa-sign-out-alt"></i> ออกจากโหมดแอดมิน</button>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>เลขครุภัณฑ์</th>
+                                <th>ชื่อครุภัณฑ์</th>
+                                <th>หน่วยงาน (เจ้าของ)</th>
+                                <th>ความถี่</th>
+                                <th>สถานะ</th>
+                                <th>จัดการ (Admin)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminEquipmentTableBody">
                             </tbody>
                     </table>
                 </div>
@@ -670,6 +709,155 @@
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+        }
+        // ==========================================
+        // ส่วนของระบบผู้ดูแลระบบ (Admin Module)
+        // ==========================================
+        let isAdminLoggedIn = false;
+
+        function showAdminLogin() {
+            Swal.fire({
+                title: 'เข้าสู่ระบบผู้ดูแล',
+                html: `
+                    <input type="text" id="adminUser" class="swal2-input" placeholder="ชื่อผู้ใช้">
+                    <input type="password" id="adminPass" class="swal2-input" placeholder="รหัสผ่าน">
+                `,
+                confirmButtonText: 'เข้าสู่ระบบ',
+                focusConfirm: false,
+                preConfirm: () => {
+                    const user = Swal.getPopup().querySelector('#adminUser').value;
+                    const pass = Swal.getPopup().querySelector('#adminPass').value;
+                    if (!user || !pass) {
+                        Swal.showValidationMessage(`กรุณากรอกข้อมูลให้ครบ`);
+                    }
+                    return { user: user, pass: pass }
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // ตรวจสอบรหัสผ่านที่นี่
+                    if (result.value.user === '11450' && result.value.pass === '11450') {
+                        isAdminLoggedIn = true;
+                        document.getElementById('btnAdminLogin').style.display = 'none';
+                        document.getElementById('tab-admin').classList.remove('hidden-tab');
+                        
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'เข้าสู่ระบบสำเร็จ',
+                            timer: 1000,
+                            showConfirmButton: false
+                        }).then(() => {
+                            switchTab('admin'); // สลับไปหน้าแอดมิน
+                        });
+                    } else {
+                        Swal.fire('ข้อผิดพลาด', 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง', 'error');
+                    }
+                }
+            });
+        }
+
+        function exitAdminMode() {
+            isAdminLoggedIn = false;
+            document.getElementById('btnAdminLogin').style.display = 'inline-block';
+            document.getElementById('tab-admin').classList.add('hidden-tab');
+            switchTab('inspection'); // กลับไปหน้าปกติ
+            Swal.fire({ icon: 'info', title: 'ออกจากโหมดผู้ดูแลระบบ', timer: 1000, showConfirmButton: false });
+        }
+
+        // --- แก้ไขฟังก์ชัน switchTab เดิมให้รองรับ Admin ---
+        const originalSwitchTab = switchTab;
+        switchTab = function(tabId) {
+            currentActiveTab = tabId;
+            
+            // จัดการสีปุ่ม
+            document.getElementById('tab-inspection').classList.remove('active');
+            document.getElementById('tab-all').classList.remove('active');
+            if(document.getElementById('tab-admin')) document.getElementById('tab-admin').classList.remove('active');
+            
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+
+            // จัดการซ่อนแสดงหน้า
+            document.getElementById('view-inspection').classList.add('hidden');
+            document.getElementById('view-all').classList.add('hidden');
+            if(document.getElementById('view-admin')) document.getElementById('view-admin').classList.add('hidden');
+            
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+
+            renderActiveView();
+        }
+
+        // --- แก้ไขฟังก์ชัน renderActiveView เดิมให้รองรับ Admin ---
+        const originalRenderActiveView = renderActiveView;
+        renderActiveView = function() {
+            if (currentActiveTab === 'admin') {
+                renderAdminTable(filteredEquipment); // โชว์ข้อมูลทุกชิ้นในหน่วยงาน หรือจะแก้ให้โชว์ทั้ง รพ. ก็ได้ในอนาคต
+            } else {
+                originalRenderActiveView(); // เรียกใช้ของเดิมสำหรับหน้า Staff
+            }
+        }
+
+        function renderAdminTable(data) {
+            const tbody = document.getElementById('adminEquipmentTableBody');
+            tbody.innerHTML = '';
+
+            if(data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px;">ไม่พบข้อมูล</td></tr>';
+                return;
+            }
+
+            data.forEach((item) => {
+                let statusClass = getStatusClass(item['สถานะ']);
+                const safeItemJson = JSON.stringify(item).replace(/"/g, '&quot;');
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${item['เลขครุภัณฑ์'] || '-'}</strong></td>
+                    <td>${item['ชื่อครุภัณฑ์'] || '-'}</td>
+                    <td>${item['หน่วยงาน'] || '-'}</td>
+                    <td>${item['ความถี่การตรวจนับ (เดือน)'] || '1'} ด.</td>
+                    <td><span class="status-badge ${statusClass}" style="font-size:0.75rem;">${item['สถานะ'] || 'ปกติ'}</span></td>
+                    <td>
+                        <button class="btn btn-accent btn-sm" onclick="openEditEquipmentModal(${safeItemJson})">
+                            <i class="fas fa-edit"></i> แก้ไข
+                        </button>
+                        <button class="btn btn-outline btn-sm" style="color: #dc3545; border-color: #dc3545;" onclick="deleteEquipment('${item['เลขครุภัณฑ์']}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // ฟังก์ชันจำลองสำหรับการเพิ่มและแก้ไขข้อมูล (จะเชื่อมกับ GAS ในขั้นต่อไป)
+        function openAddEquipmentModal() {
+            Swal.fire({
+                title: 'เพิ่มครุภัณฑ์ใหม่',
+                html: '<p>ฟังก์ชันเพิ่มข้อมูลจะถูกสร้างในขั้นตอนเชื่อมต่อฐานข้อมูลส่วน Admin</p>',
+                icon: 'info'
+            });
+        }
+
+        function openEditEquipmentModal(item) {
+            Swal.fire({
+                title: 'แก้ไขข้อมูลครุภัณฑ์',
+                html: `<p>กำลังแก้ไข: ${item['ชื่อครุภัณฑ์']}</p><p>ฟังก์ชันนี้จะเชื่อมกับ GAS ในขั้นตอนต่อไป</p>`,
+                icon: 'info'
+            });
+        }
+
+        function deleteEquipment(itemId) {
+            Swal.fire({
+                title: 'ยืนยันการลบ?',
+                text: "คุณต้องการลบครุภัณฑ์รหัส " + itemId + " ออกจากระบบหรือไม่?",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                confirmButtonText: 'ลบข้อมูล'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire('จำลองการลบ', 'ฟังก์ชันลบจะทำงานเมื่อเชื่อมต่อ GAS แล้ว', 'info');
+                }
+            })
         }
     </script>
 </body>
