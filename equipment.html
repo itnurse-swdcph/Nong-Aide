@@ -97,6 +97,33 @@
         .risk-low { background: #e0f2fe; color: #0284c7; border: 1px solid #7dd3fc; }
         /* สไตล์สำหรับโหมดแอดมิน */
         #tab-admin.hidden-tab { display: none; }
+        /* --- สไตล์กล่องจัดการข้อมูลหลัก (Admin) --- */
+        .admin-header-box { background: #f8f9fa; border: 1px solid #e0e6ed; border-radius: 12px; padding: 20px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 15px; }
+        @media (min-width: 768px) {
+            .admin-header-box { flex-direction: row; justify-content: space-between; align-items: flex-start; }
+        }
+        .admin-title { color: var(--primary); font-size: 1.2rem; font-weight: 600; display: flex; align-items: center; gap: 10px; margin: 0; }
+        .admin-actions { display: flex; flex-direction: column; gap: 10px; min-width: 250px; }
+        .admin-actions select, .admin-actions button { width: 100%; text-align: left; justify-content: center;}
+
+        /* --- สไตล์ตาราง Admin --- */
+        .admin-table-wrapper { background: var(--white); border-radius: 12px; overflow: hidden; box-shadow: 0 3px 10px rgba(0,0,0,0.06); }
+        .admin-data-table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        .admin-data-table th { background: #003366; color: white; padding: 12px 15px; text-align: left; font-weight: 500; white-space: nowrap; }
+        .admin-data-table td { padding: 15px; border-bottom: 1px solid #eee; color: #444; vertical-align: middle; }
+        .admin-data-table tbody tr:hover { background: #f4f7f9; }
+
+        /* --- ปุ่มจัดการ (แก้ไข/ลบ) --- */
+        .btn-edit-icon { background: #ffc107; color: #000; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 0.9rem;}
+        .btn-edit-icon:hover { background: #e0a800; }
+        .btn-delete-icon { background: transparent; color: #dc3545; border: 1px solid #dc3545; padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 0.9rem; margin-left: 5px;}
+        .btn-delete-icon:hover { background: #dc3545; color: white; }
+
+        /* --- Badge ความเสี่ยง (ปรับให้มนและสีอ่อนลงเหมือนในรูป) --- */
+        .risk-badge { padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; border: none; }
+        .risk-high { background: #ffebee; color: #c62828; }
+        .risk-medium { background: #fff8e1; color: #f57f17; }
+        .risk-low { background: #e8f5e9; color: #2e7d32; }
     </style>
 </head>
 <body>
@@ -197,21 +224,23 @@
             </div>
 
             <div id="view-admin" class="hidden">
-                <div class="action-bar" style="background: #f8f9fa; border: 1px solid #ddd; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-                    <h3 style="color: var(--primary); margin: 0; display: flex; align-items: center; gap: 8px; font-size: 1.1rem; flex: 1; min-width: 200px;">
+                <div class="admin-header-box">
+                    <h3 class="admin-title">
                         <i class="fas fa-tools"></i> จัดการข้อมูลหลัก
                     </h3>
-                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                        <select id="adminWardFilter" class="swal-input" style="padding: 8px 12px; width: auto; min-width: 180px; margin: 0; font-size: 0.85rem; border: 1px solid #ccc;" onchange="filterAdminByWard()">
+                    <div class="admin-actions">
+                        <select id="adminWardFilter" class="swal-input" style="padding: 10px; font-size: 0.95rem; font-family: 'Prompt';" onchange="filterAdminByWard()">
                             <option value="all">ดูทุกหน่วยงาน (ทั้ง รพ.)</option>
                         </select>
-                        <button class="btn btn-primary btn-sm" onclick="openAddEquipmentModal()"><i class="fas fa-plus"></i> เพิ่มครุภัณฑ์ใหม่</button>
-                        <button class="btn btn-outline btn-sm" onclick="exitAdminMode()"><i class="fas fa-sign-out-alt"></i> ออกจากโหมดแอดมิน</button>
+                        <button class="btn btn-primary" onclick="openAddEquipmentModal()"><i class="fas fa-plus"></i> เพิ่มครุภัณฑ์ใหม่</button>
+                        <button class="btn btn-outline" style="background: white;" onclick="exitAdminMode()">
+                            <i class="fas fa-sign-out-alt"></i> ออกจากโหมดแอดมิน
+                        </button>
                     </div>
                 </div>
 
-                <div class="table-responsive">
-                    <table class="data-table">
+                <div class="admin-table-wrapper table-responsive">
+                    <table class="admin-data-table">
                         <thead>
                             <tr>
                                 <th>เลขครุภัณฑ์</th>
@@ -219,7 +248,7 @@
                                 <th>หน่วยงาน</th>
                                 <th>ความถี่ / ตรวจล่าสุด</th>
                                 <th>ความเสี่ยง / สถานะ</th>
-                                <th>จัดการ</th>
+                                <th style="text-align: center;">จัดการ</th>
                             </tr>
                         </thead>
                         <tbody id="adminEquipmentTableBody">
@@ -901,42 +930,42 @@
                 let statusClass = getStatusClass(item['สถานะ']);
                 const safeItemJson = JSON.stringify(item).replace(/"/g, '&quot;');
                 
-                // ดึงวันตรวจล่าสุด
-                let lastInspectStr = "ยังไม่เคยตรวจ";
+                // ประมวลผลวันตรวจล่าสุด
+                let lastInspectStr = `<span style="color:#dc3545;">ยังไม่เคยตรวจ</span>`;
                 if(item['วันที่ตรวจล่าสุด']) {
                     const d = new Date(item['วันที่ตรวจล่าสุด']);
-                    if(!isNaN(d)) lastInspectStr = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
+                    if(!isNaN(d)) lastInspectStr = `<span style="color:#28a745;">ล่าสุด: ${d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}</span>`;
                 }
 
-                // จัดการ Risk Level
+                // ประมวลผล Risk Level
                 let riskLevel = item['RISK LEVEL'] ? String(item['RISK LEVEL']).trim().toLowerCase() : '';
                 let riskHtml = '';
-                if (riskLevel === 'high') riskHtml = `<span class="risk-badge risk-high" style="font-size:0.7rem;"><i class="fas fa-exclamation-triangle"></i> High</span>`;
-                else if (riskLevel === 'medium') riskHtml = `<span class="risk-badge risk-medium" style="font-size:0.7rem;"><i class="fas fa-exclamation-circle"></i> Medium</span>`;
-                else if (riskLevel === 'low') riskHtml = `<span class="risk-badge risk-low" style="font-size:0.7rem;"><i class="fas fa-info-circle"></i> Low</span>`;
+                if (riskLevel === 'high') riskHtml = `<span class="risk-badge risk-high"><i class="fas fa-exclamation-triangle"></i> High</span>`;
+                else if (riskLevel === 'medium') riskHtml = `<span class="risk-badge risk-medium"><i class="fas fa-exclamation-circle"></i> Medium</span>`;
+                else if (riskLevel === 'low') riskHtml = `<span class="risk-badge risk-low"><i class="fas fa-info-circle"></i> Low</span>`;
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td><strong>${item['เลขครุภัณฑ์'] || '-'}</strong></td>
+                    <td style="font-weight: 600; color: #333; font-size: 0.95rem;">${item['เลขครุภัณฑ์'] || '-'}</td>
                     <td>
-                        ${item['ชื่อครุภัณฑ์'] || '-'}<br>
-                        <small style="color:#666;">ยี่ห้อ/รุ่น: ${item['ยี่ห้อ'] || '-'} / ${item['ชื่อรุ่น'] || '-'}</small>
+                        <div style="font-weight: 500; color: #444; margin-bottom: 4px;">${item['ชื่อครุภัณฑ์'] || '-'}</div>
+                        <div style="font-size: 0.8rem; color: #777;">ยี่ห้อ/รุ่น: ${item['ยี่ห้อ'] || '-'} / ${item['ชื่อรุ่น'] || '-'}</div>
                     </td>
-                    <td>${item['หน่วยงาน'] || '-'}</td>
+                    <td style="color: #555; font-weight: 500; font-size: 0.95rem;">${item['หน่วยงาน'] || '-'}</td>
                     <td>
-                        ${item['ความถี่การตรวจนับ (เดือน)'] || '1'} ด.<br>
-                        <small style="color:#28a745;">ล่าสุด: ${lastInspectStr}</small>
+                        <div style="margin-bottom: 4px; color: #444;">${item['ความถี่การตรวจนับ (เดือน)'] || '1'} ด.</div>
+                        <div style="font-size: 0.8rem;">${lastInspectStr}</div>
                     </td>
                     <td>
-                        ${riskHtml}<br>
-                        <span class="status-badge ${statusClass}" style="font-size:0.7rem; margin-top:3px;">${item['สถานะ'] || 'ปกติ'}</span>
+                        <div style="margin-bottom: 6px;">${riskHtml}</div>
+                        <div><span class="status-badge ${statusClass}" style="font-size: 0.75rem; padding: 3px 10px;">${item['สถานะ'] || 'ปกติ'}</span></div>
                     </td>
-                    <td style="white-space: nowrap;">
-                        <button class="btn btn-accent btn-sm" onclick="openEditEquipmentModal(${safeItemJson})">
+                    <td style="white-space: nowrap; text-align: center;">
+                        <button class="btn-edit-icon" onclick="openEditEquipmentModal(${safeItemJson})" title="แก้ไขข้อมูล">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button class="btn btn-outline btn-sm" style="color: #dc3545; border-color: #dc3545;" onclick="deleteEquipment('${item['เลขครุภัณฑ์']}')">
-                            <i class="fas fa-trash"></i>
+                        <button class="btn-delete-icon" onclick="deleteEquipment('${item['เลขครุภัณฑ์']}')" title="ลบข้อมูล">
+                            <i class="fas fa-trash-alt"></i>
                         </button>
                     </td>
                 `;
