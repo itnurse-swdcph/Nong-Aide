@@ -1317,8 +1317,10 @@
             const totalImages = itemsToPrint.length;
 
             itemsToPrint.forEach(item => {
-                const qrText = item['เลขครุภัณฑ์'];
-                // ดึงรูป QR จาก API ฟรีและเสถียร (qrserver)
+                // 1. ดักจับกรณีไม่มีเลขครุภัณฑ์ (ป้องกัน API Error 400)
+                const qrText = item['เลขครุภัณฑ์'] ? String(item['เลขครุภัณฑ์']).trim() : 'NO-ID';
+                
+                // ดึงรูป QR จาก API
                 const qrImgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrText)}`;
                 
                 const container = document.createElement('div');
@@ -1326,9 +1328,10 @@
                 container.style.width = widthMM;
                 container.style.height = widthMM;
 
+                // 2. เพิ่ม onerror เผื่อรูปโหลดไม่ขึ้น จะได้ไม่ค้างหน้าขาว
                 container.innerHTML = `
                     <div class="qr-label-title">${item['ชื่อครุภัณฑ์'] || '-'}</div>
-                    <img src="${qrImgSrc}" alt="QR" onload="checkImagesLoaded()">
+                    <img src="${qrImgSrc}" alt="QR" onload="checkImagesLoaded()" onerror="checkImagesLoaded()">
                     <div class="qr-label-id">ID: ${qrText}</div>
                 `;
                 printArea.appendChild(container);
