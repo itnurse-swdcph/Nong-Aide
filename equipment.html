@@ -183,7 +183,7 @@
                         <thead>
                             <tr>
                                 <th>เลขครุภัณฑ์</th>
-                                <th>ชื่อครุภัณฑ์</th>
+                                <th>ชื่อครุภัณฑ์ / ยี่ห้อ</th>
                                 <th>ตำแหน่ง</th>
                                 <th>ตรวจล่าสุด</th>
                                 <th>สถานะ</th>
@@ -191,20 +191,22 @@
                             </tr>
                         </thead>
                         <tbody id="allEquipmentTableBody">
-                            </tbody>
+                        </tbody>
                     </table>
                 </div>
             </div>
-            
 
             <div id="view-admin" class="hidden">
-                <div class="action-bar" style="background: #f8f9fa; border: 1px solid #ddd; justify-content: space-between;">
-                    <h3 style="color: var(--primary); margin: 0; display: flex; align-items: center; gap: 10px;">
-                        <i class="fas fa-tools"></i> จัดการข้อมูลหลัก (Master Data)
+                <div class="action-bar" style="background: #f8f9fa; border: 1px solid #ddd; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                    <h3 style="color: var(--primary); margin: 0; display: flex; align-items: center; gap: 8px; font-size: 1.1rem; flex: 1; min-width: 200px;">
+                        <i class="fas fa-tools"></i> จัดการข้อมูลหลัก
                     </h3>
-                    <div>
-                        <button class="btn btn-primary" onclick="openAddEquipmentModal()"><i class="fas fa-plus"></i> เพิ่มครุภัณฑ์ใหม่</button>
-                        <button class="btn btn-outline" onclick="exitAdminMode()"><i class="fas fa-sign-out-alt"></i> ออกจากโหมดแอดมิน</button>
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <select id="adminWardFilter" class="swal-input" style="padding: 8px 12px; width: auto; min-width: 180px; margin: 0; font-size: 0.85rem; border: 1px solid #ccc;" onchange="filterAdminByWard()">
+                            <option value="all">ดูทุกหน่วยงาน (ทั้ง รพ.)</option>
+                        </select>
+                        <button class="btn btn-primary btn-sm" onclick="openAddEquipmentModal()"><i class="fas fa-plus"></i> เพิ่มครุภัณฑ์ใหม่</button>
+                        <button class="btn btn-outline btn-sm" onclick="exitAdminMode()"><i class="fas fa-sign-out-alt"></i> ออกจากโหมดแอดมิน</button>
                     </div>
                 </div>
 
@@ -213,15 +215,15 @@
                         <thead>
                             <tr>
                                 <th>เลขครุภัณฑ์</th>
-                                <th>ชื่อครุภัณฑ์</th>
-                                <th>หน่วยงาน (เจ้าของ)</th>
-                                <th>ความถี่</th>
-                                <th>สถานะ</th>
-                                <th>จัดการ (Admin)</th>
+                                <th>ชื่อครุภัณฑ์ / รุ่น</th>
+                                <th>หน่วยงาน</th>
+                                <th>ความถี่ / ตรวจล่าสุด</th>
+                                <th>ความเสี่ยง / สถานะ</th>
+                                <th>จัดการ</th>
                             </tr>
                         </thead>
                         <tbody id="adminEquipmentTableBody">
-                            </tbody>
+                        </tbody>
                     </table>
                 </div>
             </div>
@@ -454,7 +456,7 @@
             tbody.innerHTML = '';
 
             if(data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px;">ไม่พบข้อมูลที่ค้นหา</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px;">ไม่พบข้อมูล</td></tr>';
                 return;
             }
 
@@ -471,7 +473,10 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><strong>${item['เลขครุภัณฑ์'] || '-'}</strong></td>
-                    <td>${item['ชื่อครุภัณฑ์'] || '-'}</td>
+                    <td>
+                        ${item['ชื่อครุภัณฑ์'] || '-'}<br>
+                        <small style="color:#666;">ยี่ห้อ/รุ่น: ${item['ยี่ห้อ'] || '-'} / ${item['ชื่อรุ่น'] || '-'}</small>
+                    </td>
                     <td>${item['ตำแหน่งย่อย (Sub-location)'] || '-'}</td>
                     <td style="color:#28a745; font-size:0.9rem;">${lastInspectStr}</td>
                     <td><span class="status-badge ${statusClass}" style="font-size:0.75rem;">${item['สถานะ'] || 'ปกติ'}</span></td>
@@ -770,22 +775,80 @@
                 const result = JSON.parse(textData);
                 
                 if (result.status === 'success') {
-                    allEquipment = result.data; // เขียนทับข้อมูลตึกด้วยข้อมูลทั้ง รพ.
+                    // ประมวลผลหาของที่ต้องตรวจทั้งโรงพยาบาล
+                    const currentDate = new Date();
+                    const currentMonth = currentDate.getMonth();
+                    const currentYear = currentDate.getFullYear();
+
+                    result.data.forEach(item => {
+                        let needsInspection = true; 
+                        if (item['วันที่ตรวจล่าสุด']) {
+                            const lastDate = new Date(item['วันที่ตรวจล่าสุด']);
+                            if (!isNaN(lastDate)) {
+                                const freq = parseInt(item['ความถี่การตรวจนับ (เดือน)']) || 1;
+                                const diffMonths = (currentYear - lastDate.getFullYear()) * 12 + (currentMonth - lastDate.getMonth());
+                                if (diffMonths < freq) needsInspection = false;
+                            }
+                        }
+                        item._needsInspection = needsInspection; 
+                    });
+
+                    allEquipment = result.data; 
                     filteredEquipment = [...allEquipment];
+
+                    // --- เติมข้อมูลลง Dropdown แผนกของ Admin ---
+                    const wards = [...new Set(allEquipment.map(item => item['หน่วยงาน']).filter(Boolean))].sort();
+                    const wardSelect = document.getElementById('adminWardFilter');
+                    wardSelect.innerHTML = '<option value="all">ดูทุกหน่วยงาน (ทั้ง รพ.)</option>';
+                    wards.forEach(w => {
+                        wardSelect.innerHTML += `<option value="${w}">${w}</option>`;
+                    });
                     
-                    // อัปเดตหน้าจอ
                     document.getElementById('wardSubtitle').innerHTML = '<span style="color:#d32f2f; font-weight:bold;"><i class="fas fa-globe"></i> ภาพรวมทั้งโรงพยาบาล (Admin)</span>';
                     document.getElementById('allCountTab').innerText = allEquipment.length;
-                    updateDashboardStats(); // Dashboard จะโชว์ยอดของทั้ง รพ. ทันที!
+                    updateDashboardStats(); 
                     
                     document.getElementById('loadingState').classList.add('hidden');
-                    switchTab('admin'); // สลับไปแท็บแอดมิน
+                    switchTab('admin'); 
                 }
             } catch (error) {
                 console.error("Error fetching all items:", error);
                 Swal.fire('ข้อผิดพลาด', 'ไม่สามารถดึงข้อมูลภาพรวมได้', 'error');
             }
         }
+
+        // ฟังก์ชันใหม่: ให้ Admin กดเลือกดูตึกจาก Dropdown
+        function filterAdminByWard() {
+            const selectedWard = document.getElementById('adminWardFilter').value;
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            
+            filteredEquipment = allEquipment.filter(item => {
+                const matchWard = (selectedWard === 'all') || (item['หน่วยงาน'] === selectedWard);
+                const matchSearch = String(item['ชื่อครุภัณฑ์'] || '').toLowerCase().includes(searchTerm) ||
+                                    String(item['เลขครุภัณฑ์'] || '').toLowerCase().includes(searchTerm) ||
+                                    String(item['ยี่ห้อ'] || '').toLowerCase().includes(searchTerm) ||
+                                    String(item['ตำแหน่งย่อย (Sub-location)'] || '').toLowerCase().includes(searchTerm);
+                return matchWard && matchSearch;
+            });
+            renderActiveView(); // จะอัปเดตหน้าจอทั้ง Tab รอตรวจ, Tab ทั้งหมด, และ Tab Admin
+        }
+
+        // --- แก้ไข Event ช่องค้นหา ให้รองรับ Dropdown ของ Admin ---
+        // (ให้ค้นหาแล้ววางทับ EventListener ตัวเดิมใน DOMContentLoaded)
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            if (isAdminLoggedIn) {
+                filterAdminByWard(); // ถ้าเป็นแอดมิน ให้ค้นหาแบบกรองตึกด้วย
+            } else {
+                const searchTerm = e.target.value.toLowerCase();
+                filteredEquipment = allEquipment.filter(item => 
+                    String(item['ชื่อครุภัณฑ์'] || '').toLowerCase().includes(searchTerm) ||
+                    String(item['เลขครุภัณฑ์'] || '').toLowerCase().includes(searchTerm) ||
+                    String(item['ยี่ห้อ'] || '').toLowerCase().includes(searchTerm) ||
+                    String(item['ตำแหน่งย่อย (Sub-location)'] || '').toLowerCase().includes(searchTerm)
+                );
+                renderActiveView(); 
+            }
+        });
 
         function exitAdminMode() {
             isAdminLoggedIn = false;
@@ -838,16 +901,39 @@
                 let statusClass = getStatusClass(item['สถานะ']);
                 const safeItemJson = JSON.stringify(item).replace(/"/g, '&quot;');
                 
+                // ดึงวันตรวจล่าสุด
+                let lastInspectStr = "ยังไม่เคยตรวจ";
+                if(item['วันที่ตรวจล่าสุด']) {
+                    const d = new Date(item['วันที่ตรวจล่าสุด']);
+                    if(!isNaN(d)) lastInspectStr = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
+                }
+
+                // จัดการ Risk Level
+                let riskLevel = item['RISK LEVEL'] ? String(item['RISK LEVEL']).trim().toLowerCase() : '';
+                let riskHtml = '';
+                if (riskLevel === 'high') riskHtml = `<span class="risk-badge risk-high" style="font-size:0.7rem;"><i class="fas fa-exclamation-triangle"></i> High</span>`;
+                else if (riskLevel === 'medium') riskHtml = `<span class="risk-badge risk-medium" style="font-size:0.7rem;"><i class="fas fa-exclamation-circle"></i> Medium</span>`;
+                else if (riskLevel === 'low') riskHtml = `<span class="risk-badge risk-low" style="font-size:0.7rem;"><i class="fas fa-info-circle"></i> Low</span>`;
+
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><strong>${item['เลขครุภัณฑ์'] || '-'}</strong></td>
-                    <td>${item['ชื่อครุภัณฑ์'] || '-'}</td>
+                    <td>
+                        ${item['ชื่อครุภัณฑ์'] || '-'}<br>
+                        <small style="color:#666;">ยี่ห้อ/รุ่น: ${item['ยี่ห้อ'] || '-'} / ${item['ชื่อรุ่น'] || '-'}</small>
+                    </td>
                     <td>${item['หน่วยงาน'] || '-'}</td>
-                    <td>${item['ความถี่การตรวจนับ (เดือน)'] || '1'} ด.</td>
-                    <td><span class="status-badge ${statusClass}" style="font-size:0.75rem;">${item['สถานะ'] || 'ปกติ'}</span></td>
+                    <td>
+                        ${item['ความถี่การตรวจนับ (เดือน)'] || '1'} ด.<br>
+                        <small style="color:#28a745;">ล่าสุด: ${lastInspectStr}</small>
+                    </td>
+                    <td>
+                        ${riskHtml}<br>
+                        <span class="status-badge ${statusClass}" style="font-size:0.7rem; margin-top:3px;">${item['สถานะ'] || 'ปกติ'}</span>
+                    </td>
                     <td style="white-space: nowrap;">
                         <button class="btn btn-accent btn-sm" onclick="openEditEquipmentModal(${safeItemJson})">
-                            <i class="fas fa-edit"></i> แก้ไข
+                            <i class="fas fa-edit"></i>
                         </button>
                         <button class="btn btn-outline btn-sm" style="color: #dc3545; border-color: #dc3545;" onclick="deleteEquipment('${item['เลขครุภัณฑ์']}')">
                             <i class="fas fa-trash"></i>
