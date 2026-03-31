@@ -714,7 +714,7 @@
             document.body.removeChild(link);
         }
         // ==========================================
-        // ส่วนของระบบผู้ดูแลระบบ (Admin Module)
+        // ส่วนของระบบผู้ดูแลระบบ (Admin Module) สมบูรณ์แบบ
         // ==========================================
         let isAdminLoggedIn = false;
 
@@ -722,22 +722,20 @@
             Swal.fire({
                 title: 'เข้าสู่ระบบผู้ดูแล',
                 html: `
-                    <input type="text" id="adminUser" class="swal2-input" placeholder="ชื่อผู้ใช้">
-                    <input type="password" id="adminPass" class="swal2-input" placeholder="รหัสผ่าน">
+                    <input type="text" id="adminUser" class="swal-input" placeholder="ชื่อผู้ใช้" style="margin-bottom: 10px; box-sizing: border-box;">
+                    <input type="password" id="adminPass" class="swal-input" placeholder="รหัสผ่าน" style="box-sizing: border-box;">
                 `,
                 confirmButtonText: 'เข้าสู่ระบบ',
+                confirmButtonColor: '#003366',
                 focusConfirm: false,
                 preConfirm: () => {
                     const user = Swal.getPopup().querySelector('#adminUser').value;
                     const pass = Swal.getPopup().querySelector('#adminPass').value;
-                    if (!user || !pass) {
-                        Swal.showValidationMessage(`กรุณากรอกข้อมูลให้ครบ`);
-                    }
+                    if (!user || !pass) { Swal.showValidationMessage(`กรุณากรอกข้อมูลให้ครบ`); }
                     return { user: user, pass: pass }
                 }
             }).then((result) => {
                 if (result.isConfirmed) {
-                    // ตรวจสอบรหัสผ่านที่นี่
                     if (result.value.user === '11450' && result.value.pass === '11450') {
                         isAdminLoggedIn = true;
                         document.getElementById('btnAdminLogin').style.display = 'none';
@@ -746,10 +744,11 @@
                         Swal.fire({
                             icon: 'success',
                             title: 'เข้าสู่ระบบสำเร็จ',
-                            timer: 1000,
+                            text: 'กำลังดึงข้อมูลภาพรวมทั้งโรงพยาบาล...',
+                            timer: 1500,
                             showConfirmButton: false
                         }).then(() => {
-                            switchTab('admin'); // สลับไปหน้าแอดมิน
+                            fetchAllEquipmentForAdmin(); // โหลดข้อมูลทั้ง รพ.
                         });
                     } else {
                         Swal.fire('ข้อผิดพลาด', 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง', 'error');
@@ -758,43 +757,71 @@
             });
         }
 
+        // ฟังก์ชันดึงข้อมูล "ทั้งหมด" มาโชว์ให้แอดมิน
+        async function fetchAllEquipmentForAdmin() {
+            document.getElementById('loadingState').classList.remove('hidden');
+            document.getElementById('view-inspection').classList.add('hidden');
+            document.getElementById('view-all').classList.add('hidden');
+            if(document.getElementById('view-admin')) document.getElementById('view-admin').classList.add('hidden');
+
+            try {
+                const response = await fetch(`${EQUIPMENT_API}?action=getAllItems`);
+                const textData = await response.text();
+                const result = JSON.parse(textData);
+                
+                if (result.status === 'success') {
+                    allEquipment = result.data; // เขียนทับข้อมูลตึกด้วยข้อมูลทั้ง รพ.
+                    filteredEquipment = [...allEquipment];
+                    
+                    // อัปเดตหน้าจอ
+                    document.getElementById('wardSubtitle').innerHTML = '<span style="color:#d32f2f; font-weight:bold;"><i class="fas fa-globe"></i> ภาพรวมทั้งโรงพยาบาล (Admin)</span>';
+                    document.getElementById('allCountTab').innerText = allEquipment.length;
+                    updateDashboardStats(); // Dashboard จะโชว์ยอดของทั้ง รพ. ทันที!
+                    
+                    document.getElementById('loadingState').classList.add('hidden');
+                    switchTab('admin'); // สลับไปแท็บแอดมิน
+                }
+            } catch (error) {
+                console.error("Error fetching all items:", error);
+                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถดึงข้อมูลภาพรวมได้', 'error');
+            }
+        }
+
         function exitAdminMode() {
             isAdminLoggedIn = false;
             document.getElementById('btnAdminLogin').style.display = 'inline-block';
             document.getElementById('tab-admin').classList.add('hidden-tab');
-            switchTab('inspection'); // กลับไปหน้าปกติ
-            Swal.fire({ icon: 'info', title: 'ออกจากโหมดผู้ดูแลระบบ', timer: 1000, showConfirmButton: false });
+            document.getElementById('wardSubtitle').innerText = `หน่วยงาน: ${currentWard}`; // คืนชื่อตึกเดิม
+            
+            Swal.fire({ icon: 'info', title: 'ออกจากโหมดผู้ดูแลระบบ', text: 'กำลังโหลดข้อมูลหน่วยงานของคุณกลับมา...', timer: 1500, showConfirmButton: false })
+            .then(() => {
+                fetchEquipment(); // โหลดข้อมูลเฉพาะตึกนั้นกลับมาใหม่
+            });
         }
 
-        // --- แก้ไขฟังก์ชัน switchTab เดิมให้รองรับ Admin ---
         const originalSwitchTab = switchTab;
         switchTab = function(tabId) {
             currentActiveTab = tabId;
-            
-            // จัดการสีปุ่ม
             document.getElementById('tab-inspection').classList.remove('active');
             document.getElementById('tab-all').classList.remove('active');
             if(document.getElementById('tab-admin')) document.getElementById('tab-admin').classList.remove('active');
             
             document.getElementById(`tab-${tabId}`).classList.add('active');
 
-            // จัดการซ่อนแสดงหน้า
             document.getElementById('view-inspection').classList.add('hidden');
             document.getElementById('view-all').classList.add('hidden');
             if(document.getElementById('view-admin')) document.getElementById('view-admin').classList.add('hidden');
             
             document.getElementById(`view-${tabId}`).classList.remove('hidden');
-
             renderActiveView();
         }
 
-        // --- แก้ไขฟังก์ชัน renderActiveView เดิมให้รองรับ Admin ---
         const originalRenderActiveView = renderActiveView;
         renderActiveView = function() {
             if (currentActiveTab === 'admin') {
-                renderAdminTable(filteredEquipment); // โชว์ข้อมูลทุกชิ้นในหน่วยงาน หรือจะแก้ให้โชว์ทั้ง รพ. ก็ได้ในอนาคต
+                renderAdminTable(filteredEquipment);
             } else {
-                originalRenderActiveView(); // เรียกใช้ของเดิมสำหรับหน้า Staff
+                originalRenderActiveView(); 
             }
         }
 
@@ -818,7 +845,7 @@
                     <td>${item['หน่วยงาน'] || '-'}</td>
                     <td>${item['ความถี่การตรวจนับ (เดือน)'] || '1'} ด.</td>
                     <td><span class="status-badge ${statusClass}" style="font-size:0.75rem;">${item['สถานะ'] || 'ปกติ'}</span></td>
-                    <td>
+                    <td style="white-space: nowrap;">
                         <button class="btn btn-accent btn-sm" onclick="openEditEquipmentModal(${safeItemJson})">
                             <i class="fas fa-edit"></i> แก้ไข
                         </button>
@@ -831,34 +858,151 @@
             });
         }
 
-        // ฟังก์ชันจำลองสำหรับการเพิ่มและแก้ไขข้อมูล (จะเชื่อมกับ GAS ในขั้นต่อไป)
+        // ==========================================
+        // ฟังก์ชัน เพิ่ม/แก้ไข/ลบ ข้อมูล
+        // ==========================================
         function openAddEquipmentModal() {
             Swal.fire({
                 title: 'เพิ่มครุภัณฑ์ใหม่',
-                html: '<p>ฟังก์ชันเพิ่มข้อมูลจะถูกสร้างในขั้นตอนเชื่อมต่อฐานข้อมูลส่วน Admin</p>',
-                icon: 'info'
+                width: 600,
+                html: `
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left;">
+                        <div><label style="font-size:0.85rem; color:var(--primary);">RMC No:</label><input type="text" id="add-rmc" class="swal-input"></div>
+                        <div><label style="font-size:0.85rem; color:var(--primary);">เลขครุภัณฑ์ (อ้างอิง QR):</label><input type="text" id="add-id" class="swal-input"></div>
+                        <div style="grid-column: span 2;"><label style="font-size:0.85rem; color:var(--primary);">ชื่อครุภัณฑ์:</label><input type="text" id="add-name" class="swal-input"></div>
+                        <div><label style="font-size:0.85rem; color:var(--primary);">ยี่ห้อ:</label><input type="text" id="add-brand" class="swal-input"></div>
+                        <div><label style="font-size:0.85rem; color:var(--primary);">ชื่อรุ่น:</label><input type="text" id="add-model" class="swal-input"></div>
+                        <div><label style="font-size:0.85rem; color:var(--primary);">หน่วยงาน (เจ้าของ):</label><input type="text" id="add-ward" class="swal-input"></div>
+                        <div><label style="font-size:0.85rem; color:var(--primary);">ตำแหน่งย่อย:</label><input type="text" id="add-subloc" class="swal-input"></div>
+                        <div><label style="font-size:0.85rem; color:var(--primary);">ความถี่การตรวจ (เดือน):</label><input type="number" id="add-freq" class="swal-input" value="1"></div>
+                        <div><label style="font-size:0.85rem; color:var(--primary);">Risk Level:</label>
+                            <select id="add-risk" class="swal-input">
+                                <option value="Low">Low Risk</option>
+                                <option value="Medium">Medium Risk</option>
+                                <option value="High">High Risk</option>
+                            </select>
+                        </div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'บันทึกข้อมูล',
+                cancelButtonText: 'ยกเลิก',
+                confirmButtonColor: '#28a745',
+                showLoaderOnConfirm: true,
+                preConfirm: async () => {
+                    const itemData = {
+                        rmcNo: document.getElementById('add-rmc').value,
+                        itemId: document.getElementById('add-id').value,
+                        name: document.getElementById('add-name').value,
+                        brand: document.getElementById('add-brand').value,
+                        model: document.getElementById('add-model').value,
+                        ownerWard: document.getElementById('add-ward').value,
+                        subLoc: document.getElementById('add-subloc').value,
+                        freq: document.getElementById('add-freq').value,
+                        riskLevel: document.getElementById('add-risk').value
+                    };
+                    
+                    if(!itemData.itemId || !itemData.name) { Swal.showValidationMessage('กรุณากรอก เลขครุภัณฑ์ และ ชื่อครุภัณฑ์'); return; }
+
+                    try {
+                        const response = await fetch(EQUIPMENT_API, {
+                            method: 'POST', redirect: 'follow', headers: { "Content-Type": "text/plain;charset=utf-8" },
+                            body: JSON.stringify({ action: 'addEquipment', itemData: itemData })
+                        });
+                        const result = await response.json();
+                        if (result.status !== 'success') throw new Error(result.message);
+                        return true;
+                    } catch (error) { Swal.showValidationMessage(`Error: ${error}`); }
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire('สำเร็จ', 'เพิ่มครุภัณฑ์ใหม่เรียบร้อย', 'success').then(() => fetchAllEquipmentForAdmin());
+                }
             });
         }
 
         function openEditEquipmentModal(item) {
             Swal.fire({
                 title: 'แก้ไขข้อมูลครุภัณฑ์',
-                html: `<p>กำลังแก้ไข: ${item['ชื่อครุภัณฑ์']}</p><p>ฟังก์ชันนี้จะเชื่อมกับ GAS ในขั้นตอนต่อไป</p>`,
-                icon: 'info'
+                width: 600,
+                html: `
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left;">
+                        <div><label style="font-size:0.85rem; color:var(--primary);">RMC No:</label><input type="text" id="edit-rmc" class="swal-input" value="${item['RMC No'] || ''}"></div>
+                        <div><label style="font-size:0.85rem; color:var(--primary);">เลขครุภัณฑ์:</label><input type="text" id="edit-id" class="swal-input" value="${item['เลขครุภัณฑ์'] || ''}"></div>
+                        <div style="grid-column: span 2;"><label style="font-size:0.85rem; color:var(--primary);">ชื่อครุภัณฑ์:</label><input type="text" id="edit-name" class="swal-input" value="${item['ชื่อครุภัณฑ์'] || ''}"></div>
+                        <div><label style="font-size:0.85rem; color:var(--primary);">ยี่ห้อ:</label><input type="text" id="edit-brand" class="swal-input" value="${item['ยี่ห้อ'] || ''}"></div>
+                        <div><label style="font-size:0.85rem; color:var(--primary);">ชื่อรุ่น:</label><input type="text" id="edit-model" class="swal-input" value="${item['ชื่อรุ่น'] || ''}"></div>
+                        <div><label style="font-size:0.85rem; color:var(--primary);">หน่วยงาน (เจ้าของ):</label><input type="text" id="edit-ward" class="swal-input" value="${item['หน่วยงาน'] || ''}"></div>
+                        <div><label style="font-size:0.85rem; color:var(--primary);">ตำแหน่งย่อย:</label><input type="text" id="edit-subloc" class="swal-input" value="${item['ตำแหน่งย่อย (Sub-location)'] || ''}"></div>
+                        <div><label style="font-size:0.85rem; color:var(--primary);">ความถี่ (เดือน):</label><input type="number" id="edit-freq" class="swal-input" value="${item['ความถี่การตรวจนับ (เดือน)'] || 1}"></div>
+                        <div><label style="font-size:0.85rem; color:var(--primary);">Risk Level:</label>
+                            <select id="edit-risk" class="swal-input">
+                                <option value="Low" ${item['RISK LEVEL']=='Low'?'selected':''}>Low Risk</option>
+                                <option value="Medium" ${item['RISK LEVEL']=='Medium'?'selected':''}>Medium Risk</option>
+                                <option value="High" ${item['RISK LEVEL']=='High'?'selected':''}>High Risk</option>
+                            </select>
+                        </div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'อัปเดตข้อมูล',
+                cancelButtonText: 'ยกเลิก',
+                confirmButtonColor: '#ffc107',
+                showLoaderOnConfirm: true,
+                preConfirm: async () => {
+                    const itemData = {
+                        rmcNo: document.getElementById('edit-rmc').value,
+                        itemId: document.getElementById('edit-id').value,
+                        name: document.getElementById('edit-name').value,
+                        brand: document.getElementById('edit-brand').value,
+                        model: document.getElementById('edit-model').value,
+                        ownerWard: document.getElementById('edit-ward').value,
+                        subLoc: document.getElementById('edit-subloc').value,
+                        freq: document.getElementById('edit-freq').value,
+                        riskLevel: document.getElementById('edit-risk').value
+                    };
+                    
+                    try {
+                        const response = await fetch(EQUIPMENT_API, {
+                            method: 'POST', redirect: 'follow', headers: { "Content-Type": "text/plain;charset=utf-8" },
+                            body: JSON.stringify({ action: 'editEquipment', oldItemId: item['เลขครุภัณฑ์'], itemData: itemData })
+                        });
+                        const result = await response.json();
+                        if (result.status !== 'success') throw new Error(result.message);
+                        return true;
+                    } catch (error) { Swal.showValidationMessage(`Error: ${error}`); }
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire('สำเร็จ', 'อัปเดตข้อมูลเรียบร้อย', 'success').then(() => fetchAllEquipmentForAdmin());
+                }
             });
         }
 
         function deleteEquipment(itemId) {
             Swal.fire({
                 title: 'ยืนยันการลบ?',
-                text: "คุณต้องการลบครุภัณฑ์รหัส " + itemId + " ออกจากระบบหรือไม่?",
+                text: "ลบครุภัณฑ์รหัส " + itemId + " ข้อมูลจะหายไปอย่างถาวร!",
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#dc3545',
-                confirmButtonText: 'ลบข้อมูล'
+                confirmButtonText: 'ใช่, ลบเลย!',
+                cancelButtonText: 'ยกเลิก',
+                showLoaderOnConfirm: true,
+                preConfirm: async () => {
+                    try {
+                        const response = await fetch(EQUIPMENT_API, {
+                            method: 'POST', redirect: 'follow', headers: { "Content-Type": "text/plain;charset=utf-8" },
+                            body: JSON.stringify({ action: 'deleteEquipment', itemId: itemId })
+                        });
+                        const result = await response.json();
+                        if (result.status !== 'success') throw new Error(result.message);
+                        return true;
+                    } catch (error) { Swal.showValidationMessage(`Error: ${error}`); }
+                }
             }).then((result) => {
                 if (result.isConfirmed) {
-                    Swal.fire('จำลองการลบ', 'ฟังก์ชันลบจะทำงานเมื่อเชื่อมต่อ GAS แล้ว', 'info');
+                    Swal.fire('ลบสำเร็จ', 'ข้อมูลถูกลบออกจากระบบแล้ว', 'success').then(() => fetchAllEquipmentForAdmin());
                 }
             })
         }
