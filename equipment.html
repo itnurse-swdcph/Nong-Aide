@@ -1289,7 +1289,7 @@
             });
         }
 
-        // ฟังก์ชันสร้างและสั่งพิมพ์ QR Code (อัปเดตใหม่)
+        // ฟังก์ชันสร้างและสั่งพิมพ์ QR Code
         function executePrintQR(selectedIds, sizeInches) {
             const printArea = document.getElementById('printArea');
             printArea.innerHTML = ''; // ล้างของเก่า
@@ -1308,8 +1308,6 @@
             }
 
             printArea.style.gridTemplateColumns = columns;
-            
-            // ❌ ลบบรรทัด printArea.style.display = 'grid'; ออกไป เพื่อไม่ให้มันมาโชว์บนหน้าเว็บปกติ (ให้โชว์เฉพาะตอนปริ้นท์)
 
             // กรองดึงเฉพาะข้อมูลที่ถูกเลือกมาสร้าง QR
             const itemsToPrint = allEquipment.filter(item => selectedIds.includes(item['เลขครุภัณฑ์']));
@@ -1330,17 +1328,17 @@
                 container.style.width = widthMM;
                 container.style.height = widthMM;
                 container.style.boxSizing = 'border-box';
-                container.style.overflow = 'hidden'; // ป้องกันข้อความล้นกรอบ
+                container.style.overflow = 'hidden'; 
 
-                // จัดเลย์เอาต์ใหม่ให้มี ชื่อ, ยี่ห้อ, และความถี่
+                // 🛠 ปรับเลย์เอาต์ใหม่: กำหนดความสูงให้ชื่อครุภัณฑ์รองรับ 2 บรรทัด
                 container.innerHTML = `
-                    <div style="font-size: 7.5pt; font-weight: bold; line-height: 1.1; margin-bottom: 2px; height: auto; max-height: 16px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal;">
+                    <div style="font-size: 7pt; font-weight: bold; line-height: 1.2; margin-bottom: 2px; height: 2.4em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; word-break: break-word; text-align: center;">
                         ${item['ชื่อครุภัณฑ์'] || '-'}
                     </div>
                     <div style="font-size: 6pt; color: #444; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">
                         ยี่ห้อ: ${brand}
                     </div>
-                    <img src="${qrImgSrc}" alt="QR" onload="checkImagesLoaded()" onerror="checkImagesLoaded()" style="width: 100%; max-width: 55%; height: auto; margin: 0 auto;">
+                    <img src="${qrImgSrc}" alt="QR" onload="checkImagesLoaded()" onerror="checkImagesLoaded()" style="width: 100%; max-width: 45%; height: auto; margin: 0 auto;">
                     <div style="font-size: 6.5pt; font-weight: bold; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">
                         ID: ${qrText}
                     </div>
@@ -1356,7 +1354,6 @@
                 loadedImages++;
                 if (loadedImages === totalImages) {
                     
-                    // ขึ้น Loading สวยๆ ระหว่างรอสร้างหน้าปริ้นท์
                     Swal.fire({
                         title: 'กำลังเตรียมหน้าพิมพ์...',
                         allowOutsideClick: false,
@@ -1364,10 +1361,9 @@
                     });
 
                     setTimeout(() => {
-                        Swal.close(); // ปิดหน้าต่างโหลด
-                        window.print(); // เด้งหน้าต่างปริ้นท์
+                        Swal.close(); 
+                        window.print(); 
                         
-                        // ทิ้งช่วง 1 วินาที แล้วล้างข้อมูล QR ทิ้ง เพื่อความสะอาดของหน้าเว็บ
                         setTimeout(() => { printArea.innerHTML = ''; }, 1000);
                         
                     }, 800);
