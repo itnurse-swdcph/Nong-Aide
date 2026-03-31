@@ -10,6 +10,7 @@
     
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <link rel="stylesheet" href="style.css"> 
     <style>
@@ -236,6 +237,16 @@
                         <button class="btn btn-outline" style="background: white;" onclick="exitAdminMode()">
                             <i class="fas fa-sign-out-alt"></i> ออกจากโหมดแอดมิน
                         </button>
+                    </div>
+                </div>
+                <div id="admin-charts-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px;">
+                    <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 3px 10px rgba(0,0,0,0.05); border: 1px solid #e0e6ed;">
+                        <h4 style="text-align: center; color: var(--primary); margin-top: 0; font-size: 1rem;"><i class="fas fa-chart-pie"></i> สัดส่วนสถานะครุภัณฑ์</h4>
+                        <canvas id="statusChart" style="max-height: 250px;"></canvas>
+                    </div>
+                    <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 3px 10px rgba(0,0,0,0.05); border: 1px solid #e0e6ed;">
+                        <h4 style="text-align: center; color: var(--primary); margin-top: 0; font-size: 1rem;"><i class="fas fa-tasks"></i> ความคืบหน้าการตรวจนับ (รอบเดือนนี้)</h4>
+                        <canvas id="inspectChart" style="max-height: 250px;"></canvas>
                     </div>
                 </div>
 
@@ -910,10 +921,16 @@
 
         const originalRenderActiveView = renderActiveView;
         renderActiveView = function() {
-            if (currentActiveTab === 'admin') {
-                renderAdminTable(filteredEquipment);
+            const pendingItems = filteredEquipment.filter(item => item._needsInspection);
+            document.getElementById('pendingBadge').innerText = pendingItems.length;
+
+            if (currentActiveTab === 'inspection') {
+                renderInspectionCards(pendingItems); 
+            } else if (currentActiveTab === 'admin') { // <-- ถ้าเปิดหน้าแอดมินอยู่
+                renderAdminTable(filteredEquipment);   // วาดตาราง
+                renderAdminDashboard(filteredEquipment); // ✨ วาดกราฟ
             } else {
-                originalRenderActiveView(); 
+                renderAllItemsTable(filteredEquipment); 
             }
         }
 
@@ -1120,6 +1137,69 @@
                     Swal.fire('ลบสำเร็จ', 'ข้อมูลถูกลบออกจากระบบแล้ว', 'success').then(() => fetchAllEquipmentForAdmin());
                 }
             })
+        }
+        // ==========================================
+        // ส่วนของ Advanced Dashboard (Chart.js)
+        // ==========================================
+        let statusChartInstance = null;
+        let inspectChartInstance = null;
+
+        function renderAdminDashboard(data) {
+            // คำนวณข้อมูลสำหรับกราฟ สถานะ
+            const statusCounts = { 'ปกติ': 0, 'ชำรุดส่งซ่อม': 0, 'ถูกยืม': 0, 'จำหน่าย': 0 };
+            let inspectedCount = 0;
+            let pendingCount = 0;
+
+            data.forEach(item => {
+                const s = item['สถานะ'] || '';
+                if(s.includes('ปกติ')) statusCounts['ปกติ']++;
+                else if(s.includes('ชำรุด')) statusCounts['ชำรุดส่งซ่อม']++;
+                else if(s.includes('ยืม')) statusCounts['ถูกยืม']++;
+                else if(s.includes('จำหน่าย')) statusCounts['จำหน่าย']++;
+
+                if(item._needsInspection) pendingCount++;
+                else inspectedCount++;
+            });
+
+            // 1. วาดกราฟโดนัท (Doughnut Chart) แสดงสถานะ
+            const ctxStatus = document.getElementById('statusChart').getContext('2d');
+            if(statusChartInstance) statusChartInstance.destroy(); // ลบกราฟเก่าก่อนวาดใหม่
+            
+            statusChartInstance = new Chart(ctxStatus, {
+                type: 'doughnut',
+                data: {
+                    labels: ['ปกติ/พร้อมใช้', 'ชำรุดส่งซ่อม', 'ถูกยืม', 'จำหน่าย'],
+                    datasets: [{
+                        data: [statusCounts['ปกติ'], statusCounts['ชำรุดส่งซ่อม'], statusCounts['ถูกยืม'], statusCounts['จำหน่าย']],
+                        backgroundColor: ['#28a745', '#dc3545', '#ffc107', '#6c757d'],
+                        borderWidth: 1
+                    }]
+                },
+                options: { 
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'right', labels: { font: { family: 'Prompt' } } } }
+                }
+            });
+
+            // 2. วาดกราฟวงกลม (Pie Chart) แสดงความคืบหน้าการตรวจ
+            const ctxInspect = document.getElementById('inspectChart').getContext('2d');
+            if(inspectChartInstance) inspectChartInstance.destroy();
+            
+            inspectChartInstance = new Chart(ctxInspect, {
+                type: 'pie',
+                data: {
+                    labels: ['ตรวจนับแล้ว', 'รอตรวจนับ'],
+                    datasets: [{
+                        data: [inspectedCount, pendingCount],
+                        backgroundColor: ['#003366', '#e74c3c'],
+                        borderWidth: 1
+                    }]
+                },
+                options: { 
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'right', labels: { font: { family: 'Prompt' } } } }
+                }
+            });
         }
     </script>
 </body>
