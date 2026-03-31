@@ -115,7 +115,14 @@
             <h1 class="page-title">
                 <i class="fas fa-microscope"></i> ระบบตรวจนับครุภัณฑ์ทางการแพทย์
                 <span class="help-icon" onclick="showHelpModal()" title="คลิกดูวิธีใช้งาน"><i class="fas fa-info"></i></span>
-                <span class="page-subtitle" id="wardSubtitle">หน่วยงาน: -</span>
+                
+                <div style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 10px;">
+                    <span class="page-subtitle" id="wardSubtitle" style="margin-top: 0;">หน่วยงาน: -</span>
+                    
+                    <button id="btnAdminLogin" class="btn btn-outline btn-sm" onclick="showAdminLogin()" style="color: #bbb; border-color: #eee; padding: 2px 8px; font-size: 0.75rem;">
+                        <i class="fas fa-cog"></i> สำหรับผู้ดูแลระบบ
+                    </button>
+                </div>
             </h1>
 
             <div class="dashboard-grid">
@@ -188,11 +195,7 @@
                     </table>
                 </div>
             </div>
-            <div style="text-align: right; margin-top: 30px; margin-bottom: 20px;">
-                <button id="btnAdminLogin" class="btn btn-outline btn-sm" onclick="showAdminLogin()" style="color: #ccc; border-color: #eee;">
-                    <i class="fas fa-cog"></i> สำหรับผู้ดูแลระบบ
-                </button>
-            </div>
+            
 
             <div id="view-admin" class="hidden">
                 <div class="action-bar" style="background: #f8f9fa; border: 1px solid #ddd; justify-content: space-between;">
