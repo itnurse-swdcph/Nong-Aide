@@ -302,7 +302,7 @@
     </div>
     <div id="printArea"></div>
 
-    <script>
+   <script>
         const urlParams = new URLSearchParams(window.location.search);
         const currentWard = urlParams.get('ward');
         
@@ -313,7 +313,15 @@
         let filteredEquipment = []; 
         let html5QrcodeScanner = null;
         let currentActiveTab = 'inspection';
+        let isAdminLoggedIn = false;
 
+        // ตัวแปรสำหรับระบบค้นหาอัตโนมัติ
+        let typingTimer;                
+        const doneTypingInterval = 800; 
+
+        // ==========================================
+        // Initialization (ทำงานเมื่อโหลดหน้าเว็บเสร็จ)
+        // ==========================================
         document.addEventListener('DOMContentLoaded', () => {
             setCurrentMonthHeading();
             if (currentWard) {
@@ -322,37 +330,46 @@
                 fetchEquipment();
             }
 
-            let typingTimer;                // ตัวแปรสำหรับจับเวลาพิมพ์
-        const doneTypingInterval = 800; // รอ 0.8 วินาทีหลังหยุดพิมพ์ ถึงจะค้นหาข้ามตึก
+            const searchInputObj = document.getElementById('searchInput');
+            if(searchInputObj) {
+                // Event 1: ดักจับการพิมพ์เพื่อกรองตาราง / ค้นหาข้ามตึก
+                searchInputObj.addEventListener('input', function(e) {
+                    clearTimeout(typingTimer);
+                    const searchTerm = e.target.value.toLowerCase().trim();
 
-        // 1. Event ดักจับการพิมพ์ในช่องค้นหา (แทนที่ของเดิมทั้งหมด)
-        document.getElementById('searchInput').addEventListener('input', function(e) {
-            clearTimeout(typingTimer); // ยกเลิกการนับเวลาเก่าทิ้งถ้ายังพิมพ์อยู่
-            const searchTerm = e.target.value.toLowerCase().trim();
+                    if (isAdminLoggedIn) {
+                        filterAdminByWard(); 
+                    } else {
+                        filteredEquipment = allEquipment.filter(item => 
+                            String(item['ชื่อครุภัณฑ์'] || '').toLowerCase().includes(searchTerm) ||
+                            String(item['เลขครุภัณฑ์'] || '').toLowerCase().includes(searchTerm) ||
+                            String(item['RMC No'] || '').toLowerCase().includes(searchTerm) || 
+                            String(item['ยี่ห้อ'] || '').toLowerCase().includes(searchTerm) ||
+                            String(item['ตำแหน่งย่อย (Sub-location)'] || '').toLowerCase().includes(searchTerm)
+                        );
+                        renderActiveView(); 
 
-            if (isAdminLoggedIn) {
-                filterAdminByWard(); 
-            } else {
-                // กรองข้อมูลในตารางหน่วยงานตัวเองก่อน
-                filteredEquipment = allEquipment.filter(item => 
-                    String(item['ชื่อครุภัณฑ์'] || '').toLowerCase().includes(searchTerm) ||
-                    String(item['เลขครุภัณฑ์'] || '').toLowerCase().includes(searchTerm) ||
-                    String(item['RMC No'] || '').toLowerCase().includes(searchTerm) || 
-                    String(item['ยี่ห้อ'] || '').toLowerCase().includes(searchTerm) ||
-                    String(item['ตำแหน่งย่อย (Sub-location)'] || '').toLowerCase().includes(searchTerm)
-                );
-                renderActiveView(); 
+                        if (filteredEquipment.length === 0 && searchTerm.length > 0) {
+                            typingTimer = setTimeout(() => {
+                                processSearchOrScan(searchTerm);
+                            }, doneTypingInterval);
+                        }
+                    }
+                });
 
-                // 🟢 ระบบอัตโนมัติ: ถ้าตารางว่างเปล่า (หาในตึกไม่เจอ) และมีการพิมพ์รหัสอยู่
-                if (filteredEquipment.length === 0 && searchTerm.length > 0) {
-                    typingTimer = setTimeout(() => {
-                        processSearchOrScan(searchTerm); // สั่งค้นหาข้ามตึกอัตโนมัติ!
-                    }, doneTypingInterval);
-                }
+                // Event 2: ดักจับการกด Enter
+                searchInputObj.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        processSearchOrScan(e.target.value);
+                    }
+                });
             }
-        });
+        }); // 🟢 สิ้นสุด DOMContentLoaded อย่างถูกต้องตรงนี้
 
-        // 🟢 ฟังก์ชันแสดงคู่มือการใช้งาน (Pop-up)
+        // ==========================================
+        // ฟังก์ชันระบบทั่วไป
+        // ==========================================
         function showHelpModal() {
             Swal.fire({
                 title: '<i class="fas fa-book-open" style="color:var(--primary);"></i> คู่มือการใช้งานระบบ',
@@ -387,9 +404,7 @@
                 confirmButtonColor: '#003366',
                 confirmButtonText: 'เข้าใจแล้ว',
                 width: 600,
-                customClass: {
-                    htmlContainer: 'text-left'
-                }
+                customClass: { htmlContainer: 'text-left' }
             });
         }
 
@@ -408,7 +423,6 @@
                 try {
                     const result = JSON.parse(textData); 
                     if (result.status === 'success' && result.data.length > 0) {
-                        
                         const currentDate = new Date();
                         const currentMonth = currentDate.getMonth();
                         const currentYear = currentDate.getFullYear();
@@ -418,7 +432,7 @@
                             if (item['วันที่ตรวจล่าสุด']) {
                                 const lastDate = new Date(item['วันที่ตรวจล่าสุด']);
                                 if (!isNaN(lastDate)) {
-                                    const freq = parseInt(item['ความถี่การตรวจนับ (เดือน)']) || 1;
+                                    const freq = parseInt(item['ความถี่การตรวจนับ (เดือน)']) || parseInt(item['ความถี่การตรวจนับ']) || 1;
                                     const diffMonths = (currentYear - lastDate.getFullYear()) * 12 + (currentMonth - lastDate.getMonth());
                                     if (diffMonths < freq) {
                                         needsInspection = false;
@@ -463,24 +477,33 @@
             document.getElementById('stat-disposed').innerText = disposedCount;
         }
 
+        // 🟢 รวมฟังก์ชัน switchTab เป็นตัวเดียว
         function switchTab(tabId) {
             currentActiveTab = tabId;
             document.getElementById('tab-inspection').classList.remove('active');
             document.getElementById('tab-all').classList.remove('active');
+            if(document.getElementById('tab-admin')) document.getElementById('tab-admin').classList.remove('active');
+
             document.getElementById(`tab-${tabId}`).classList.add('active');
 
             document.getElementById('view-inspection').classList.add('hidden');
             document.getElementById('view-all').classList.add('hidden');
+            if(document.getElementById('view-admin')) document.getElementById('view-admin').classList.add('hidden');
+
             document.getElementById(`view-${tabId}`).classList.remove('hidden');
             renderActiveView();
         }
 
+        // 🟢 รวมฟังก์ชัน renderActiveView เป็นตัวเดียว
         function renderActiveView() {
             const pendingItems = filteredEquipment.filter(item => item._needsInspection);
             document.getElementById('pendingBadge').innerText = pendingItems.length;
 
             if (currentActiveTab === 'inspection') {
                 renderInspectionCards(pendingItems); 
+            } else if (currentActiveTab === 'admin') {
+                renderAdminTable(filteredEquipment);   
+                renderAdminDashboard(filteredEquipment); 
             } else {
                 renderAllItemsTable(filteredEquipment); 
             }
@@ -505,18 +528,11 @@
                 let statusIcon = getStatusIcon(item['สถานะ']);
                 const safeItemJson = JSON.stringify(item).replace(/"/g, '&quot;');
 
-                // --- ส่วนที่เพิ่มมา: จัดการ Risk Level ---
                 let riskLevel = item['RISK LEVEL'] ? String(item['RISK LEVEL']).trim().toLowerCase() : '';
                 let riskHtml = '';
-                
-                if (riskLevel === 'high') {
-                    riskHtml = `<span class="risk-badge risk-high"><i class="fas fa-exclamation-triangle"></i> High Risk</span>`;
-                } else if (riskLevel === 'medium') {
-                    riskHtml = `<span class="risk-badge risk-medium"><i class="fas fa-exclamation-circle"></i> Medium Risk</span>`;
-                } else if (riskLevel === 'low') {
-                    riskHtml = `<span class="risk-badge risk-low"><i class="fas fa-info-circle"></i> Low Risk</span>`;
-                }
-                // ------------------------------------
+                if (riskLevel === 'high') riskHtml = `<span class="risk-badge risk-high"><i class="fas fa-exclamation-triangle"></i> High Risk</span>`;
+                else if (riskLevel === 'medium') riskHtml = `<span class="risk-badge risk-medium"><i class="fas fa-exclamation-circle"></i> Medium Risk</span>`;
+                else if (riskLevel === 'low') riskHtml = `<span class="risk-badge risk-low"><i class="fas fa-info-circle"></i> Low Risk</span>`;
 
                 const card = document.createElement('div');
                 card.className = 'item-card';
@@ -527,7 +543,7 @@
                             <span class="info-item"><i class="fas fa-fingerprint"></i> RMC: <strong>${item['RMC No'] || '-'}</strong></span> 
                             <span class="info-item"><i class="fas fa-barcode"></i> ID: <strong>${item['เลขครุภัณฑ์'] || '-'}</strong></span>
                             <span class="info-item"><i class="fas fa-map-marker-alt"></i> จุด: <strong>${item['ตำแหน่งย่อย (Sub-location)'] || '-'}</strong></span>
-                            <span class="info-item"><i class="fas fa-clock"></i> ตรวจทุก: <strong>${item['ความถี่การตรวจนับ'] || '1'} เดือน</strong></span>
+                            <span class="info-item"><i class="fas fa-clock"></i> ตรวจทุก: <strong>${item['ความถี่การตรวจนับ'] || item['ความถี่การตรวจนับ (เดือน)'] || '1'} เดือน</strong></span>
                         </div>
                     </div>
                     <div class="item-actions">
@@ -546,7 +562,6 @@
             tbody.innerHTML = '';
 
             if(data.length === 0) {
-                // เปลี่ยน colspan เป็น 8 ให้ครอบคลุมจำนวนคอลัมน์ทั้งหมด
                 tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px;">ไม่พบข้อมูล</td></tr>';
                 return;
             }
@@ -569,8 +584,7 @@
                         ${item['ชื่อครุภัณฑ์'] || '-'}<br>
                         <small style="color:#666;">ยี่ห้อ/รุ่น: ${item['ยี่ห้อ'] || '-'} / ${item['ชื่อรุ่น'] || '-'}</small>
                     </td>
-                    <td>${item['ตำแหน่งย่อย (Sub-location)'] || '-'}</td>
-                    <td style="color:#003366; font-size:0.9rem;">${item['ความถี่การตรวจนับ'] || '1'} เดือน</td>
+                    <td>${item['ความถี่การตรวจนับ'] || item['ความถี่การตรวจนับ (เดือน)'] || '1'} เดือน</td>
                     <td style="color:#28a745; font-size:0.9rem;">${lastInspectStr}</td>
                     <td><span class="status-badge ${statusClass}" style="font-size:0.75rem;">${item['สถานะ'] || 'ปกติ'}</span></td>
                     <td>
@@ -607,48 +621,31 @@
                 html5QrcodeScanner.render(onScanSuccess, onScanFailure);
             }
         }
+        
         function onScanSuccess(decodedText) {
             if(html5QrcodeScanner) {
                 html5QrcodeScanner.clear();
                 document.getElementById('qr-reader').style.display = 'none';
             }
-            // ใส่เลขที่สแกนได้ลงช่องค้นหา แล้วลุยค้นหาเลย
             document.getElementById('searchInput').value = decodedText;
             processSearchOrScan(decodedText);
         }
+        function onScanFailure(error) {}
 
-        // 2. เพิ่ม Event ดักจับการกด "Enter" ที่ช่องค้นหา (เผื่อกรณีคีย์เลขเอาเอง)
-        document.addEventListener('DOMContentLoaded', () => {
-            // (เอาไปวางรวมกับ DOMContentLoaded ของเดิมที่มีอยู่แล้ว หรือวางลอยๆ ตรงนี้ก็ได้ครับ)
-            const searchInputObj = document.getElementById('searchInput');
-            if(searchInputObj) {
-                searchInputObj.addEventListener('keypress', function(e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        processSearchOrScan(e.target.value);
-                    }
-                });
-            }
-        });
-
-        // 3. ฟังก์ชันหลักสำหรับค้นหา คัดกรอง และดึงของข้ามตึก
         async function processSearchOrScan(decodedText) {
             const searchTerm = decodedText.toLowerCase().trim();
             if(!searchTerm) return;
 
-            // ก. เช็คว่ารหัสที่สแกน/พิมพ์ ตรงเป๊ะๆ กับของในตึกตัวเองไหม
             const localItem = allEquipment.find(item => 
                 String(item['เลขครุภัณฑ์']).toLowerCase() === searchTerm ||
                 String(item['RMC No']).toLowerCase() === searchTerm
             );
 
             if (localItem) {
-                // ถ้าสแกนเจอของตัวเอง ให้เด้งหน้าต่างตรวจนับทันที!
                 openManageModal(localItem);
                 return;
             }
 
-            // ข. ถ้าไม่เจอในตึกตัวเอง -> ค้นหาจากฐานข้อมูลรวมทั้งโรงพยาบาล
             Swal.fire({
                 title: 'กำลังค้นหาข้อมูลข้ามหน่วยงาน...',
                 allowOutsideClick: false,
@@ -670,7 +667,6 @@
                         Swal.close();
                         const freq = globalItem['ความถี่การตรวจนับ'] || globalItem['ความถี่การตรวจนับ (เดือน)'] || '1';
                         
-                        // 🟢 เด้ง Pop-up ถามการดึงข้ามตึก (เพิ่ม RMC, เลขครุภัณฑ์, ความถี่)
                         const proceed = await Swal.fire({
                             title: '<span style="color:#1976d2;">พบครุภัณฑ์ของหน่วยงานอื่น</span>',
                             icon: 'info',
@@ -708,10 +704,7 @@
                             if (pullResult.status === 'success') {
                                 Swal.fire({ icon: 'success', title: 'ดึงข้อมูลสำเร็จ', text: 'เพิ่มเข้าสู่ตารางของคุณแล้ว', timer: 1500, showConfirmButton: false });
                                 
-                                // รีโหลดข้อมูลตารางใหม่
                                 await fetchEquipment();
-                                
-                                // หน่วงเวลา 1 วินาที เพื่อค้นหาไอเทมนั้นแล้วเด้งหน้าตรวจนับอัตโนมัติ
                                 setTimeout(() => {
                                     const newlyPulledItem = allEquipment.find(item => item['เลขครุภัณฑ์'] === globalItem['เลขครุภัณฑ์']);
                                     if(newlyPulledItem) openManageModal(newlyPulledItem);
@@ -726,7 +719,6 @@
                 Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้', 'error');
             }
         }
-        function onScanFailure(error) {}
 
         function showDetailsModal(item) {
             let lastInspectStr = "ยังไม่เคยตรวจ";
@@ -748,7 +740,7 @@
                             <tr><th><i class="fas fa-list"></i> ประเภท</th><td>${item['ประเภทครุภัณฑ์'] || '-'}</td></tr>
                             <tr><th><i class="fas fa-hospital"></i> ใช้งานที่</th><td>${item['ใช้งานที่'] || '-'} (เจ้าของ: ${item['หน่วยงาน']})</td></tr>
                             <tr><th><i class="fas fa-map-pin"></i> ตำแหน่งย่อย</th><td>${item['ตำแหน่งย่อย (Sub-location)'] || '-'}</td></tr>
-                            <tr><th><i class="fas fa-history"></i> ความถี่การตรวจ</th><td>${item['ความถี่การตรวจนับ (เดือน)'] || '-'} เดือน/ครั้ง</td></tr>
+                            <tr><th><i class="fas fa-history"></i> ความถี่การตรวจ</th><td>${item['ความถี่การตรวจนับ'] || item['ความถี่การตรวจนับ (เดือน)'] || '-'} เดือน/ครั้ง</td></tr>
                             <tr><th style="color:#28a745;"><i class="fas fa-calendar-check"></i> ตรวจล่าสุด</th><td style="color:#28a745; font-weight:bold;">${lastInspectStr}</td></tr>
                         </tbody>
                     </table>
@@ -758,24 +750,16 @@
             });
         }
 
-        // ฟังก์ชันเปิดหน้าต่างบันทึกการตรวจ (พร้อมระบบแจ้งเตือนถ้ายังไม่ถึงรอบ)
         async function openManageModal(item) {
-            // 1. ตรวจสอบว่าถึงรอบตรวจหรือยัง
             if (!item._needsInspection) {
-                // จัดรูปแบบวันที่ตรวจล่าสุดให้สวยงาม
                 let lastInspectStr = "ยังไม่เคยตรวจ";
                 if (item['วันที่ตรวจล่าสุด']) {
                     const d = new Date(item['วันที่ตรวจล่าสุด']);
                     if (!isNaN(d)) {
-                        lastInspectStr = d.toLocaleDateString('th-TH', { 
-                            day: 'numeric', 
-                            month: 'long', 
-                            year: 'numeric' 
-                        });
+                        lastInspectStr = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
                     }
                 }
 
-                // 2. แสดง Pop-up เตือนก่อนเข้าหน้าบันทึก
                 const proceed = await Swal.fire({
                     title: '<span style="color:#f57f17;">ยังไม่ถึงรอบการตรวจ</span>',
                     icon: 'warning',
@@ -797,11 +781,9 @@
                     cancelButtonText: 'ไม่ต้อง, ยกเลิก'
                 });
 
-                // ถ้าผู้ใช้กด "ยกเลิก" ให้หยุดการทำงานทันที
                 if (!proceed.isConfirmed) return;
             }
 
-            // 3. เข้าสู่หน้าจอหลักของการบันทึกการตรวจ (โค้ดส่วนเดิมของคุณ)
             Swal.fire({
                 title: 'บันทึกการตรวจนับ',
                 html: `
@@ -883,23 +865,14 @@
                     }
 
                     const payload = {
-                        action: 'updateStatus',
-                        ward: currentWard,
-                        itemId: item['เลขครุภัณฑ์'],
-                        status: status,
-                        borrowedWard: borrowedWard,
-                        subLocation: subLocation,
-                        note: note,
-                        imageBase64: imageBase64,
-                        mimeType: mimeType,
-                        imageName: imageName
+                        action: 'updateStatus', ward: currentWard, itemId: item['เลขครุภัณฑ์'],
+                        status: status, borrowedWard: borrowedWard, subLocation: subLocation,
+                        note: note, imageBase64: imageBase64, mimeType: mimeType, imageName: imageName
                     };
 
                     try {
                         const response = await fetch(EQUIPMENT_API, {
-                            method: 'POST',
-                            redirect: 'follow',
-                            headers: { "Content-Type": "text/plain;charset=utf-8" },
+                            method: 'POST', redirect: 'follow', headers: { "Content-Type": "text/plain;charset=utf-8" },
                             body: JSON.stringify(payload)
                         });
                         const result = await response.json();
@@ -913,11 +886,8 @@
             }).then((result) => {
                 if (result.isConfirmed) {
                     Swal.fire({
-                        icon: 'success',
-                        title: 'บันทึกสำเร็จ!',
-                        text: 'อัปเดตข้อมูลและประทับเวลาเรียบร้อยแล้ว',
-                        timer: 1500,
-                        showConfirmButton: false
+                        icon: 'success', title: 'บันทึกสำเร็จ!', text: 'อัปเดตข้อมูลและประทับเวลาเรียบร้อยแล้ว',
+                        timer: 1500, showConfirmButton: false
                     }).then(() => {
                         document.getElementById('loadingState').classList.remove('hidden');
                         fetchEquipment(); 
@@ -965,11 +935,10 @@
             link.click();
             document.body.removeChild(link);
         }
-        // ==========================================
-        // ส่วนของระบบผู้ดูแลระบบ (Admin Module) สมบูรณ์แบบ
-        // ==========================================
-        let isAdminLoggedIn = false;
 
+        // ==========================================
+        // ระบบจัดการแอดมิน (Admin Mode)
+        // ==========================================
         function showAdminLogin() {
             Swal.fire({
                 title: 'เข้าสู่ระบบผู้ดูแล',
@@ -994,14 +963,9 @@
                         document.getElementById('tab-admin').classList.remove('hidden-tab');
                         
                         Swal.fire({
-                            icon: 'success',
-                            title: 'เข้าสู่ระบบสำเร็จ',
-                            text: 'กำลังดึงข้อมูลภาพรวมทั้งโรงพยาบาล...',
-                            timer: 1500,
-                            showConfirmButton: false
-                        }).then(() => {
-                            fetchAllEquipmentForAdmin(); // โหลดข้อมูลทั้ง รพ.
-                        });
+                            icon: 'success', title: 'เข้าสู่ระบบสำเร็จ', text: 'กำลังดึงข้อมูลภาพรวมทั้งโรงพยาบาล...',
+                            timer: 1500, showConfirmButton: false
+                        }).then(() => { fetchAllEquipmentForAdmin(); });
                     } else {
                         Swal.fire('ข้อผิดพลาด', 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง', 'error');
                     }
@@ -1009,7 +973,6 @@
             });
         }
 
-        // ฟังก์ชันดึงข้อมูล "ทั้งหมด" มาโชว์ให้แอดมิน
         async function fetchAllEquipmentForAdmin() {
             document.getElementById('loadingState').classList.remove('hidden');
             document.getElementById('view-inspection').classList.add('hidden');
@@ -1022,7 +985,6 @@
                 const result = JSON.parse(textData);
                 
                 if (result.status === 'success') {
-                    // ประมวลผลหาของที่ต้องตรวจทั้งโรงพยาบาล
                     const currentDate = new Date();
                     const currentMonth = currentDate.getMonth();
                     const currentYear = currentDate.getFullYear();
@@ -1032,7 +994,7 @@
                         if (item['วันที่ตรวจล่าสุด']) {
                             const lastDate = new Date(item['วันที่ตรวจล่าสุด']);
                             if (!isNaN(lastDate)) {
-                                const freq = parseInt(item['ความถี่การตรวจนับ (เดือน)']) || 1;
+                                const freq = parseInt(item['ความถี่การตรวจนับ (เดือน)']) || parseInt(item['ความถี่การตรวจนับ']) || 1;
                                 const diffMonths = (currentYear - lastDate.getFullYear()) * 12 + (currentMonth - lastDate.getMonth());
                                 if (diffMonths < freq) needsInspection = false;
                             }
@@ -1043,13 +1005,10 @@
                     allEquipment = result.data; 
                     filteredEquipment = [...allEquipment];
 
-                    // --- เติมข้อมูลลง Dropdown แผนกของ Admin ---
                     const wards = [...new Set(allEquipment.map(item => item['หน่วยงาน']).filter(Boolean))].sort();
                     const wardSelect = document.getElementById('adminWardFilter');
                     wardSelect.innerHTML = '<option value="all">ดูทุกหน่วยงาน (ทั้ง รพ.)</option>';
-                    wards.forEach(w => {
-                        wardSelect.innerHTML += `<option value="${w}">${w}</option>`;
-                    });
+                    wards.forEach(w => { wardSelect.innerHTML += `<option value="${w}">${w}</option>`; });
                     
                     document.getElementById('wardSubtitle').innerHTML = '<span style="color:#d32f2f; font-weight:bold;"><i class="fas fa-globe"></i> ภาพรวมทั้งโรงพยาบาล (Admin)</span>';
                     document.getElementById('allCountTab').innerText = allEquipment.length;
@@ -1064,17 +1023,15 @@
             }
         }
 
-        // ฟังก์ชัน: ให้ Admin กดเลือกดูตึกจาก Dropdown และค้นหา
         function filterAdminByWard() {
             const selectedWard = document.getElementById('adminWardFilter').value;
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
             
             filteredEquipment = allEquipment.filter(item => {
                 const matchWard = (selectedWard === 'all') || (item['หน่วยงาน'] === selectedWard);
-                // 🟢 เพิ่มการค้นหาจาก RMC No บรรทัดด้านล่างนี้
                 const matchSearch = String(item['ชื่อครุภัณฑ์'] || '').toLowerCase().includes(searchTerm) ||
                                     String(item['เลขครุภัณฑ์'] || '').toLowerCase().includes(searchTerm) ||
-                                    String(item['RMC No'] || '').toLowerCase().includes(searchTerm) || // เพิ่มบรรทัดนี้
+                                    String(item['RMC No'] || '').toLowerCase().includes(searchTerm) || 
                                     String(item['ยี่ห้อ'] || '').toLowerCase().includes(searchTerm) ||
                                     String(item['ตำแหน่งย่อย (Sub-location)'] || '').toLowerCase().includes(searchTerm);
                 return matchWard && matchSearch;
@@ -1082,70 +1039,14 @@
             renderActiveView(); 
         }
 
-        // --- Event ช่องค้นหา ให้รองรับ RMC No ---
-        document.getElementById('searchInput').addEventListener('input', function(e) {
-            if (isAdminLoggedIn) {
-                filterAdminByWard(); 
-            } else {
-                const searchTerm = e.target.value.toLowerCase();
-                filteredEquipment = allEquipment.filter(item => 
-                    String(item['ชื่อครุภัณฑ์'] || '').toLowerCase().includes(searchTerm) ||
-                    String(item['เลขครุภัณฑ์'] || '').toLowerCase().includes(searchTerm) ||
-                    String(item['RMC No'] || '').toLowerCase().includes(searchTerm) || // 🟢 เพิ่มตรงนี้
-                    String(item['ยี่ห้อ'] || '').toLowerCase().includes(searchTerm) ||
-                    String(item['ตำแหน่งย่อย (Sub-location)'] || '').toLowerCase().includes(searchTerm)
-                );
-                renderActiveView(); 
-            }
-        });
-
         function exitAdminMode() {
             Swal.fire({ 
-                icon: 'info', 
-                title: 'ออกจากโหมดผู้ดูแลระบบ', 
-                text: 'กำลังพากลับไปยังหน้าหน่วยงาน...', 
-                timer: 1500, 
-                showConfirmButton: false 
+                icon: 'info', title: 'ออกจากโหมดผู้ดูแลระบบ', text: 'กำลังพากลับไปยังหน้าหน่วยงาน...', 
+                timer: 1500, showConfirmButton: false 
             }).then(() => {
-                // ทำการรีโหลดหน้าเว็บใหม่ โดยบังคับให้กลับไปที่ URL ของหน่วยงานเดิม
-                if (currentWard) {
-                    window.location.href = window.location.pathname + "?ward=" + encodeURIComponent(currentWard);
-                } else {
-                    window.location.reload();
-                }
+                if (currentWard) window.location.href = window.location.pathname + "?ward=" + encodeURIComponent(currentWard);
+                else window.location.reload();
             });
-        }
-
-        const originalSwitchTab = switchTab;
-        switchTab = function(tabId) {
-            currentActiveTab = tabId;
-            document.getElementById('tab-inspection').classList.remove('active');
-            document.getElementById('tab-all').classList.remove('active');
-            if(document.getElementById('tab-admin')) document.getElementById('tab-admin').classList.remove('active');
-            
-            document.getElementById(`tab-${tabId}`).classList.add('active');
-
-            document.getElementById('view-inspection').classList.add('hidden');
-            document.getElementById('view-all').classList.add('hidden');
-            if(document.getElementById('view-admin')) document.getElementById('view-admin').classList.add('hidden');
-            
-            document.getElementById(`view-${tabId}`).classList.remove('hidden');
-            renderActiveView();
-        }
-
-        const originalRenderActiveView = renderActiveView;
-        renderActiveView = function() {
-            const pendingItems = filteredEquipment.filter(item => item._needsInspection);
-            document.getElementById('pendingBadge').innerText = pendingItems.length;
-
-            if (currentActiveTab === 'inspection') {
-                renderInspectionCards(pendingItems); 
-            } else if (currentActiveTab === 'admin') { // <-- ถ้าเปิดหน้าแอดมินอยู่
-                renderAdminTable(filteredEquipment);   // วาดตาราง
-                renderAdminDashboard(filteredEquipment); // ✨ วาดกราฟ
-            } else {
-                renderAllItemsTable(filteredEquipment); 
-            }
         }
 
         function renderAdminTable(data) {
@@ -1153,7 +1054,6 @@
             tbody.innerHTML = '';
 
             if(data.length === 0) {
-                // เปลี่ยน colspan เป็น 8 ให้ครอบคลุมจำนวนคอลัมน์ทั้งหมด
                 tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px;">ไม่พบข้อมูล</td></tr>';
                 return;
             }
@@ -1162,14 +1062,12 @@
                 let statusClass = getStatusClass(item['สถานะ']);
                 const safeItemJson = JSON.stringify(item).replace(/"/g, '&quot;');
                 
-                // ประมวลผลวันตรวจล่าสุด
                 let lastInspectStr = `<span style="color:#dc3545;">ยังไม่เคยตรวจ</span>`;
                 if(item['วันที่ตรวจล่าสุด']) {
                     const d = new Date(item['วันที่ตรวจล่าสุด']);
                     if(!isNaN(d)) lastInspectStr = `<span style="color:#28a745;">ล่าสุด: ${d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}</span>`;
                 }
 
-                // ประมวลผล Risk Level
                 let riskLevel = item['RISK LEVEL'] ? String(item['RISK LEVEL']).trim().toLowerCase() : '';
                 let riskHtml = '';
                 if (riskLevel === 'high') riskHtml = `<span class="risk-badge risk-high"><i class="fas fa-exclamation-triangle"></i> High</span>`;
@@ -1189,7 +1087,7 @@
                     </td>
                     <td style="color: #555; font-weight: 500; font-size: 0.95rem;">${item['หน่วยงาน'] || '-'}</td>
                     <td>
-                        <div style="margin-bottom: 4px; color: #444;">${item['ความถี่การตรวจนับ'] || '1'} เดือน</div>
+                        <div style="margin-bottom: 4px; color: #444;">${item['ความถี่การตรวจนับ'] || item['ความถี่การตรวจนับ (เดือน)'] || '1'} เดือน</div>
                         <div style="font-size: 0.8rem;">${lastInspectStr}</div>
                     </td>
                     <td>
@@ -1197,21 +1095,14 @@
                         <div><span class="status-badge ${statusClass}" style="font-size: 0.75rem; padding: 3px 10px;">${item['สถานะ'] || 'ปกติ'}</span></div>
                     </td>
                     <td style="white-space: nowrap; text-align: center;">
-                        <button class="btn-edit-icon" onclick="openEditEquipmentModal(${safeItemJson})" title="แก้ไขข้อมูล">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn-delete-icon" onclick="deleteEquipment('${item['เลขครุภัณฑ์']}')" title="ลบข้อมูล">
-                            <i class="fas fa-trash-alt"></i>
-                        </button>
+                        <button class="btn-edit-icon" onclick="openEditEquipmentModal(${safeItemJson})" title="แก้ไขข้อมูล"><i class="fas fa-edit"></i></button>
+                        <button class="btn-delete-icon" onclick="deleteEquipment('${item['เลขครุภัณฑ์']}')" title="ลบข้อมูล"><i class="fas fa-trash-alt"></i></button>
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
         }
 
-        // ==========================================
-        // ฟังก์ชัน เพิ่ม/แก้ไข/ลบ ข้อมูล
-        // ==========================================
         function openAddEquipmentModal() {
             Swal.fire({
                 title: 'เพิ่มครุภัณฑ์ใหม่',
@@ -1235,26 +1126,17 @@
                         </div>
                     </div>
                 `,
-                showCancelButton: true,
-                confirmButtonText: 'บันทึกข้อมูล',
-                cancelButtonText: 'ยกเลิก',
-                confirmButtonColor: '#28a745',
-                showLoaderOnConfirm: true,
+                showCancelButton: true, confirmButtonText: 'บันทึกข้อมูล', cancelButtonText: 'ยกเลิก',
+                confirmButtonColor: '#28a745', showLoaderOnConfirm: true,
                 preConfirm: async () => {
                     const itemData = {
-                        rmcNo: document.getElementById('add-rmc').value,
-                        itemId: document.getElementById('add-id').value,
-                        name: document.getElementById('add-name').value,
-                        brand: document.getElementById('add-brand').value,
-                        model: document.getElementById('add-model').value,
-                        ownerWard: document.getElementById('add-ward').value,
-                        subLoc: document.getElementById('add-subloc').value,
-                        freq: document.getElementById('add-freq').value,
+                        rmcNo: document.getElementById('add-rmc').value, itemId: document.getElementById('add-id').value,
+                        name: document.getElementById('add-name').value, brand: document.getElementById('add-brand').value,
+                        model: document.getElementById('add-model').value, ownerWard: document.getElementById('add-ward').value,
+                        subLoc: document.getElementById('add-subloc').value, freq: document.getElementById('add-freq').value,
                         riskLevel: document.getElementById('add-risk').value
                     };
-                    
                     if(!itemData.itemId || !itemData.name) { Swal.showValidationMessage('กรุณากรอก เลขครุภัณฑ์ และ ชื่อครุภัณฑ์'); return; }
-
                     try {
                         const response = await fetch(EQUIPMENT_API, {
                             method: 'POST', redirect: 'follow', headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -1266,9 +1148,7 @@
                     } catch (error) { Swal.showValidationMessage(`Error: ${error}`); }
                 }
             }).then((result) => {
-                if (result.isConfirmed) {
-                    Swal.fire('สำเร็จ', 'เพิ่มครุภัณฑ์ใหม่เรียบร้อย', 'success').then(() => fetchAllEquipmentForAdmin());
-                }
+                if (result.isConfirmed) Swal.fire('สำเร็จ', 'เพิ่มครุภัณฑ์ใหม่เรียบร้อย', 'success').then(() => fetchAllEquipmentForAdmin());
             });
         }
 
@@ -1285,7 +1165,7 @@
                         <div><label style="font-size:0.85rem; color:var(--primary);">ชื่อรุ่น:</label><input type="text" id="edit-model" class="swal-input" value="${item['ชื่อรุ่น'] || ''}"></div>
                         <div><label style="font-size:0.85rem; color:var(--primary);">หน่วยงาน (เจ้าของ):</label><input type="text" id="edit-ward" class="swal-input" value="${item['หน่วยงาน'] || ''}"></div>
                         <div><label style="font-size:0.85rem; color:var(--primary);">ตำแหน่งย่อย:</label><input type="text" id="edit-subloc" class="swal-input" value="${item['ตำแหน่งย่อย (Sub-location)'] || ''}"></div>
-                        <div><label style="font-size:0.85rem; color:var(--primary);">ความถี่ (เดือน):</label><input type="number" id="edit-freq" class="swal-input" value="${item['ความถี่การตรวจนับ (เดือน)'] || 1}"></div>
+                        <div><label style="font-size:0.85rem; color:var(--primary);">ความถี่ (เดือน):</label><input type="number" id="edit-freq" class="swal-input" value="${item['ความถี่การตรวจนับ'] || item['ความถี่การตรวจนับ (เดือน)'] || 1}"></div>
                         <div><label style="font-size:0.85rem; color:var(--primary);">Risk Level:</label>
                             <select id="edit-risk" class="swal-input">
                                 <option value="Low" ${item['RISK LEVEL']=='Low'?'selected':''}>Low Risk</option>
@@ -1295,24 +1175,16 @@
                         </div>
                     </div>
                 `,
-                showCancelButton: true,
-                confirmButtonText: 'อัปเดตข้อมูล',
-                cancelButtonText: 'ยกเลิก',
-                confirmButtonColor: '#ffc107',
-                showLoaderOnConfirm: true,
+                showCancelButton: true, confirmButtonText: 'อัปเดตข้อมูล', cancelButtonText: 'ยกเลิก',
+                confirmButtonColor: '#ffc107', showLoaderOnConfirm: true,
                 preConfirm: async () => {
                     const itemData = {
-                        rmcNo: document.getElementById('edit-rmc').value,
-                        itemId: document.getElementById('edit-id').value,
-                        name: document.getElementById('edit-name').value,
-                        brand: document.getElementById('edit-brand').value,
-                        model: document.getElementById('edit-model').value,
-                        ownerWard: document.getElementById('edit-ward').value,
-                        subLoc: document.getElementById('edit-subloc').value,
-                        freq: document.getElementById('edit-freq').value,
+                        rmcNo: document.getElementById('edit-rmc').value, itemId: document.getElementById('edit-id').value,
+                        name: document.getElementById('edit-name').value, brand: document.getElementById('edit-brand').value,
+                        model: document.getElementById('edit-model').value, ownerWard: document.getElementById('edit-ward').value,
+                        subLoc: document.getElementById('edit-subloc').value, freq: document.getElementById('edit-freq').value,
                         riskLevel: document.getElementById('edit-risk').value
                     };
-                    
                     try {
                         const response = await fetch(EQUIPMENT_API, {
                             method: 'POST', redirect: 'follow', headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -1324,22 +1196,15 @@
                     } catch (error) { Swal.showValidationMessage(`Error: ${error}`); }
                 }
             }).then((result) => {
-                if (result.isConfirmed) {
-                    Swal.fire('สำเร็จ', 'อัปเดตข้อมูลเรียบร้อย', 'success').then(() => fetchAllEquipmentForAdmin());
-                }
+                if (result.isConfirmed) Swal.fire('สำเร็จ', 'อัปเดตข้อมูลเรียบร้อย', 'success').then(() => fetchAllEquipmentForAdmin());
             });
         }
 
         function deleteEquipment(itemId) {
             Swal.fire({
-                title: 'ยืนยันการลบ?',
-                text: "ลบครุภัณฑ์รหัส " + itemId + " ข้อมูลจะหายไปอย่างถาวร!",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#dc3545',
-                confirmButtonText: 'ใช่, ลบเลย!',
-                cancelButtonText: 'ยกเลิก',
-                showLoaderOnConfirm: true,
+                title: 'ยืนยันการลบ?', text: "ลบครุภัณฑ์รหัส " + itemId + " ข้อมูลจะหายไปอย่างถาวร!", icon: 'warning',
+                showCancelButton: true, confirmButtonColor: '#dc3545', confirmButtonText: 'ใช่, ลบเลย!',
+                cancelButtonText: 'ยกเลิก', showLoaderOnConfirm: true,
                 preConfirm: async () => {
                     try {
                         const response = await fetch(EQUIPMENT_API, {
@@ -1352,19 +1217,17 @@
                     } catch (error) { Swal.showValidationMessage(`Error: ${error}`); }
                 }
             }).then((result) => {
-                if (result.isConfirmed) {
-                    Swal.fire('ลบสำเร็จ', 'ข้อมูลถูกลบออกจากระบบแล้ว', 'success').then(() => fetchAllEquipmentForAdmin());
-                }
+                if (result.isConfirmed) Swal.fire('ลบสำเร็จ', 'ข้อมูลถูกลบออกจากระบบแล้ว', 'success').then(() => fetchAllEquipmentForAdmin());
             })
         }
+
         // ==========================================
-        // ส่วนของ Advanced Dashboard (Chart.js)
+        // Advanced Dashboard (Chart.js)
         // ==========================================
         let statusChartInstance = null;
         let inspectChartInstance = null;
 
         function renderAdminDashboard(data) {
-            // คำนวณข้อมูลสำหรับกราฟ สถานะ
             const statusCounts = { 'ปกติ': 0, 'ชำรุดส่งซ่อม': 0, 'ถูกยืม': 0, 'จำหน่าย': 0 };
             let inspectedCount = 0;
             let pendingCount = 0;
@@ -1380,9 +1243,8 @@
                 else inspectedCount++;
             });
 
-            // 1. วาดกราฟโดนัท (Doughnut Chart) แสดงสถานะ
             const ctxStatus = document.getElementById('statusChart').getContext('2d');
-            if(statusChartInstance) statusChartInstance.destroy(); // ลบกราฟเก่าก่อนวาดใหม่
+            if(statusChartInstance) statusChartInstance.destroy(); 
             
             statusChartInstance = new Chart(ctxStatus, {
                 type: 'doughnut',
@@ -1394,13 +1256,9 @@
                         borderWidth: 1
                     }]
                 },
-                options: { 
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { position: 'right', labels: { font: { family: 'Prompt' } } } }
-                }
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { font: { family: 'Prompt' } } } } }
             });
 
-            // 2. วาดกราฟวงกลม (Pie Chart) แสดงความคืบหน้าการตรวจ
             const ctxInspect = document.getElementById('inspectChart').getContext('2d');
             if(inspectChartInstance) inspectChartInstance.destroy();
             
@@ -1414,26 +1272,20 @@
                         borderWidth: 1
                     }]
                 },
-                options: { 
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { position: 'right', labels: { font: { family: 'Prompt' } } } }
-                }
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { font: { family: 'Prompt' } } } } }
             });
         }
-        // ==========================================
-        // ระบบสร้างและพิมพ์ QR Code
-        // ==========================================
 
-        // ฟังก์ชันเลือก/ยกเลิกเลือก ทั้งหมดในหน้า
+        // ==========================================
+        // พิมพ์ QR Code
+        // ==========================================
         function toggleAllQR() {
             const selectAll = document.getElementById('selectAllQR').checked;
             const checkboxes = document.querySelectorAll('.qr-checkbox');
             checkboxes.forEach(cb => cb.checked = selectAll);
         }
 
-        // ฟังก์ชันเปิดหน้าต่างตั้งค่าการพิมพ์
         function openPrintQRModal() {
-            // เช็คว่าติ๊กเลือกอะไรมาบ้าง
             const checkboxes = document.querySelectorAll('.qr-checkbox:checked');
             const selectedIds = Array.from(checkboxes).map(cb => cb.value);
 
@@ -1455,10 +1307,8 @@
                         </select>
                     </div>
                 `,
-                showCancelButton: true,
-                confirmButtonText: '<i class="fas fa-print"></i> สร้างและพิมพ์',
-                cancelButtonText: 'ยกเลิก',
-                confirmButtonColor: '#ffc107',
+                showCancelButton: true, confirmButtonText: '<i class="fas fa-print"></i> สร้างและพิมพ์',
+                cancelButtonText: 'ยกเลิก', confirmButtonColor: '#ffc107',
             }).then((result) => {
                 if (result.isConfirmed) {
                     const size = document.getElementById('qrSizeSelect').value;
@@ -1467,88 +1317,50 @@
             });
         }
 
-        // ฟังก์ชันสร้างและสั่งพิมพ์ QR Code (อัปเดตสร้างจาก RMC No)
         function executePrintQR(selectedIds, sizeInches) {
             const printArea = document.getElementById('printArea');
-            printArea.innerHTML = ''; // ล้างของเก่า
+            printArea.innerHTML = ''; 
 
-            // กำหนด CSS Grid ให้พอดีกับขนาดที่เลือก
             let columns, widthMM;
-            if (sizeInches === "1") {
-                columns = "repeat(7, 1fr)"; // 7 ดวงต่อแถว
-                widthMM = "25.4mm";
-            } else if (sizeInches === "1.5") {
-                columns = "repeat(5, 1fr)"; // 5 ดวงต่อแถว
-                widthMM = "38.1mm";
-            } else {
-                columns = "repeat(4, 1fr)"; // 4 ดวงต่อแถว
-                widthMM = "50.8mm";
-            }
+            if (sizeInches === "1") { columns = "repeat(7, 1fr)"; widthMM = "25.4mm"; } 
+            else if (sizeInches === "1.5") { columns = "repeat(5, 1fr)"; widthMM = "38.1mm"; } 
+            else { columns = "repeat(4, 1fr)"; widthMM = "50.8mm"; }
 
             printArea.style.gridTemplateColumns = columns;
-
-            // กรองดึงเฉพาะข้อมูลที่ถูกเลือกมาสร้าง QR
             const itemsToPrint = allEquipment.filter(item => selectedIds.includes(item['เลขครุภัณฑ์']));
-
             let loadedImages = 0;
             const totalImages = itemsToPrint.length;
 
             itemsToPrint.forEach(item => {
-                // 🟢 ดึงค่า RMC No และ เลขครุภัณฑ์
                 const rmcNo = item['RMC No'] ? String(item['RMC No']).trim() : '-';
                 const itemId = item['เลขครุภัณฑ์'] ? String(item['เลขครุภัณฑ์']).trim() : '-';
-                
-                // 🟢 ใช้ RMC No สร้าง QR (ถ้าไม่มี RMC ให้ใช้เลขครุภัณฑ์แทน เพื่อป้องกันรูป Error)
                 const qrData = (rmcNo !== '-') ? rmcNo : (itemId !== '-' ? itemId : 'NO-ID');
                 const qrImgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrData)}`;
-                
-                // ดึงค่ายี่ห้อและความถี่ (รองรับชื่อคอลัมน์ทั้งแบบมีและไม่มีคำว่า เดือน)
                 const brand = item['ยี่ห้อ'] || '-';
                 const freq = item['ความถี่การตรวจนับ'] || item['ความถี่การตรวจนับ (เดือน)'] || '1';
                 
                 const container = document.createElement('div');
                 container.className = 'qr-label-container';
-                container.style.width = widthMM;
-                container.style.height = widthMM;
-                container.style.boxSizing = 'border-box';
-                container.style.overflow = 'hidden'; 
+                container.style.width = widthMM; container.style.height = widthMM;
+                container.style.boxSizing = 'border-box'; container.style.overflow = 'hidden'; 
 
-                // 🛠 ปรับเลย์เอาต์ข้อความใต้ QR Code
                 container.innerHTML = `
                     <div style="font-size: 7pt; font-weight: bold; line-height: 1.2; margin-bottom: 2px; height: 2.4em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; word-break: break-word; text-align: center;">
                         ${item['ชื่อครุภัณฑ์'] || '-'}
                     </div>
-                    <div style="font-size: 6pt; color: #444; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">
-                        ยี่ห้อ: ${brand}
-                    </div>
-                    
+                    <div style="font-size: 6pt; color: #444; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">ยี่ห้อ: ${brand}</div>
                     <img src="${qrImgSrc}" alt="QR" onload="checkImagesLoaded()" onerror="checkImagesLoaded()" style="width: 100%; max-width: 42%; height: auto; margin: 0 auto;">
-                    
-                    <div style="font-size: 5.5pt; color: #666; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">
-                        RMC: ${rmcNo}
-                    </div>
-                    
-                    <div style="font-size: 7.5pt; font-weight: bold; color: #000; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">
-                        ID: ${itemId}
-                    </div>
-                    
-                    <div style="font-size: 5.5pt; color: #555; background: #eee; padding: 1px 4px; border-radius: 4px; margin-top: 1px; display: inline-block;">
-                        ตรวจทุก ${freq} เดือน
-                    </div>
+                    <div style="font-size: 5.5pt; color: #666; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">RMC: ${rmcNo}</div>
+                    <div style="font-size: 7.5pt; font-weight: bold; color: #000; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">ID: ${itemId}</div>
+                    <div style="font-size: 5.5pt; color: #555; background: #eee; padding: 1px 4px; border-radius: 4px; margin-top: 1px; display: inline-block;">ตรวจทุก ${freq} เดือน</div>
                 `;
                 printArea.appendChild(container);
             });
 
-            // รอให้โหลดรูป QR ครบทุกอันก่อนค่อยสั่งพิมพ์
             window.checkImagesLoaded = function() {
                 loadedImages++;
                 if (loadedImages === totalImages) {
-                    Swal.fire({
-                        title: 'กำลังเตรียมหน้าพิมพ์...',
-                        allowOutsideClick: false,
-                        didOpen: () => { Swal.showLoading(); }
-                    });
-
+                    Swal.fire({ title: 'กำลังเตรียมหน้าพิมพ์...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
                     setTimeout(() => {
                         Swal.close(); 
                         window.print(); 
@@ -1557,6 +1369,7 @@
                 }
             };
         }
+    </script>
     </script>
 </body>
 </html>
