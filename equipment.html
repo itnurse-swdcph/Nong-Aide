@@ -322,17 +322,34 @@
                 fetchEquipment();
             }
 
-            document.getElementById('searchInput').addEventListener('input', function(e) {
-                const searchTerm = e.target.value.toLowerCase();
+            let typingTimer;                // ตัวแปรสำหรับจับเวลาพิมพ์
+        const doneTypingInterval = 800; // รอ 0.8 วินาทีหลังหยุดพิมพ์ ถึงจะค้นหาข้ามตึก
+
+        // 1. Event ดักจับการพิมพ์ในช่องค้นหา (แทนที่ของเดิมทั้งหมด)
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            clearTimeout(typingTimer); // ยกเลิกการนับเวลาเก่าทิ้งถ้ายังพิมพ์อยู่
+            const searchTerm = e.target.value.toLowerCase().trim();
+
+            if (isAdminLoggedIn) {
+                filterAdminByWard(); 
+            } else {
+                // กรองข้อมูลในตารางหน่วยงานตัวเองก่อน
                 filteredEquipment = allEquipment.filter(item => 
                     String(item['ชื่อครุภัณฑ์'] || '').toLowerCase().includes(searchTerm) ||
                     String(item['เลขครุภัณฑ์'] || '').toLowerCase().includes(searchTerm) ||
-                    String(item['RMC No'] || '').toLowerCase().includes(searchTerm) || // ตรวจสอบชื่อ Key ให้ตรงกับชีต
+                    String(item['RMC No'] || '').toLowerCase().includes(searchTerm) || 
                     String(item['ยี่ห้อ'] || '').toLowerCase().includes(searchTerm) ||
                     String(item['ตำแหน่งย่อย (Sub-location)'] || '').toLowerCase().includes(searchTerm)
                 );
                 renderActiveView(); 
-            });
+
+                // 🟢 ระบบอัตโนมัติ: ถ้าตารางว่างเปล่า (หาในตึกไม่เจอ) และมีการพิมพ์รหัสอยู่
+                if (filteredEquipment.length === 0 && searchTerm.length > 0) {
+                    typingTimer = setTimeout(() => {
+                        processSearchOrScan(searchTerm); // สั่งค้นหาข้ามตึกอัตโนมัติ!
+                    }, doneTypingInterval);
+                }
+            }
         });
 
         // 🟢 ฟังก์ชันแสดงคู่มือการใช้งาน (Pop-up)
@@ -590,12 +607,13 @@
                 html5QrcodeScanner.render(onScanSuccess, onScanFailure);
             }
         }
-        // 1. แทนที่ onScanSuccess เดิม ให้ส่งข้อมูลไปฟังก์ชันส่วนกลาง
         function onScanSuccess(decodedText) {
             if(html5QrcodeScanner) {
                 html5QrcodeScanner.clear();
                 document.getElementById('qr-reader').style.display = 'none';
             }
+            // ใส่เลขที่สแกนได้ลงช่องค้นหา แล้วลุยค้นหาเลย
+            document.getElementById('searchInput').value = decodedText;
             processSearchOrScan(decodedText);
         }
 
@@ -618,19 +636,15 @@
             const searchTerm = decodedText.toLowerCase().trim();
             if(!searchTerm) return;
 
-            // ก. ค้นหาในตารางของหน่วยงานตัวเองก่อน
+            // ก. เช็คว่ารหัสที่สแกน/พิมพ์ ตรงเป๊ะๆ กับของในตึกตัวเองไหม
             const localItem = allEquipment.find(item => 
                 String(item['เลขครุภัณฑ์']).toLowerCase() === searchTerm ||
                 String(item['RMC No']).toLowerCase() === searchTerm
             );
 
             if (localItem) {
-                // ถ้าเจอของตัวเอง ให้เปิดหน้าต่างบันทึกทันที!
+                // ถ้าสแกนเจอของตัวเอง ให้เด้งหน้าต่างตรวจนับทันที!
                 openManageModal(localItem);
-                
-                // อัปเดตช่องค้นหาให้กรองตารางด้วย
-                document.getElementById('searchInput').value = decodedText;
-                document.getElementById('searchInput').dispatchEvent(new Event('input'));
                 return;
             }
 
@@ -654,17 +668,21 @@
 
                     if (globalItem) {
                         Swal.close();
-                        // เด้ง Pop-up ถามการดึงข้ามตึก
+                        const freq = globalItem['ความถี่การตรวจนับ'] || globalItem['ความถี่การตรวจนับ (เดือน)'] || '1';
+                        
+                        // 🟢 เด้ง Pop-up ถามการดึงข้ามตึก (เพิ่ม RMC, เลขครุภัณฑ์, ความถี่)
                         const proceed = await Swal.fire({
                             title: '<span style="color:#1976d2;">พบครุภัณฑ์ของหน่วยงานอื่น</span>',
                             icon: 'info',
                             html: `
-                                <div style="text-align: left; background: #e3f2fd; padding: 15px; border-radius: 10px; border: 1px solid #90caf9;">
+                                <div style="text-align: left; background: #e3f2fd; padding: 15px; border-radius: 10px; border: 1px solid #90caf9; font-size: 0.95rem;">
                                     <div style="margin-bottom: 8px;"><b>ชื่อ:</b> ${globalItem['ชื่อครุภัณฑ์'] || '-'}</div>
                                     <div style="margin-bottom: 8px;"><b>ยี่ห้อ:</b> ${globalItem['ยี่ห้อ'] || '-'}</div>
-                                    <div style="margin-bottom: 8px;"><b>รหัส:</b> <span style="color:#d32f2f; font-weight:bold;">${globalItem['RMC No'] || globalItem['เลขครุภัณฑ์']}</span></div>
+                                    <div style="margin-bottom: 8px;"><b>RMC No:</b> <span style="color:#d32f2f; font-weight:bold;">${globalItem['RMC No'] || '-'}</span></div>
+                                    <div style="margin-bottom: 8px;"><b>เลขครุภัณฑ์:</b> <span style="color:#d32f2f; font-weight:bold;">${globalItem['เลขครุภัณฑ์'] || '-'}</span></div>
+                                    <div style="margin-bottom: 8px;"><b>ความถี่ตรวจนับ:</b> ทุก ${freq} เดือน</div>
                                     <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #64b5f6;">
-                                        <i class="fas fa-hospital-user"></i> เจ้าของเดิม: <b>${globalItem['หน่วยงาน']}</b>
+                                        <i class="fas fa-hospital-user"></i> เจ้าของเดิม: <b>${globalItem['หน่วยงาน'] || '-'}</b>
                                     </div>
                                 </div>
                                 <p style="margin-top: 15px; font-size: 0.95rem;">ต้องการดึงมาใช้งานและบันทึกการตรวจนับหรือไม่?<br><small>(ระบบจะเปลี่ยนจุดใช้งานมาที่ <b>${currentWard}</b>)</small></p>
@@ -677,7 +695,6 @@
                         });
 
                         if (proceed.isConfirmed) {
-                            // สั่ง API ดึงข้อมูลมาเป็นของตึกตัวเอง
                             Swal.fire({ title: 'กำลังดึงข้อมูลเข้าหน่วยงาน...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                             
                             const pullResponse = await fetch(EQUIPMENT_API, {
@@ -691,10 +708,10 @@
                             if (pullResult.status === 'success') {
                                 Swal.fire({ icon: 'success', title: 'ดึงข้อมูลสำเร็จ', text: 'เพิ่มเข้าสู่ตารางของคุณแล้ว', timer: 1500, showConfirmButton: false });
                                 
-                                // รีโหลดข้อมูลตารางใหม่ เพื่อให้มีของชิ้นนี้โผล่ขึ้นมา
+                                // รีโหลดข้อมูลตารางใหม่
                                 await fetchEquipment();
                                 
-                                // หน่วงเวลา 1 วินาที เพื่อค้นหาไอเทมนั้นในเครื่องตัวเองแล้วเด้งหน้าตรวจนับขึ้นมาให้อัตโนมัติ!
+                                // หน่วงเวลา 1 วินาที เพื่อค้นหาไอเทมนั้นแล้วเด้งหน้าตรวจนับอัตโนมัติ
                                 setTimeout(() => {
                                     const newlyPulledItem = allEquipment.find(item => item['เลขครุภัณฑ์'] === globalItem['เลขครุภัณฑ์']);
                                     if(newlyPulledItem) openManageModal(newlyPulledItem);
@@ -702,7 +719,7 @@
                             }
                         }
                     } else {
-                        Swal.fire('ไม่พบข้อมูล', `ไม่พบรหัส ${decodedText} ในระบบของโรงพยาบาลเลย`, 'error');
+                        Swal.fire('ไม่พบข้อมูล', `ไม่พบรหัส "${decodedText}" ในระบบของโรงพยาบาลเลย`, 'error');
                     }
                 }
             } catch (error) {
