@@ -1333,7 +1333,7 @@
             });
         }
 
-        // ฟังก์ชันสร้างและสั่งพิมพ์ QR Code
+        // ฟังก์ชันสร้างและสั่งพิมพ์ QR Code (อัปเดตสร้างจาก RMC No)
         function executePrintQR(selectedIds, sizeInches) {
             const printArea = document.getElementById('printArea');
             printArea.innerHTML = ''; // ล้างของเก่า
@@ -1360,12 +1360,17 @@
             const totalImages = itemsToPrint.length;
 
             itemsToPrint.forEach(item => {
-                const qrText = item['เลขครุภัณฑ์'] ? String(item['เลขครุภัณฑ์']).trim() : 'NO-ID';
-                const qrImgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrText)}`;
+                // 🟢 ดึงค่า RMC No และ เลขครุภัณฑ์
+                const rmcNo = item['RMC No'] ? String(item['RMC No']).trim() : '-';
+                const itemId = item['เลขครุภัณฑ์'] ? String(item['เลขครุภัณฑ์']).trim() : '-';
                 
-                // ดึงค่ายี่ห้อและความถี่
+                // 🟢 ใช้ RMC No สร้าง QR (ถ้าไม่มี RMC ให้ใช้เลขครุภัณฑ์แทน เพื่อป้องกันรูป Error)
+                const qrData = (rmcNo !== '-') ? rmcNo : (itemId !== '-' ? itemId : 'NO-ID');
+                const qrImgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrData)}`;
+                
+                // ดึงค่ายี่ห้อและความถี่ (รองรับชื่อคอลัมน์ทั้งแบบมีและไม่มีคำว่า เดือน)
                 const brand = item['ยี่ห้อ'] || '-';
-                const freq = item['ความถี่การตรวจนับ (เดือน)'] || '1';
+                const freq = item['ความถี่การตรวจนับ'] || item['ความถี่การตรวจนับ (เดือน)'] || '1';
                 
                 const container = document.createElement('div');
                 container.className = 'qr-label-container';
@@ -1374,7 +1379,7 @@
                 container.style.boxSizing = 'border-box';
                 container.style.overflow = 'hidden'; 
 
-                // 🛠 ปรับเลย์เอาต์ใหม่: กำหนดความสูงให้ชื่อครุภัณฑ์รองรับ 2 บรรทัด
+                // 🛠 ปรับเลย์เอาต์ข้อความใต้ QR Code
                 container.innerHTML = `
                     <div style="font-size: 7pt; font-weight: bold; line-height: 1.2; margin-bottom: 2px; height: 2.4em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; word-break: break-word; text-align: center;">
                         ${item['ชื่อครุภัณฑ์'] || '-'}
@@ -1382,11 +1387,18 @@
                     <div style="font-size: 6pt; color: #444; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">
                         ยี่ห้อ: ${brand}
                     </div>
-                    <img src="${qrImgSrc}" alt="QR" onload="checkImagesLoaded()" onerror="checkImagesLoaded()" style="width: 100%; max-width: 45%; height: auto; margin: 0 auto;">
-                    <div style="font-size: 6.5pt; font-weight: bold; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">
-                        ID: ${qrText}
+                    
+                    <img src="${qrImgSrc}" alt="QR" onload="checkImagesLoaded()" onerror="checkImagesLoaded()" style="width: 100%; max-width: 42%; height: auto; margin: 0 auto;">
+                    
+                    <div style="font-size: 5.5pt; color: #666; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">
+                        RMC: ${rmcNo}
                     </div>
-                    <div style="font-size: 6pt; color: #555; background: #eee; padding: 1px 4px; border-radius: 4px; margin-top: 1px; display: inline-block;">
+                    
+                    <div style="font-size: 7.5pt; font-weight: bold; color: #000; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">
+                        ID: ${itemId}
+                    </div>
+                    
+                    <div style="font-size: 5.5pt; color: #555; background: #eee; padding: 1px 4px; border-radius: 4px; margin-top: 1px; display: inline-block;">
                         ตรวจทุก ${freq} เดือน
                     </div>
                 `;
@@ -1397,7 +1409,6 @@
             window.checkImagesLoaded = function() {
                 loadedImages++;
                 if (loadedImages === totalImages) {
-                    
                     Swal.fire({
                         title: 'กำลังเตรียมหน้าพิมพ์...',
                         allowOutsideClick: false,
@@ -1407,9 +1418,7 @@
                     setTimeout(() => {
                         Swal.close(); 
                         window.print(); 
-                        
                         setTimeout(() => { printArea.innerHTML = ''; }, 1000);
-                        
                     }, 800);
                 }
             };
