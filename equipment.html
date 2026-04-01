@@ -234,10 +234,10 @@
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>เลขครุภัณฑ์</th>
+                                <th>RMC No</th> <th>เลขครุภัณฑ์</th>
                                 <th>ชื่อครุภัณฑ์ / ยี่ห้อ</th>
-                                <th>ตำแหน่ง</th>
-                                <th>ความถี่</th> <th>ตรวจล่าสุด</th>
+                                <th>ความถี่</th>
+                                <th>ตรวจล่าสุด</th>
                                 <th>สถานะ</th>
                                 <th>จัดการ</th>
                             </tr>
@@ -283,14 +283,12 @@
                     <table class="admin-data-table">
                         <thead>
                             <tr>
-                                <th style="text-align: center; width: 40px;">
-                                    <input type="checkbox" id="selectAllQR" onclick="toggleAllQR()" style="transform: scale(1.3); cursor: pointer;">
-                                </th>
-                                <th>เลขครุภัณฑ์</th>
+                                <th><input type="checkbox" id="selectAllQR" onclick="toggleAllQR()"></th>
+                                <th>RMC No</th> <th>เลขครุภัณฑ์</th>
                                 <th>ชื่อครุภัณฑ์ / รุ่น</th>
                                 <th>หน่วยงาน</th>
                                 <th>ความถี่ / ตรวจล่าสุด</th>
-                                <th>ความเสี่ยง / สถานะ</th>
+                                <th>สถานะ</th>
                                 <th style="text-align: center;">จัดการ</th>
                             </tr>
                         </thead>
@@ -329,6 +327,7 @@
                 filteredEquipment = allEquipment.filter(item => 
                     String(item['ชื่อครุภัณฑ์'] || '').toLowerCase().includes(searchTerm) ||
                     String(item['เลขครุภัณฑ์'] || '').toLowerCase().includes(searchTerm) ||
+                    String(item['RMC No'] || '').toLowerCase().includes(searchTerm) || // ตรวจสอบชื่อ Key ให้ตรงกับชีต
                     String(item['ยี่ห้อ'] || '').toLowerCase().includes(searchTerm) ||
                     String(item['ตำแหน่งย่อย (Sub-location)'] || '').toLowerCase().includes(searchTerm)
                 );
@@ -508,11 +507,10 @@
                     <div class="item-details">
                         <h4>${item['ชื่อครุภัณฑ์'] || 'ไม่ระบุชื่อ'} ${riskHtml}</h4>
                         <div class="info-row">
-                            <span class="info-item"><i class="fas fa-barcode"></i> NO: <strong>${item['เลขครุภัณฑ์'] || '-'}</strong></span>
+                            <span class="info-item"><i class="fas fa-fingerprint"></i> RMC: <strong>${item['RMC No'] || '-'}</strong></span> <span class="info-item"><i class="fas fa-barcode"></i> ID: <strong>${item['เลขครุภัณฑ์'] || '-'}</strong></span>
                             <span class="info-item"><i class="fas fa-map-marker-alt"></i> จุด: <strong>${item['ตำแหน่งย่อย (Sub-location)'] || '-'}</strong></span>
-                            <span class="info-item"><i class="fas fa-clock"></i> ความถี่: <strong>${item['ความถี่การตรวจนับ (เดือน)'] || '-'} เดือน</strong></span>
                         </div>
-                    </div>
+                    </div>>
                     <div class="item-actions">
                         <span class="status-badge ${statusClass}">${statusIcon} ${item['สถานะ'] || 'ปกติ'}</span>
                         <button class="btn btn-primary btn-sm" onclick="openManageModal(${safeItemJson})">
@@ -529,8 +527,8 @@
             tbody.innerHTML = '';
 
             if(data.length === 0) {
-                // เปลี่ยน colspan เป็น 7 ตามจำนวนคอลัมน์ใหม่
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px;">ไม่พบข้อมูล</td></tr>';
+                // เปลี่ยน colspan เป็น 8 ให้ครอบคลุมจำนวนคอลัมน์ทั้งหมด
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px;">ไม่พบข้อมูล</td></tr>';
                 return;
             }
 
@@ -546,13 +544,15 @@
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
+                    <td style="color: #666; font-size: 0.9rem;">${item['RMC No'] || '-'}</td>
                     <td><strong>${item['เลขครุภัณฑ์'] || '-'}</strong></td>
                     <td>
                         ${item['ชื่อครุภัณฑ์'] || '-'}<br>
                         <small style="color:#666;">ยี่ห้อ/รุ่น: ${item['ยี่ห้อ'] || '-'} / ${item['ชื่อรุ่น'] || '-'}</small>
                     </td>
                     <td>${item['ตำแหน่งย่อย (Sub-location)'] || '-'}</td>
-                    <td style="color:#003366; font-size:0.9rem;">${item['ความถี่การตรวจนับ'] || '1'} เดือน</td> <td style="color:#28a745; font-size:0.9rem;">${lastInspectStr}</td>
+                    <td style="color:#003366; font-size:0.9rem;">${item['ความถี่การตรวจนับ'] || '1'} เดือน</td>
+                    <td style="color:#28a745; font-size:0.9rem;">${lastInspectStr}</td>
                     <td><span class="status-badge ${statusClass}" style="font-size:0.75rem;">${item['สถานะ'] || 'ปกติ'}</span></td>
                     <td>
                         <button class="btn btn-outline btn-sm" onclick="showDetailsModal(${safeItemJson})">
@@ -942,7 +942,7 @@
                 // 🟢 เพิ่มการค้นหาจาก RMC No บรรทัดด้านล่างนี้
                 const matchSearch = String(item['ชื่อครุภัณฑ์'] || '').toLowerCase().includes(searchTerm) ||
                                     String(item['เลขครุภัณฑ์'] || '').toLowerCase().includes(searchTerm) ||
-                                    String(item['RMC No'] || '').toLowerCase().includes(searchTerm) || 
+                                    String(item['RMC No'] || '').toLowerCase().includes(searchTerm) || // เพิ่มบรรทัดนี้
                                     String(item['ยี่ห้อ'] || '').toLowerCase().includes(searchTerm) ||
                                     String(item['ตำแหน่งย่อย (Sub-location)'] || '').toLowerCase().includes(searchTerm);
                 return matchWard && matchSearch;
@@ -1021,7 +1021,8 @@
             tbody.innerHTML = '';
 
             if(data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px;">ไม่พบข้อมูล</td></tr>';
+                // เปลี่ยน colspan เป็น 8 ให้ครอบคลุมจำนวนคอลัมน์ทั้งหมด
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px;">ไม่พบข้อมูล</td></tr>';
                 return;
             }
 
@@ -1048,6 +1049,7 @@
                     <td style="text-align: center;">
                         <input type="checkbox" class="qr-checkbox" value="${item['เลขครุภัณฑ์']}" style="transform: scale(1.3); cursor: pointer;">
                     </td>
+                    <td style="color: #666; font-size: 0.85rem;">${item['RMC No'] || '-'}</td>
                     <td style="font-weight: 600; color: #333; font-size: 0.95rem;">${item['เลขครุภัณฑ์'] || '-'}</td>
                     <td>
                         <div style="font-weight: 500; color: #444; margin-bottom: 4px;">${item['ชื่อครุภัณฑ์'] || '-'}</div>
@@ -1055,7 +1057,7 @@
                     </td>
                     <td style="color: #555; font-weight: 500; font-size: 0.95rem;">${item['หน่วยงาน'] || '-'}</td>
                     <td>
-                        <div style="margin-bottom: 4px; color: #444;">${item['ความถี่การตรวจนับ (เดือน)'] || '1'} เดือน</div>
+                        <div style="margin-bottom: 4px; color: #444;">${item['ความถี่การตรวจนับ'] || '1'} เดือน</div>
                         <div style="font-size: 0.8rem;">${lastInspectStr}</div>
                     </td>
                     <td>
