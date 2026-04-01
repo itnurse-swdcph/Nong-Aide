@@ -237,7 +237,7 @@
                                 <th>เลขครุภัณฑ์</th>
                                 <th>ชื่อครุภัณฑ์ / ยี่ห้อ</th>
                                 <th>ตำแหน่ง</th>
-                                <th>ตรวจล่าสุด</th>
+                                <th>ความถี่</th> <th>ตรวจล่าสุด</th>
                                 <th>สถานะ</th>
                                 <th>จัดการ</th>
                             </tr>
@@ -529,7 +529,8 @@
             tbody.innerHTML = '';
 
             if(data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px;">ไม่พบข้อมูล</td></tr>';
+                // เปลี่ยน colspan เป็น 7 ตามจำนวนคอลัมน์ใหม่
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px;">ไม่พบข้อมูล</td></tr>';
                 return;
             }
 
@@ -551,7 +552,7 @@
                         <small style="color:#666;">ยี่ห้อ/รุ่น: ${item['ยี่ห้อ'] || '-'} / ${item['ชื่อรุ่น'] || '-'}</small>
                     </td>
                     <td>${item['ตำแหน่งย่อย (Sub-location)'] || '-'}</td>
-                    <td style="color:#28a745; font-size:0.9rem;">${lastInspectStr}</td>
+                    <td style="color:#003366; font-size:0.9rem;">${item['ความถี่การตรวจนับ'] || '1'} เดือน</td> <td style="color:#28a745; font-size:0.9rem;">${lastInspectStr}</td>
                     <td><span class="status-badge ${statusClass}" style="font-size:0.75rem;">${item['สถานะ'] || 'ปกติ'}</span></td>
                     <td>
                         <button class="btn btn-outline btn-sm" onclick="showDetailsModal(${safeItemJson})">
