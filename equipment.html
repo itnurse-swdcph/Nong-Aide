@@ -626,7 +626,50 @@
             });
         }
 
-        function openManageModal(item) {
+        // ฟังก์ชันเปิดหน้าต่างบันทึกการตรวจ (พร้อมระบบแจ้งเตือนถ้ายังไม่ถึงรอบ)
+        async function openManageModal(item) {
+            // 1. ตรวจสอบว่าถึงรอบตรวจหรือยัง
+            if (!item._needsInspection) {
+                // จัดรูปแบบวันที่ตรวจล่าสุดให้สวยงาม
+                let lastInspectStr = "ยังไม่เคยตรวจ";
+                if (item['วันที่ตรวจล่าสุด']) {
+                    const d = new Date(item['วันที่ตรวจล่าสุด']);
+                    if (!isNaN(d)) {
+                        lastInspectStr = d.toLocaleDateString('th-TH', { 
+                            day: 'numeric', 
+                            month: 'long', 
+                            year: 'numeric' 
+                        });
+                    }
+                }
+
+                // 2. แสดง Pop-up เตือนก่อนเข้าหน้าบันทึก
+                const proceed = await Swal.fire({
+                    title: '<span style="color:#f57f17;">ยังไม่ถึงรอบการตรวจ</span>',
+                    icon: 'warning',
+                    html: `
+                        <div style="text-align: left; background: #fff9db; padding: 15px; border-radius: 10px; border: 1px solid #ffe066;">
+                            <div style="margin-bottom: 8px;"><b>ชื่อ:</b> ${item['ชื่อครุภัณฑ์'] || '-'}</div>
+                            <div style="margin-bottom: 8px;"><b>ยี่ห้อ:</b> ${item['ยี่ห้อ'] || '-'}</div>
+                            <div style="margin-bottom: 8px;"><b>เลขครุภัณฑ์:</b> <span style="color:#d32f2f;">${item['เลขครุภัณฑ์'] || '-'}</span></div>
+                            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #fab005;">
+                                <i class="fas fa-history"></i> ตรวจล่าสุดวันที่: <b>${lastInspectStr}</b>
+                            </div>
+                        </div>
+                        <p style="margin-top: 15px; font-size: 0.95rem;">รายการนี้ยังไม่ถึงกำหนดรอบตรวจเช็ค<br><b>คุณยังต้องการบันทึกการตรวจหรือไม่?</b></p>
+                    `,
+                    showCancelButton: true,
+                    confirmButtonColor: '#003366',
+                    cancelButtonColor: '#adb5bd',
+                    confirmButtonText: 'ใช่, ต้องการบันทึก',
+                    cancelButtonText: 'ไม่ต้อง, ยกเลิก'
+                });
+
+                // ถ้าผู้ใช้กด "ยกเลิก" ให้หยุดการทำงานทันที
+                if (!proceed.isConfirmed) return;
+            }
+
+            // 3. เข้าสู่หน้าจอหลักของการบันทึกการตรวจ (โค้ดส่วนเดิมของคุณ)
             Swal.fire({
                 title: 'บันทึกการตรวจนับ',
                 html: `
@@ -639,30 +682,30 @@
                         <label><i class="fas fa-flag"></i> สถานะการตรวจพบ:</label>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px;">
                             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 0.9rem; transition: 0.3s;">
-                                <input type="radio" name="update-status" value="ปกติ" onchange="toggleExtraInputs()" ${item['สถานะ'] === 'ปกติ' ? 'checked' : ''} style="transform: scale(1.2);">
+                                <input type="radio" name="update-status" value="ปกติ" onchange="toggleExtraInputs()" checked style="transform: scale(1.2);">
                                 <span style="color: #28a745;"><i class="fas fa-check-circle"></i> ปกติ/พร้อมใช้</span>
                             </label>
                             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 0.9rem; transition: 0.3s;">
-                                <input type="radio" name="update-status" value="ชำรุดส่งซ่อม" onchange="toggleExtraInputs()" ${item['สถานะ'] === 'ชำรุดส่งซ่อม' ? 'checked' : ''} style="transform: scale(1.2);">
+                                <input type="radio" name="update-status" value="ชำรุดส่งซ่อม" onchange="toggleExtraInputs()" style="transform: scale(1.2);">
                                 <span style="color: #dc3545;"><i class="fas fa-wrench"></i> ชำรุดส่งซ่อม</span>
                             </label>
                             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 0.9rem; transition: 0.3s;">
-                                <input type="radio" name="update-status" value="ถูกยืม" onchange="toggleExtraInputs()" ${item['สถานะ'] === 'ถูกยืม' ? 'checked' : ''} style="transform: scale(1.2);">
+                                <input type="radio" name="update-status" value="ถูกยืม" onchange="toggleExtraInputs()" style="transform: scale(1.2);">
                                 <span style="color: #f57f17;"><i class="fas fa-exchange-alt"></i> ถูกยืมใช้งาน</span>
                             </label>
                             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 0.9rem; transition: 0.3s;">
-                                <input type="radio" name="update-status" value="จำหน่าย" onchange="toggleExtraInputs()" ${item['สถานะ'] === 'จำหน่าย' ? 'checked' : ''} style="transform: scale(1.2);">
+                                <input type="radio" name="update-status" value="จำหน่าย" onchange="toggleExtraInputs()" style="transform: scale(1.2);">
                                 <span style="color: #6c757d;"><i class="fas fa-trash-alt"></i> แทงจำหน่าย</span>
                             </label>
                         </div>
                     </div>
 
-                    <div id="borrow-div" class="swal-form-group" style="display: ${item['สถานะ'] === 'ถูกยืม' ? 'block' : 'none'};">
+                    <div id="borrow-div" class="swal-form-group" style="display: none;">
                         <label><i class="fas fa-hospital"></i> ยืมไปที่หน่วยงานใด:</label>
-                        <input type="text" id="update-borrow" class="swal-input" placeholder="ระบุชื่อหน่วยงาน" value="${item['ใช้งานที่'] || ''}">
+                        <input type="text" id="update-borrow" class="swal-input" placeholder="ระบุชื่อหน่วยงาน">
                     </div>
 
-                    <div id="photo-div" class="swal-form-group" style="display: ${item['สถานะ'] === 'ชำรุดส่งซ่อม' ? 'block' : 'none'};">
+                    <div id="photo-div" class="swal-form-group" style="display: none;">
                         <label><i class="fas fa-camera"></i> ถ่ายภาพหรือแนบรูปจุดที่ชำรุด:</label>
                         <input type="file" id="update-photo" class="swal-input" accept="image/*" capture="environment">
                     </div>
@@ -745,8 +788,6 @@
                         showConfirmButton: false
                     }).then(() => {
                         document.getElementById('loadingState').classList.remove('hidden');
-                        document.getElementById('view-inspection').classList.add('hidden');
-                        document.getElementById('view-all').classList.add('hidden');
                         fetchEquipment(); 
                     });
                 }
