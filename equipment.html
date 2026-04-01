@@ -932,32 +932,34 @@
             }
         }
 
-        // ฟังก์ชันใหม่: ให้ Admin กดเลือกดูตึกจาก Dropdown
+        // ฟังก์ชัน: ให้ Admin กดเลือกดูตึกจาก Dropdown และค้นหา
         function filterAdminByWard() {
             const selectedWard = document.getElementById('adminWardFilter').value;
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
             
             filteredEquipment = allEquipment.filter(item => {
                 const matchWard = (selectedWard === 'all') || (item['หน่วยงาน'] === selectedWard);
+                // 🟢 เพิ่มการค้นหาจาก RMC No บรรทัดด้านล่างนี้
                 const matchSearch = String(item['ชื่อครุภัณฑ์'] || '').toLowerCase().includes(searchTerm) ||
                                     String(item['เลขครุภัณฑ์'] || '').toLowerCase().includes(searchTerm) ||
+                                    String(item['RMC No'] || '').toLowerCase().includes(searchTerm) || 
                                     String(item['ยี่ห้อ'] || '').toLowerCase().includes(searchTerm) ||
                                     String(item['ตำแหน่งย่อย (Sub-location)'] || '').toLowerCase().includes(searchTerm);
                 return matchWard && matchSearch;
             });
-            renderActiveView(); // จะอัปเดตหน้าจอทั้ง Tab รอตรวจ, Tab ทั้งหมด, และ Tab Admin
+            renderActiveView(); 
         }
 
-        // --- แก้ไข Event ช่องค้นหา ให้รองรับ Dropdown ของ Admin ---
-        // (ให้ค้นหาแล้ววางทับ EventListener ตัวเดิมใน DOMContentLoaded)
+        // --- Event ช่องค้นหา ให้รองรับ RMC No ---
         document.getElementById('searchInput').addEventListener('input', function(e) {
             if (isAdminLoggedIn) {
-                filterAdminByWard(); // ถ้าเป็นแอดมิน ให้ค้นหาแบบกรองตึกด้วย
+                filterAdminByWard(); 
             } else {
                 const searchTerm = e.target.value.toLowerCase();
                 filteredEquipment = allEquipment.filter(item => 
                     String(item['ชื่อครุภัณฑ์'] || '').toLowerCase().includes(searchTerm) ||
                     String(item['เลขครุภัณฑ์'] || '').toLowerCase().includes(searchTerm) ||
+                    String(item['RMC No'] || '').toLowerCase().includes(searchTerm) || // 🟢 เพิ่มตรงนี้
                     String(item['ยี่ห้อ'] || '').toLowerCase().includes(searchTerm) ||
                     String(item['ตำแหน่งย่อย (Sub-location)'] || '').toLowerCase().includes(searchTerm)
                 );
