@@ -507,10 +507,12 @@
                     <div class="item-details">
                         <h4>${item['ชื่อครุภัณฑ์'] || 'ไม่ระบุชื่อ'} ${riskHtml}</h4>
                         <div class="info-row">
-                            <span class="info-item"><i class="fas fa-fingerprint"></i> RMC: <strong>${item['RMC No'] || '-'}</strong></span> <span class="info-item"><i class="fas fa-barcode"></i> ID: <strong>${item['เลขครุภัณฑ์'] || '-'}</strong></span>
+                            <span class="info-item"><i class="fas fa-fingerprint"></i> RMC: <strong>${item['RMC No'] || '-'}</strong></span> 
+                            <span class="info-item"><i class="fas fa-barcode"></i> ID: <strong>${item['เลขครุภัณฑ์'] || '-'}</strong></span>
                             <span class="info-item"><i class="fas fa-map-marker-alt"></i> จุด: <strong>${item['ตำแหน่งย่อย (Sub-location)'] || '-'}</strong></span>
+                            <span class="info-item"><i class="fas fa-clock"></i> ตรวจทุก: <strong>${item['ความถี่การตรวจนับ'] || '1'} เดือน</strong></span>
                         </div>
-                    </div>>
+                    </div>
                     <div class="item-actions">
                         <span class="status-badge ${statusClass}">${statusIcon} ${item['สถานะ'] || 'ปกติ'}</span>
                         <button class="btn btn-primary btn-sm" onclick="openManageModal(${safeItemJson})">
@@ -588,11 +590,124 @@
                 html5QrcodeScanner.render(onScanSuccess, onScanFailure);
             }
         }
+        // 1. แทนที่ onScanSuccess เดิม ให้ส่งข้อมูลไปฟังก์ชันส่วนกลาง
         function onScanSuccess(decodedText) {
-            document.getElementById('searchInput').value = decodedText;
-            document.getElementById('searchInput').dispatchEvent(new Event('input'));
-            toggleScanner();
-            Swal.fire({ icon: 'success', title: 'ค้นพบรายการ', text: `สแกนรหัส: ${decodedText}`, timer: 1500, showConfirmButton: false });
+            if(html5QrcodeScanner) {
+                html5QrcodeScanner.clear();
+                document.getElementById('qr-reader').style.display = 'none';
+            }
+            processSearchOrScan(decodedText);
+        }
+
+        // 2. เพิ่ม Event ดักจับการกด "Enter" ที่ช่องค้นหา (เผื่อกรณีคีย์เลขเอาเอง)
+        document.addEventListener('DOMContentLoaded', () => {
+            // (เอาไปวางรวมกับ DOMContentLoaded ของเดิมที่มีอยู่แล้ว หรือวางลอยๆ ตรงนี้ก็ได้ครับ)
+            const searchInputObj = document.getElementById('searchInput');
+            if(searchInputObj) {
+                searchInputObj.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        processSearchOrScan(e.target.value);
+                    }
+                });
+            }
+        });
+
+        // 3. ฟังก์ชันหลักสำหรับค้นหา คัดกรอง และดึงของข้ามตึก
+        async function processSearchOrScan(decodedText) {
+            const searchTerm = decodedText.toLowerCase().trim();
+            if(!searchTerm) return;
+
+            // ก. ค้นหาในตารางของหน่วยงานตัวเองก่อน
+            const localItem = allEquipment.find(item => 
+                String(item['เลขครุภัณฑ์']).toLowerCase() === searchTerm ||
+                String(item['RMC No']).toLowerCase() === searchTerm
+            );
+
+            if (localItem) {
+                // ถ้าเจอของตัวเอง ให้เปิดหน้าต่างบันทึกทันที!
+                openManageModal(localItem);
+                
+                // อัปเดตช่องค้นหาให้กรองตารางด้วย
+                document.getElementById('searchInput').value = decodedText;
+                document.getElementById('searchInput').dispatchEvent(new Event('input'));
+                return;
+            }
+
+            // ข. ถ้าไม่เจอในตึกตัวเอง -> ค้นหาจากฐานข้อมูลรวมทั้งโรงพยาบาล
+            Swal.fire({
+                title: 'กำลังค้นหาข้อมูลข้ามหน่วยงาน...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                const response = await fetch(`${EQUIPMENT_API}?action=getAllItems`);
+                const textData = await response.text();
+                const result = JSON.parse(textData);
+                
+                if (result.status === 'success') {
+                    const globalItem = result.data.find(item => 
+                        String(item['เลขครุภัณฑ์']).toLowerCase() === searchTerm ||
+                        String(item['RMC No']).toLowerCase() === searchTerm
+                    );
+
+                    if (globalItem) {
+                        Swal.close();
+                        // เด้ง Pop-up ถามการดึงข้ามตึก
+                        const proceed = await Swal.fire({
+                            title: '<span style="color:#1976d2;">พบครุภัณฑ์ของหน่วยงานอื่น</span>',
+                            icon: 'info',
+                            html: `
+                                <div style="text-align: left; background: #e3f2fd; padding: 15px; border-radius: 10px; border: 1px solid #90caf9;">
+                                    <div style="margin-bottom: 8px;"><b>ชื่อ:</b> ${globalItem['ชื่อครุภัณฑ์'] || '-'}</div>
+                                    <div style="margin-bottom: 8px;"><b>ยี่ห้อ:</b> ${globalItem['ยี่ห้อ'] || '-'}</div>
+                                    <div style="margin-bottom: 8px;"><b>รหัส:</b> <span style="color:#d32f2f; font-weight:bold;">${globalItem['RMC No'] || globalItem['เลขครุภัณฑ์']}</span></div>
+                                    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #64b5f6;">
+                                        <i class="fas fa-hospital-user"></i> เจ้าของเดิม: <b>${globalItem['หน่วยงาน']}</b>
+                                    </div>
+                                </div>
+                                <p style="margin-top: 15px; font-size: 0.95rem;">ต้องการดึงมาใช้งานและบันทึกการตรวจนับหรือไม่?<br><small>(ระบบจะเปลี่ยนจุดใช้งานมาที่ <b>${currentWard}</b>)</small></p>
+                            `,
+                            showCancelButton: true,
+                            confirmButtonColor: '#28a745',
+                            cancelButtonColor: '#6c757d',
+                            confirmButtonText: '<i class="fas fa-download"></i> ใช่, ดึงมาใช้งาน',
+                            cancelButtonText: 'ยกเลิก'
+                        });
+
+                        if (proceed.isConfirmed) {
+                            // สั่ง API ดึงข้อมูลมาเป็นของตึกตัวเอง
+                            Swal.fire({ title: 'กำลังดึงข้อมูลเข้าหน่วยงาน...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                            
+                            const pullResponse = await fetch(EQUIPMENT_API, {
+                                method: 'POST',
+                                redirect: 'follow',
+                                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                                body: JSON.stringify({ action: 'pullEquipment', itemId: globalItem['เลขครุภัณฑ์'], newWard: currentWard })
+                            });
+                            const pullResult = await pullResponse.json();
+                            
+                            if (pullResult.status === 'success') {
+                                Swal.fire({ icon: 'success', title: 'ดึงข้อมูลสำเร็จ', text: 'เพิ่มเข้าสู่ตารางของคุณแล้ว', timer: 1500, showConfirmButton: false });
+                                
+                                // รีโหลดข้อมูลตารางใหม่ เพื่อให้มีของชิ้นนี้โผล่ขึ้นมา
+                                await fetchEquipment();
+                                
+                                // หน่วงเวลา 1 วินาที เพื่อค้นหาไอเทมนั้นในเครื่องตัวเองแล้วเด้งหน้าตรวจนับขึ้นมาให้อัตโนมัติ!
+                                setTimeout(() => {
+                                    const newlyPulledItem = allEquipment.find(item => item['เลขครุภัณฑ์'] === globalItem['เลขครุภัณฑ์']);
+                                    if(newlyPulledItem) openManageModal(newlyPulledItem);
+                                }, 1000);
+                            }
+                        }
+                    } else {
+                        Swal.fire('ไม่พบข้อมูล', `ไม่พบรหัส ${decodedText} ในระบบของโรงพยาบาลเลย`, 'error');
+                    }
+                }
+            } catch (error) {
+                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้', 'error');
+            }
         }
         function onScanFailure(error) {}
 
