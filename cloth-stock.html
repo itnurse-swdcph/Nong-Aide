@@ -69,6 +69,31 @@
 
         /* Loader */
         #loader { text-align: center; padding: 50px; color: #666; font-size: 1.1rem; }
+        /* สไตล์สำหรับปุ่ม i วิธีใช้งาน */
+        .help-icon { 
+            color: var(--primary); 
+            background: var(--accent); 
+            font-size: 0.9rem; 
+            cursor: pointer; 
+            margin-left: 8px; 
+            width: 28px; 
+            height: 28px; 
+            border-radius: 50%; 
+            display: inline-flex; 
+            justify-content: center; 
+            align-items: center; 
+            vertical-align: middle; 
+            transition: 0.3s; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border: none;
+        }
+        .help-icon:hover { transform: scale(1.1); background: #e6c200; }
+        
+        .help-content { text-align: left; font-size: 0.95rem; line-height: 1.6; color: #444; }
+        .help-content h4 { color: var(--primary); margin-top: 15px; margin-bottom: 8px; border-bottom: 2px solid #eee; padding-bottom: 5px; }
+        .help-content ul { padding-left: 20px; }
+        .help-content li { margin-bottom: 5px; }
+        .schedule-box { background: #fff9db; border: 1px solid #ffe066; padding: 10px; border-radius: 8px; margin-top: 10px; color: #856404; font-weight: 500;}
     </style>
 </head>
 <body>
@@ -90,7 +115,10 @@
 
         <div id="mainContent" style="display: none;">
             <div class="page-header">
-                <h1><i class="fas fa-tshirt"></i> ระบบตรวจนับ Stock ผ้า</h1>
+                <h1>
+                    <i class="fas fa-tshirt"></i> ระบบตรวจนับ Stock ผ้า
+                    <button class="help-icon" onclick="showClothHelpModal()" title="วิธีใช้งาน"><i class="fas fa-info"></i></button>
+                </h1>
                 <div class="quarter-badge" id="displayQuarter">ประจำไตรมาส -</div>
             </div>
 
@@ -346,6 +374,31 @@
                 btn.disabled = false;
                 Swal.fire('ข้อผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
             }
+        }
+        function showClothHelpModal() {
+            Swal.fire({
+                title: '<i class="fas fa-book-reader" style="color:var(--primary);"></i> คู่มือและกำหนดการตรวจนับ',
+                html: `
+                    <div class="help-content">
+                        <div class="schedule-box">
+                            <i class="fas fa-calendar-alt"></i> <b>กำหนดการตรวจนับ:</b><br>
+                            ระบบกำหนดให้เข้าตรวจนับใน <b>"เดือนแรก"</b> ของแต่ละไตรมาส ดังนี้:<br>
+                            • มกราคม | • เมษายน | • กรกฎาคม | • ตุลาคม
+                        </div>
+
+                        <h4><i class="fas fa-list-ol"></i> ขั้นตอนการใช้งาน</h4>
+                        <ul>
+                            <li><b>ตรวจสอบรายการ:</b> ระบบจะดึงรายการผ้ามาตรฐานของตึกคุณมาแสดงพร้อมยอดเป้าหมาย (Par Level)</li>
+                            <li><b>นับและกรอกข้อมูล:</b> แยกกรอกยอด <b>"ผ้าสภาพดี"</b> และ <b>"ผ้าชำรุด/เปื้อน"</b></li>
+                            <li><b>ตรวจสอบส่วนต่าง:</b> ระบบจะคำนวณส่วนต่างให้ทันที (+ คือของเกิน / - คือของขาด)</li>
+                            <li><b>บันทึกข้อมูล:</b> ตรวจทานให้ถูกต้องแล้วกดปุ่มบันทึกด้านล่าง (บันทึกได้เพียง 1 ครั้งต่อไตรมาส)</li>
+                        </ul>
+                    </div>
+                `,
+                confirmButtonColor: '#003366',
+                confirmButtonText: 'รับทราบ',
+                width: 550
+            });
         }
     </script>
 </body>
