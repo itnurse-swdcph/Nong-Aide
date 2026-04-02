@@ -197,6 +197,8 @@
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const currentWard = urlParams.get('ward');
+        const entryRole = urlParams.get('role');
+        const isAdminEntry = entryRole === 'admin';
         
         // 🔴 นำ URL ของ Web App มาใส่ตรงนี้!
         const CLOTH_API = "https://script.google.com/macros/s/AKfycbwX02hKklePV0IIiMNkn-f-_l44ig0B_GdjYxemy8iLQ2JIrMgJg7MiWonIZuajW5DL1Q/exec"; 
@@ -210,7 +212,10 @@
         let conditionChartInstance = null;
 
         document.addEventListener('DOMContentLoaded', () => {
-            if (currentWard) {
+            if (isAdminEntry) {
+                initializeAdminEntry();
+                switchToAdminMode(true);
+            } else if (currentWard) {
                 document.getElementById('displayWard').innerText = currentWard;
                 fetchClothMaster();
             } else {
@@ -222,6 +227,15 @@
                 });
             }
         });
+
+        function initializeAdminEntry() {
+            document.getElementById('displayWard').innerHTML = '<i class="fas fa-tools"></i> ADMIN MODE';
+            document.getElementById('btnAdminLogin').style.display = 'none';
+            document.getElementById('loader').innerHTML = `
+                <i class="fas fa-spinner fa-spin fa-3x" style="color:var(--primary); margin-bottom:15px;"></i>
+                <p>กำลังโหลดข้อมูลภาพรวมสำหรับผู้ดูแลระบบ...</p>
+            `;
+        }
 
         // ==============================
         // โหมดพนักงานทั่วไป (User Mode)
@@ -438,7 +452,7 @@
 
         // 2. ฟังก์ชันสลับหน้าจอและโหลดข้อมูลแอดมิน
         let wardCriteriaData = {}; // เก็บเกณฑ์เตียง
-        async function switchToAdminMode() {
+        async function switchToAdminMode(isAutoLogin = false) {
             Swal.fire({
                 title: 'กำลังเข้าสู่โหมดแอดมิน',
                 html: 'กรุณารอสักครู่ ระบบกำลังรวบรวมข้อมูลทั้งโรงพยาบาล...',
@@ -471,14 +485,16 @@
                     // แสดงผลข้อมูลครั้งแรก
                     filterAdminData();
 
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'เข้าสู่ระบบสำเร็จ',
-                        toast: true,
-                        position: 'top-end',
-                        showConfirmButton: false,
-                        timer: 3000
-                    });
+                    if (!isAutoLogin) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'เข้าสู่ระบบสำเร็จ',
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 3000
+                        });
+                    }
                 } else {
                     throw new Error(result.message);
                 }
@@ -703,7 +719,11 @@
                 cancelButtonText: 'ยกเลิก'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    window.location.reload();
+                    if (currentWard) {
+                        window.location.href = `${window.location.pathname}?ward=${encodeURIComponent(currentWard)}`;
+                    } else {
+                        window.location.href = 'index.html';
+                    }
                 }
             });
         }
