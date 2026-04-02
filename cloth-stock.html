@@ -7,17 +7,14 @@
     <link rel="icon" type="image/jpeg" href="https://img2.pic.in.th/LINE_ALBUM_442025_251220_1.jpg">
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
         :root {
-            --primary: #003366;
-            --secondary: #4ea8de;
-            --accent: #ffc107;
-            --bg: #f4f7f9;
-            --white: #ffffff;
-            --text-main: #333333;
-            --danger: #dc3545;
-            --success: #28a745;
+            --primary: #003366; --secondary: #4ea8de; --accent: #ffc107; --bg: #f4f7f9;
+            --white: #ffffff; --text-main: #333333; --danger: #dc3545; --success: #28a745;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Prompt', sans-serif; }
         body { background-color: var(--bg); color: var(--text-main); padding-bottom: 20px;}
@@ -25,75 +22,66 @@
         .navbar { background: var(--primary); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .nav-left { display: flex; align-items: center; gap: 10px; font-weight: 500; cursor: pointer; }
         .ward-badge { background: rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 500;}
+        .admin-btn { background: var(--accent); color: var(--primary); padding: 5px 10px; border-radius: 8px; border: none; font-size: 0.8rem; font-family: 'Prompt'; font-weight: 600; cursor: pointer; margin-left: 10px; }
         
         .container { max-width: 800px; margin: 0 auto; padding: 20px; }
         .page-header { text-align: center; margin-bottom: 25px; }
         .page-header h1 { color: var(--primary); font-size: 1.5rem; margin-bottom: 5px; }
         .quarter-badge { display: inline-block; background: #e3f2fd; color: #1976d2; padding: 5px 15px; border-radius: 20px; font-weight: 600; font-size: 0.9rem; border: 1px solid #90caf9;}
 
+        .help-icon { color: var(--primary); background: var(--accent); font-size: 0.9rem; cursor: pointer; margin-left: 8px; width: 28px; height: 28px; border-radius: 50%; display: inline-flex; justify-content: center; align-items: center; vertical-align: middle; transition: 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border: none; }
+        .help-icon:hover { transform: scale(1.1); background: #e6c200; }
+        
         .card { background: var(--white); border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 4px solid var(--secondary);}
         .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px dashed #eee;}
         .card-header h3 { font-size: 1.2rem; color: var(--primary); }
         .par-level { font-size: 0.9rem; color: #666; background: #f8f9fa; padding: 4px 10px; border-radius: 8px; border: 1px solid #ddd;}
         
-        /* สไตล์สำหรับ Sub-type (เช่น ผู้ใหญ่, ผู้ใหญ่พิเศษ) */
         .sub-type-box { background: #fafbfc; border: 1px solid #edf2f7; border-radius: 8px; padding: 15px; margin-bottom: 15px;}
         .sub-type-title { font-size: 0.95rem; font-weight: 600; color: #444; margin-bottom: 10px; display: flex; align-items: center; gap: 5px;}
-        
         .input-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;}
         .input-label { font-size: 0.9rem; font-weight: 500; display: flex; align-items: center; gap: 5px;}
         .label-good { color: var(--success); }
         .label-defect { color: var(--danger); }
         
-        /* ปุ่ม Stepper (+ / -) */
         .stepper { display: flex; align-items: center; border: 1px solid #ccc; border-radius: 8px; overflow: hidden; background: white;}
         .stepper button { background: #f8f9fa; border: none; width: 40px; height: 35px; font-size: 1.2rem; font-weight: bold; color: #555; cursor: pointer; transition: 0.2s;}
-        .stepper button:active { background: #e2e6ea; }
         .stepper input { width: 50px; height: 35px; border: none; border-left: 1px solid #ccc; border-right: 1px solid #ccc; text-align: center; font-size: 1.1rem; font-weight: 600; color: var(--primary); outline: none;}
         
-        /* กล่องสรุปผล Real-time */
         .summary-box { background: #e3f2fd; padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-top: 15px;}
         .summary-total { font-size: 1rem; font-weight: 600; color: var(--primary); }
         .summary-diff { font-size: 1.2rem; font-weight: bold; background: white; padding: 5px 15px; border-radius: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);}
-        
-        .diff-positive { color: var(--success); } /* เขียว */
-        .diff-negative { color: var(--danger); } /* แดง */
-        .diff-zero { color: #6c757d; } /* เทา */
+        .diff-positive { color: var(--success); } 
+        .diff-negative { color: var(--danger); } 
+        .diff-zero { color: #6c757d; }
 
-        .btn-submit { width: 100%; padding: 15px; background: var(--primary); color: white; border: none; border-radius: 10px; font-size: 1.1rem; font-weight: 600; font-family: 'Prompt'; cursor: pointer; transition: 0.3s; margin-top: 20px; box-shadow: 0 4px 10px rgba(0,51,102,0.2);}
+        .btn-submit { width: 100%; padding: 15px; background: var(--primary); color: white; border: none; border-radius: 10px; font-size: 1.1rem; font-weight: 600; font-family: 'Prompt'; cursor: pointer; transition: 0.3s; margin-top: 20px;}
         .btn-submit:hover { background: #002244; transform: translateY(-2px);}
-        .btn-submit:disabled { background: #ccc; cursor: not-allowed; transform: none;}
+        .btn-submit:disabled { background: #ccc; cursor: not-allowed; }
 
         .already-counted { text-align: center; background: white; padding: 40px 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-top: 20px;}
-        .already-counted i { font-size: 4rem; color: var(--success); margin-bottom: 20px;}
-
-        /* Loader */
         #loader { text-align: center; padding: 50px; color: #666; font-size: 1.1rem; }
-        /* สไตล์สำหรับปุ่ม i วิธีใช้งาน */
-        .help-icon { 
-            color: var(--primary); 
-            background: var(--accent); 
-            font-size: 0.9rem; 
-            cursor: pointer; 
-            margin-left: 8px; 
-            width: 28px; 
-            height: 28px; 
-            border-radius: 50%; 
-            display: inline-flex; 
-            justify-content: center; 
-            align-items: center; 
-            vertical-align: middle; 
-            transition: 0.3s; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            border: none;
-        }
-        .help-icon:hover { transform: scale(1.1); background: #e6c200; }
+
+        /* ================= Admin Styles ================= */
+        .admin-container { max-width: 1100px; margin: 0 auto; padding: 20px; display: none;}
+        .admin-toolbar { display: flex; flex-wrap: wrap; gap: 15px; background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 3px 10px rgba(0,0,0,0.05);}
+        .admin-toolbar select { padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Prompt'; font-size: 0.95rem; flex: 1; min-width: 200px;}
+        .btn-export { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-family: 'Prompt'; cursor: pointer; font-weight: 500; display: inline-flex; align-items: center; gap: 8px;}
         
-        .help-content { text-align: left; font-size: 0.95rem; line-height: 1.6; color: #444; }
-        .help-content h4 { color: var(--primary); margin-top: 15px; margin-bottom: 8px; border-bottom: 2px solid #eee; padding-bottom: 5px; }
-        .help-content ul { padding-left: 20px; }
-        .help-content li { margin-bottom: 5px; }
-        .schedule-box { background: #fff9db; border: 1px solid #ffe066; padding: 10px; border-radius: 8px; margin-top: 10px; color: #856404; font-weight: 500;}
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;}
+        .stat-card { background: white; padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 3px 10px rgba(0,0,0,0.05); border-bottom: 4px solid var(--primary);}
+        .stat-card.good { border-color: var(--success); }
+        .stat-card.defect { border-color: var(--danger); }
+        .stat-num { font-size: 2rem; font-weight: bold; color: var(--text-main); line-height: 1.2;}
+        .stat-label { font-size: 0.9rem; color: #666; }
+
+        .chart-container { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 3px 10px rgba(0,0,0,0.05); }
+        
+        .table-responsive { overflow-x: auto; background: white; border-radius: 12px; box-shadow: 0 3px 10px rgba(0,0,0,0.05); }
+        .admin-table { width: 100%; border-collapse: collapse; min-width: 900px;}
+        .admin-table th { background: #003366; color: white; padding: 12px 15px; text-align: left; font-weight: 500; white-space: nowrap;}
+        .admin-table td { padding: 12px 15px; border-bottom: 1px solid #eee; font-size: 0.9rem;}
+        .admin-table tbody tr:hover { background: #f8f9fa; }
     </style>
 </head>
 <body>
@@ -102,15 +90,16 @@
         <div class="nav-left" onclick="window.location.href='index.html'">
             <i class="fas fa-arrow-left"></i> กลับหน้าหลัก
         </div>
-        <div class="nav-right">
+        <div class="nav-right" style="display: flex; align-items: center;">
             <span class="ward-badge"><i class="fas fa-hospital-user"></i> <span id="displayWard">โหลด...</span></span>
+            <button class="admin-btn" id="btnAdminLogin" onclick="showAdminLogin()"><i class="fas fa-user-shield"></i> Admin</button>
         </div>
     </nav>
 
-    <div class="container">
+    <div class="container" id="userSection">
         <div id="loader">
             <i class="fas fa-spinner fa-spin fa-3x" style="color:var(--primary); margin-bottom:15px;"></i>
-            <p>กำลังโหลดข้อมูลรายการผ้า...</p>
+            <p>กำลังโหลดข้อมูล...</p>
         </div>
 
         <div id="mainContent" style="display: none;">
@@ -123,7 +112,7 @@
             </div>
 
             <div id="alreadyCountedMessage" class="already-counted" style="display: none;">
-                <i class="fas fa-check-circle"></i>
+                <i class="fas fa-check-circle" style="font-size: 4rem; color: var(--success); margin-bottom: 20px;"></i>
                 <h2 style="color:var(--primary); margin-bottom:10px;">ตรวจนับเรียบร้อยแล้ว</h2>
                 <p style="color:#666;">หน่วยงานนี้ได้ทำการตรวจนับผ้าของรอบไตรมาสนี้ไปแล้ว</p>
                 <p id="lastCountText" style="font-weight:600; margin-top:10px; color:#333;"></p>
@@ -142,30 +131,128 @@
         </div>
     </div>
 
+    <div class="admin-container" id="adminSection">
+        <h2 style="color: var(--primary); margin-bottom: 20px;"><i class="fas fa-chart-line"></i> Dashboard สรุปผลการตรวจนับผ้า</h2>
+        
+        <div class="admin-toolbar">
+            <select id="adminQuarterFilter" onchange="filterAdminData()">
+                <option value="all">ดูทุกไตรมาส</option>
+            </select>
+            <select id="adminWardFilter" onchange="filterAdminData()">
+                <option value="all">ดูทุกหน่วยงาน (ทั้งโรงพยาบาล)</option>
+            </select>
+            <button class="btn-export" onclick="exportToCSV()"><i class="fas fa-file-excel"></i> Export Excel</button>
+            <button class="btn-export" style="background:#6c757d;" onclick="exitAdminMode()"><i class="fas fa-sign-out-alt"></i> ปิดโหมดผู้ดูแล</button>
+        </div>
+
+        <div class="stat-grid">
+            <div class="stat-card">
+                <div class="stat-num" id="statPar">0</div>
+                <div class="stat-label">เป้าหมายรวม (Par)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-num" id="statTotal" style="color:var(--primary);">0</div>
+                <div class="stat-label">ยอดที่นับได้ทั้งหมด</div>
+            </div>
+            <div class="stat-card good">
+                <div class="stat-num" id="statGood" style="color:var(--success);">0</div>
+                <div class="stat-label">ผ้าสภาพดีพร้อมใช้</div>
+            </div>
+            <div class="stat-card defect">
+                <div class="stat-num" id="statDefect" style="color:var(--danger);">0</div>
+                <div class="stat-label">ผ้าชำรุดรอจำหน่าย</div>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+            <div class="chart-container">
+                <h4 style="text-align:center; color:var(--primary); margin-bottom:10px;">สัดส่วนสภาพผ้าที่นับได้</h4>
+                <canvas id="conditionChart" style="max-height: 250px;"></canvas>
+            </div>
+        </div>
+
+        <h3 style="color: var(--primary); margin-top: 10px; margin-bottom: 15px;"><i class="fas fa-table"></i> ประวัติการบันทึกข้อมูล</h3>
+        <div class="table-responsive">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>วันที่บันทึก</th>
+                        <th>รอบตรวจ</th>
+                        <th>หน่วยงาน</th>
+                        <th>ประเภทผ้า</th>
+                        <th>ดี</th>
+                        <th>ชำรุด</th>
+                        <th>รวมนับได้</th>
+                        <th>เป้า(Par)</th>
+                        <th>ส่วนต่าง</th>
+                        <th>รายละเอียด (ผู้ใหญ่/พิเศษ)</th>
+                    </tr>
+                </thead>
+                <tbody id="adminTableBody">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const currentWard = urlParams.get('ward');
         
-        // 🔴 นำ URL ของ Web App (ระบบผ้า) มาใส่ตรงนี้!
-        const CLOTH_API = "https://script.google.com/macros/s/AKfycbwX02hKklePV0IIiMNkn-f-_l44ig0B_GdjYxemy8iLQ2JIrMgJg7MiWonIZuajW5DL1Q/exec"; // <-- แก้เป็น URL ใหม่ของคุณ
+        // 🔴 นำ URL ของ Web App มาใส่ตรงนี้!
+        const CLOTH_API = "https://script.google.com/macros/s/AKfycbwX02hKklePV0IIiMNkn-f-_l44ig0B_GdjYxemy8iLQ2JIrMgJg7MiWonIZuajW5DL1Q/exec"; 
 
         let masterItems = [];
         let currentQuarter = "";
+        
+        // ตัวแปรฝั่ง Admin
+        let allAdminLogs = [];
+        let filteredAdminLogs = [];
+        let conditionChartInstance = null;
 
         document.addEventListener('DOMContentLoaded', () => {
             if (currentWard) {
                 document.getElementById('displayWard').innerText = currentWard;
                 fetchClothMaster();
             } else {
-                Swal.fire('ข้อผิดพลาด', 'ไม่พบข้อมูลหน่วยงาน กรุณาเข้าสู่ระบบผ่านหน้าหลัก', 'error');
+                document.getElementById('displayWard').innerText = "หน้าหลัก";
+                document.getElementById('loader').style.display = 'none';
+                Swal.fire({
+                    icon: 'info', title: 'ระบุหน่วยงาน', text: 'กรุณาเข้าสู่ระบบผ่านหน้าหลัก หรือ Login เป็น Admin',
+                    confirmButtonText: 'รับทราบ'
+                });
             }
         });
+
+        // ==============================
+        // โหมดพนักงานทั่วไป (User Mode)
+        // ==============================
+        function showClothHelpModal() {
+            Swal.fire({
+                title: '<i class="fas fa-book-reader" style="color:var(--primary);"></i> คู่มือและกำหนดการ',
+                html: `
+                    <div style="text-align: left; font-size: 0.95rem; line-height: 1.6; color: #444;">
+                        <div style="background: #fff9db; border: 1px solid #ffe066; padding: 10px; border-radius: 8px; margin-bottom: 15px; color: #856404; font-weight: 500;">
+                            <i class="fas fa-calendar-alt"></i> <b>กำหนดการตรวจนับ:</b><br>
+                            ระบบกำหนดให้เข้าตรวจนับใน <b>"เดือนแรก"</b> ของแต่ละไตรมาส ดังนี้:<br>
+                            • มกราคม | • เมษายน | • กรกฎาคม | • ตุลาคม
+                        </div>
+                        <h4 style="color: var(--primary); margin-bottom: 8px; border-bottom: 2px solid #eee; padding-bottom: 5px;"><i class="fas fa-list-ol"></i> ขั้นตอนการใช้งาน</h4>
+                        <ul style="padding-left: 20px;">
+                            <li><b>ตรวจสอบรายการ:</b> ระบบจะดึงรายการมาตรฐานของตึกมาแสดง</li>
+                            <li><b>กรอกข้อมูล:</b> แยกกรอกยอด "ผ้าสภาพดี" และ "ผ้าชำรุด/เปื้อน"</li>
+                            <li><b>ตรวจสอบส่วนต่าง:</b> ระบบจะคำนวณส่วนต่าง (+ คือของเกิน / - คือของขาด)</li>
+                            <li><b>บันทึกข้อมูล:</b> กดบันทึกด้านล่าง (บันทึกได้เพียง 1 ครั้งต่อไตรมาส)</li>
+                        </ul>
+                    </div>
+                `,
+                confirmButtonColor: '#003366', confirmButtonText: 'รับทราบ', width: 550
+            });
+        }
 
         async function fetchClothMaster() {
             try {
                 const response = await fetch(`${CLOTH_API}?action=getClothMaster&ward=${encodeURIComponent(currentWard)}`);
                 const result = await response.json();
-
                 document.getElementById('loader').style.display = 'none';
                 document.getElementById('mainContent').style.display = 'block';
 
@@ -173,7 +260,6 @@
                     currentQuarter = result.currentQuarter;
                     document.getElementById('displayQuarter').innerText = `รอบ: ${currentQuarter}`;
 
-                    // เช็คว่าเคยนับไปแล้วหรือยัง
                     if (result.isAlreadyCounted) {
                         document.getElementById('clothForm').style.display = 'none';
                         document.getElementById('alreadyCountedMessage').style.display = 'block';
@@ -183,13 +269,11 @@
 
                     masterItems = result.data;
                     if (masterItems.length === 0) {
-                        document.getElementById('clothCardsContainer').innerHTML = '<div class="card" style="text-align:center; color:red;">ไม่พบรายการตั้งค่าผ้าสำหรับหน่วยงานนี้ (กรุณาตั้งค่าในชีต ClothMaster)</div>';
+                        document.getElementById('clothCardsContainer').innerHTML = '<div class="card" style="text-align:center; color:red;">ไม่พบรายการตั้งค่าผ้าสำหรับหน่วยงานนี้</div>';
                         document.getElementById('submitBtn').disabled = true;
                     } else {
                         renderCards(masterItems);
                     }
-                } else {
-                    Swal.fire('ข้อผิดพลาด', result.message, 'error');
                 }
             } catch (error) {
                 Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้', 'error');
@@ -199,18 +283,12 @@
         function renderCards(items) {
             const container = document.getElementById('clothCardsContainer');
             container.innerHTML = '';
-
             items.forEach((item, index) => {
                 let subTypes = item.subTypes.split(',').map(s => s.trim()).filter(s => s && s !== '-');
-                let hasSubTypes = subTypes.length > 0;
-                
                 let subTypeHtml = '';
-                if (hasSubTypes) {
-                    subTypes.forEach((sub, subIndex) => {
-                        subTypeHtml += createInputRow(index, subIndex, sub);
-                    });
+                if (subTypes.length > 0) {
+                    subTypes.forEach((sub, subIndex) => { subTypeHtml += createInputRow(index, subIndex, sub); });
                 } else {
-                    // ถ้าไม่มีซับไทป์ ก็สร้างกล่องรับค่าปกติอันเดียว
                     subTypeHtml = createInputRow(index, 0, ''); 
                 }
 
@@ -231,14 +309,13 @@
             });
         }
 
-        // ฟังก์ชันสร้างกล่องบวกลบเลข (Stepper)
         function createInputRow(itemIndex, subIndex, title) {
             let titleHtml = title ? `<div class="sub-type-title"><i class="fas fa-caret-right" style="color:var(--secondary);"></i> ชนิด: ${title}</div>` : '';
             return `
                 <div class="sub-type-box">
                     ${titleHtml}
                     <div class="input-row">
-                        <div class="input-label label-good"><i class="fas fa-check-circle"></i> สภาพดีพร้อมใช้:</div>
+                        <div class="input-label label-good"><i class="fas fa-check-circle"></i> ดีพร้อมใช้:</div>
                         <div class="stepper">
                             <button type="button" onclick="changeVal(${itemIndex}, ${subIndex}, 'good', -1)">-</button>
                             <input type="number" id="good-${itemIndex}-${subIndex}" value="0" min="0" oninput="calculateTotal(${itemIndex})">
@@ -246,7 +323,7 @@
                         </div>
                     </div>
                     <div class="input-row">
-                        <div class="input-label label-defect"><i class="fas fa-times-circle"></i> ชำรุด/รอจำหน่าย:</div>
+                        <div class="input-label label-defect"><i class="fas fa-times-circle"></i> ชำรุด:</div>
                         <div class="stepper">
                             <button type="button" onclick="changeVal(${itemIndex}, ${subIndex}, 'defect', -1)">-</button>
                             <input type="number" id="defect-${itemIndex}-${subIndex}" value="0" min="0" oninput="calculateTotal(${itemIndex})">
@@ -259,49 +336,26 @@
 
         function changeVal(itemIndex, subIndex, type, amount) {
             const input = document.getElementById(`${type}-${itemIndex}-${subIndex}`);
-            let currentVal = parseInt(input.value) || 0;
-            let newVal = currentVal + amount;
-            if (newVal < 0) newVal = 0;
-            input.value = newVal;
+            let newVal = (parseInt(input.value) || 0) + amount;
+            input.value = newVal < 0 ? 0 : newVal;
             calculateTotal(itemIndex);
         }
 
-        // 🟢 ระบบคำนวณส่วนต่าง Real-time
         function calculateTotal(itemIndex) {
             const parLevel = parseInt(document.getElementById(`par-${itemIndex}`).innerText);
-            let totalGood = 0;
-            let totalDefect = 0;
+            let tGood = 0, tDefect = 0;
+            document.querySelectorAll(`[id^="good-${itemIndex}-"]`).forEach(i => tGood += parseInt(i.value) || 0);
+            document.querySelectorAll(`[id^="defect-${itemIndex}-"]`).forEach(i => tDefect += parseInt(i.value) || 0);
 
-            // ค้นหา input ทั้งหมดที่เกี่ยวข้องกับ itemIndex นี้
-            const goodInputs = document.querySelectorAll(`[id^="good-${itemIndex}-"]`);
-            const defectInputs = document.querySelectorAll(`[id^="defect-${itemIndex}-"]`);
-
-            goodInputs.forEach(input => totalGood += parseInt(input.value) || 0);
-            defectInputs.forEach(input => totalDefect += parseInt(input.value) || 0);
-
-            const totalCounted = totalGood + totalDefect;
-            const difference = totalCounted - parLevel;
-
-            document.getElementById(`total-val-${itemIndex}`).innerText = totalCounted;
+            const total = tGood + tDefect;
+            const diff = total - parLevel;
+            document.getElementById(`total-val-${itemIndex}`).innerText = total;
             
             const diffSpan = document.getElementById(`diff-val-${itemIndex}`);
-            const diffParent = diffSpan.parentElement;
-            
-            diffParent.classList.remove('diff-positive', 'diff-negative', 'diff-zero');
-            
-            if (difference > 0) {
-                diffSpan.innerText = `+${difference}`;
-                diffParent.classList.add('diff-positive');
-            } else if (difference < 0) {
-                diffSpan.innerText = `${difference}`;
-                diffParent.classList.add('diff-negative');
-            } else {
-                diffSpan.innerText = "0";
-                diffParent.classList.add('diff-zero');
-            }
+            diffSpan.parentElement.className = 'summary-diff ' + (diff > 0 ? 'diff-positive' : diff < 0 ? 'diff-negative' : 'diff-zero');
+            diffSpan.innerText = diff > 0 ? `+${diff}` : diff;
         }
 
-        // 🟢 ฟังก์ชันส่งข้อมูลไปยัง Google Sheets
         async function submitData(e) {
             e.preventDefault();
             const recorder = document.getElementById('recorderName').value;
@@ -312,93 +366,202 @@
             btn.disabled = true;
 
             let logs = [];
-
             masterItems.forEach((item, index) => {
                 let subTypes = item.subTypes.split(',').map(s => s.trim()).filter(s => s && s !== '-');
-                let hasSubTypes = subTypes.length > 0;
-                
-                let totalGood = 0;
-                let totalDefect = 0;
-                let subTypeDetailsArray = [];
+                let tGood = 0, tDefect = 0, detailsArray = [];
 
-                if (hasSubTypes) {
+                if (subTypes.length > 0) {
                     subTypes.forEach((sub, subIndex) => {
                         let g = parseInt(document.getElementById(`good-${index}-${subIndex}`).value) || 0;
                         let d = parseInt(document.getElementById(`defect-${index}-${subIndex}`).value) || 0;
-                        totalGood += g;
-                        totalDefect += d;
-                        if(g > 0 || d > 0) subTypeDetailsArray.push(`${sub}: ดี=${g}, ชำรุด=${d}`);
+                        tGood += g; tDefect += d;
+                        if(g>0 || d>0) detailsArray.push(`${sub}: ดี=${g}, ชำรุด=${d}`);
                     });
                 } else {
-                    totalGood = parseInt(document.getElementById(`good-${index}-0`).value) || 0;
-                    totalDefect = parseInt(document.getElementById(`defect-${index}-0`).value) || 0;
+                    tGood = parseInt(document.getElementById(`good-${index}-0`).value) || 0;
+                    tDefect = parseInt(document.getElementById(`defect-${index}-0`).value) || 0;
                 }
 
-                const totalCounted = totalGood + totalDefect;
-                const difference = totalCounted - item.parLevel;
-                const detailsStr = subTypeDetailsArray.join(" | ");
-
                 logs.push({
-                    mainType: item.mainType,
-                    parLevel: item.parLevel,
-                    totalGood: totalGood,
-                    totalDefect: totalDefect,
-                    totalCounted: totalCounted,
-                    difference: difference,
-                    subTypeDetails: detailsStr || "-"
+                    mainType: item.mainType, parLevel: item.parLevel,
+                    totalGood: tGood, totalDefect: tDefect,
+                    totalCounted: tGood + tDefect, difference: (tGood + tDefect) - item.parLevel,
+                    subTypeDetails: detailsArray.join(" | ") || "-"
                 });
             });
 
-            const payload = {
-                action: 'submitClothLog',
-                ward: currentWard,
-                recorder: recorder,
-                logs: logs
-            };
-
             try {
-                const response = await fetch(CLOTH_API, {
-                    method: 'POST', redirect: 'follow', headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify(payload)
-                });
+                const response = await fetch(CLOTH_API, { method: 'POST', redirect: 'follow', body: JSON.stringify({ action: 'submitClothLog', ward: currentWard, recorder: recorder, logs: logs }) });
                 const result = await response.json();
-
-                if (result.status === 'success') {
-                    Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ', text: 'ข้อมูลการตรวจนับถูกบันทึกเรียบร้อย', confirmButtonColor: '#003366' })
-                    .then(() => window.location.reload());
-                } else {
-                    throw new Error(result.message);
-                }
+                if (result.status === 'success') Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ', confirmButtonColor: '#003366' }).then(() => window.location.reload());
+                else throw new Error(result.message);
             } catch (error) {
                 btn.innerHTML = '<i class="fas fa-save"></i> บันทึกข้อมูลการตรวจนับ';
                 btn.disabled = false;
                 Swal.fire('ข้อผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
             }
         }
-        function showClothHelpModal() {
-            Swal.fire({
-                title: '<i class="fas fa-book-reader" style="color:var(--primary);"></i> คู่มือและกำหนดการตรวจนับ',
-                html: `
-                    <div class="help-content">
-                        <div class="schedule-box">
-                            <i class="fas fa-calendar-alt"></i> <b>กำหนดการตรวจนับ:</b><br>
-                            ระบบกำหนดให้เข้าตรวจนับใน <b>"เดือนแรก"</b> ของแต่ละไตรมาส ดังนี้:<br>
-                            • มกราคม | • เมษายน | • กรกฎาคม | • ตุลาคม
-                        </div>
 
-                        <h4><i class="fas fa-list-ol"></i> ขั้นตอนการใช้งาน</h4>
-                        <ul>
-                            <li><b>ตรวจสอบรายการ:</b> ระบบจะดึงรายการผ้ามาตรฐานของตึกคุณมาแสดงพร้อมยอดเป้าหมาย (Par Level)</li>
-                            <li><b>นับและกรอกข้อมูล:</b> แยกกรอกยอด <b>"ผ้าสภาพดี"</b> และ <b>"ผ้าชำรุด/เปื้อน"</b></li>
-                            <li><b>ตรวจสอบส่วนต่าง:</b> ระบบจะคำนวณส่วนต่างให้ทันที (+ คือของเกิน / - คือของขาด)</li>
-                            <li><b>บันทึกข้อมูล:</b> ตรวจทานให้ถูกต้องแล้วกดปุ่มบันทึกด้านล่าง (บันทึกได้เพียง 1 ครั้งต่อไตรมาส)</li>
-                        </ul>
-                    </div>
-                `,
-                confirmButtonColor: '#003366',
-                confirmButtonText: 'รับทราบ',
-                width: 550
+        // ==============================
+        // โหมดผู้ดูแลระบบ (Admin Mode)
+        // ==============================
+        function showAdminLogin() {
+            Swal.fire({
+                title: 'เข้าสู่ระบบ Admin',
+                html: `<input type="text" id="adminUser" class="swal2-input" placeholder="ชื่อผู้ใช้">
+                       <input type="password" id="adminPass" class="swal2-input" placeholder="รหัสผ่าน">`,
+                confirmButtonColor: '#003366', confirmButtonText: 'เข้าสู่ระบบ',
+                preConfirm: () => { return { u: document.getElementById('adminUser').value, p: document.getElementById('adminPass').value } }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    if (result.value.u === '11450' && result.value.p === '11450') {
+                        document.getElementById('btnAdminLogin').style.display = 'none';
+                        loadAdminData();
+                    } else {
+                        Swal.fire('ข้อผิดพลาด', 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง', 'error');
+                    }
+                }
             });
+        }
+
+        async function loadAdminData() {
+            Swal.fire({ title: 'กำลังโหลดข้อมูล...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            
+            try {
+                const response = await fetch(`${CLOTH_API}?action=getAllClothLogs`);
+                const result = await response.json();
+                Swal.close();
+
+                if (result.status === 'success') {
+                    allAdminLogs = result.data;
+                    
+                    // สร้าง Dropdown คัดกรอง
+                    const wards = [...new Set(allAdminLogs.map(log => log.ward))].sort();
+                    const quarters = [...new Set(allAdminLogs.map(log => log.quarter))].sort().reverse();
+                    
+                    const wSelect = document.getElementById('adminWardFilter');
+                    wSelect.innerHTML = '<option value="all">ดูทุกหน่วยงาน (ทั้งโรงพยาบาล)</option>';
+                    wards.forEach(w => wSelect.innerHTML += `<option value="${w}">${w}</option>`);
+
+                    const qSelect = document.getElementById('adminQuarterFilter');
+                    qSelect.innerHTML = '<option value="all">ดูทุกไตรมาส</option>';
+                    quarters.forEach(q => qSelect.innerHTML += `<option value="${q}">${q}</option>`);
+
+                    document.getElementById('userSection').style.display = 'none';
+                    document.getElementById('adminSection').style.display = 'block';
+                    
+                    filterAdminData(); // ดึงข้อมูลมาโชว์ครั้งแรก
+                }
+            } catch (error) {
+                Swal.fire('ข้อผิดพลาด', 'ดึงข้อมูลล้มเหลว', 'error');
+            }
+        }
+
+        function filterAdminData() {
+            const ward = document.getElementById('adminWardFilter').value;
+            const quarter = document.getElementById('adminQuarterFilter').value;
+            
+            filteredAdminLogs = allAdminLogs.filter(log => {
+                const matchW = (ward === 'all') || (log.ward === ward);
+                const matchQ = (quarter === 'all') || (log.quarter === quarter);
+                return matchW && matchQ;
+            });
+
+            renderAdminDashboard();
+            renderAdminTable();
+        }
+
+        function renderAdminDashboard() {
+            let tPar = 0, tTotal = 0, tGood = 0, tDefect = 0;
+            
+            filteredAdminLogs.forEach(log => {
+                tPar += parseInt(log.par) || 0;
+                tTotal += parseInt(log.total) || 0;
+                tGood += parseInt(log.good) || 0;
+                tDefect += parseInt(log.defect) || 0;
+            });
+
+            document.getElementById('statPar').innerText = tPar;
+            document.getElementById('statTotal').innerText = tTotal;
+            document.getElementById('statGood').innerText = tGood;
+            document.getElementById('statDefect').innerText = tDefect;
+
+            // วาดกราฟ Doughnut
+            const ctx = document.getElementById('conditionChart').getContext('2d');
+            if(conditionChartInstance) conditionChartInstance.destroy();
+            conditionChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['ผ้าสภาพดี', 'ผ้าชำรุด'],
+                    datasets: [{
+                        data: [tGood, tDefect],
+                        backgroundColor: ['#28a745', '#dc3545'],
+                        borderWidth: 1
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: {family: 'Prompt' } } } } }
+            });
+        }
+
+        function renderAdminTable() {
+            const tbody = document.getElementById('adminTableBody');
+            tbody.innerHTML = '';
+            
+            if(filteredAdminLogs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding: 20px;">ไม่มีข้อมูล</td></tr>';
+                return;
+            }
+
+            filteredAdminLogs.forEach(log => {
+                let diffStr = parseInt(log.diff);
+                let diffColor = diffStr > 0 ? "color:var(--success)" : diffStr < 0 ? "color:var(--danger)" : "color:#666";
+                diffStr = diffStr > 0 ? `+${diffStr}` : diffStr;
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td style="color:#666; font-size:0.8rem;">${log.timestamp}</td>
+                        <td style="color:var(--primary); font-weight:500;">${log.quarter}</td>
+                        <td>${log.ward}</td>
+                        <td style="font-weight:600;">${log.mainType}</td>
+                        <td style="color:var(--success);">${log.good}</td>
+                        <td style="color:var(--danger);">${log.defect}</td>
+                        <td style="font-weight:bold;">${log.total}</td>
+                        <td>${log.par}</td>
+                        <td style="font-weight:bold; ${diffColor}">${diffStr}</td>
+                        <td style="font-size:0.8rem; color:#555;">${log.details}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function exportToCSV() {
+            if(filteredAdminLogs.length === 0) return Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลให้ Export', 'warning');
+            
+            let csvContent = "\uFEFF"; // รองรับภาษาไทย (BOM)
+            csvContent += "วันที่บันทึก,รอบตรวจ,หน่วยงาน,ประเภทผ้า,ยอดดี,ยอดชำรุด,ยอดรวมนับได้,เป้าหมาย(Par),ส่วนต่าง,รายละเอียด,ผู้บันทึก\n";
+            
+            filteredAdminLogs.forEach(log => {
+                // ใส่ "" คลุม text เพื่อกันลูกน้ำในประโยคทำให้คอลัมน์เพี้ยน
+                let row = [
+                    `"${log.timestamp}"`, `"${log.quarter}"`, `"${log.ward}"`, `"${log.mainType}"`,
+                    log.good, log.defect, log.total, log.par, log.diff, `"${log.details}"`, `"${log.recorder}"`
+                ];
+                csvContent += row.join(",") + "\n";
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `รายงานตรวจนับผ้า_${document.getElementById('adminWardFilter').value}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function exitAdminMode() {
+            window.location.reload();
         }
     </script>
 </body>
