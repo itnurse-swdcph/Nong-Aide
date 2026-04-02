@@ -486,14 +486,16 @@
         }
 
         // 3. ฟังก์ชันสร้าง Dropdown สำหรับคัดกรองข้อมูล
-        function updateAdminFilters() {
-            const wards = [...new Set(allAdminLogs.map(log => log.ward))].sort();
-            const quarters = [...new Set(allAdminLogs.map(log => log.quarter))].sort().reverse();
-            
+        function updateAdminFilters(allWards) {
+            // ใช้รายชื่อหน่วยงานจาก ClothMaster ที่ส่งมาใหม่
             const wSelect = document.getElementById('adminWardFilter');
             wSelect.innerHTML = '<option value="all">📊 ดูทุกหน่วยงาน (ทั้งโรงพยาบาล)</option>';
-            wards.forEach(w => wSelect.innerHTML += `<option value="${w}">${w}</option>`);
+            
+            if(allWards) {
+                allWards.sort().forEach(w => wSelect.innerHTML += `<option value="${w}">${w}</option>`);
+            }
 
+            const quarters = [...new Set(allAdminLogs.map(log => log.quarter))].sort().reverse();
             const qSelect = document.getElementById('adminQuarterFilter');
             qSelect.innerHTML = '<option value="all">🗓️ ดูทุกไตรมาส</option>';
             quarters.forEach(q => qSelect.innerHTML += `<option value="${q}">${q}</option>`);
