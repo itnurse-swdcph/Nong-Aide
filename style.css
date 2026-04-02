@@ -203,6 +203,32 @@ body {
     box-shadow: 0 6px 15px rgba(0,51,102,0.3);
 }
 
+.btn-admin-entry {
+    width: 100%;
+    margin-top: 12px;
+    background: transparent;
+    color: var(--primary);
+    border: 1.5px solid var(--primary);
+    padding: 13px 15px;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: 0.3s;
+    font-family: 'Prompt', sans-serif;
+}
+
+.btn-admin-entry:hover {
+    background: var(--primary);
+    color: var(--white);
+}
+
+.login-hint {
+    margin-top: 12px;
+    color: #6c7a89;
+    font-size: 0.85rem;
+}
+
 /* Dashboard */
 .dashboard-content {
     text-align: center;
