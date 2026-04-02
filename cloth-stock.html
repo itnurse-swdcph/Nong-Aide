@@ -464,7 +464,7 @@
                     document.getElementById('displayWard').innerHTML = '<i class="fas fa-tools"></i> ADMIN MODE';
 
                     // เตรียมตัวคัดกรอง (Filters)
-                    updateAdminFilters();
+                    updateAdminFilters(result.allWards);
 
                     // แสดงผลข้อมูลครั้งแรก
                     filterAdminData();
@@ -487,19 +487,34 @@
 
         // 3. ฟังก์ชันสร้าง Dropdown สำหรับคัดกรองข้อมูล
         function updateAdminFilters(allWards) {
-            // ใช้รายชื่อหน่วยงานจาก ClothMaster ที่ส่งมาใหม่
             const wSelect = document.getElementById('adminWardFilter');
             wSelect.innerHTML = '<option value="all">📊 ดูทุกหน่วยงาน (ทั้งโรงพยาบาล)</option>';
             
-            if(allWards) {
-                allWards.sort().forEach(w => wSelect.innerHTML += `<option value="${w}">${w}</option>`);
+            // --- สร้าง Dropdown รายชื่อหน่วยงาน ---
+            if (allWards && allWards.length > 0) {
+                // ดึงจาก Master (ตึกทั้งหมดที่มีในระบบ)
+                allWards.sort().forEach(w => {
+                    wSelect.innerHTML += `<option value="${w}">${w}</option>`;
+                });
+            } else {
+                // ถ้า Master ว่าง ให้ดึงจากประวัติการนับแทน (Fallback)
+                const wardsFromLogs = [...new Set(allAdminLogs.map(log => log.ward))].sort();
+                wardsFromLogs.forEach(w => {
+                    wSelect.innerHTML += `<option value="${w}">${w}</option>`;
+                });
             }
 
-            const quarters = [...new Set(allAdminLogs.map(log => log.quarter))].sort().reverse();
+            // --- สร้าง Dropdown รายชื่อไตรมาส (ที่หายไป) ---
             const qSelect = document.getElementById('adminQuarterFilter');
             qSelect.innerHTML = '<option value="all">🗓️ ดูทุกไตรมาส</option>';
-            quarters.forEach(q => qSelect.innerHTML += `<option value="${q}">${q}</option>`);
-        }
+            
+            if (allAdminLogs && allAdminLogs.length > 0) {
+                const quarters = [...new Set(allAdminLogs.map(log => log.quarter))].sort().reverse();
+                quarters.forEach(q => {
+                    qSelect.innerHTML += `<option value="${q}">${q}</option>`;
+                });
+            }
+        } // <--- ต้องมีปีกกาปิดตรงนี้เพื่อจบฟังก์ชันที่ 3
 
         // 4. ฟังก์ชันคัดกรองข้อมูลเมื่อเปลี่ยน Dropdown
         function filterAdminData() {
