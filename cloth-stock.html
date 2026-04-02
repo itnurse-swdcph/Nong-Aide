@@ -148,7 +148,7 @@
         <div class="stat-grid">
             <div class="stat-card">
                 <div class="stat-num" id="statPar">0</div>
-                <div class="stat-label">เป้าหมายรวม (Par)</div>
+                <div class="stat-label">เกณฑ์รวม (Par)</div>
             </div>
             <div class="stat-card">
                 <div class="stat-num" id="statTotal" style="color:var(--primary);">0</div>
@@ -165,9 +165,9 @@
         </div>
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-            <div class="chart-container">
-                <h4 style="text-align:center; color:var(--primary); margin-bottom:10px;">สัดส่วนสภาพผ้าที่นับได้</h4>
-                <canvas id="conditionChart" style="max-height: 250px;"></canvas>
+            <div class="chart-container" style="height: 450px;">
+                <h4 id="chartTitle" style="text-align:center; color:var(--primary); margin-bottom:10px;">รายงานสรุป</h4>
+                <canvas id="mainAdminChart"></canvas>
             </div>
         </div>
 
@@ -297,7 +297,7 @@
                 card.innerHTML = `
                     <div class="card-header">
                         <h3><i class="fas fa-box"></i> ${item.mainType}</h3>
-                        <div class="par-level">เป้าหมาย: <strong id="par-${index}">${item.parLevel}</strong></div>
+                        <div class="par-level">เกณฑ์: <strong id="par-${index}">${item.parLevel}</strong></div>
                     </div>
                     ${subTypeHtml}
                     <div class="summary-box">
@@ -437,6 +437,7 @@
         }
 
         // 2. ฟังก์ชันสลับหน้าจอและโหลดข้อมูลแอดมิน
+        let wardCriteriaData = {}; // เก็บเกณฑ์เตียง
         async function switchToAdminMode() {
             Swal.fire({
                 title: 'กำลังเข้าสู่โหมดแอดมิน',
@@ -452,6 +453,7 @@
 
                 if (result.status === 'success') {
                     allAdminLogs = result.data;
+                    wardCriteriaData = result.wardCriteria || {}; // เก็บเกณฑ์เตียงไว้ใช้
                     
                     // --- ปรับปรุง UI หน้าเว็บ ---
                     document.getElementById('userSection').style.display = 'none';   // ซ่อนส่วนของพนักงาน
@@ -533,40 +535,98 @@
 
         // 5. ฟังก์ชันแสดงกราฟและตัวเลขสถิติ (Cards)
         function renderAdminDashboard() {
-            let tPar = 0, tTotal = 0, tGood = 0, tDefect = 0;
+            const selectedWard = document.getElementById('adminWardFilter').value;
+            const selectedQuarter = document.getElementById('adminQuarterFilter').value;
+            const ctx = document.getElementById('mainAdminChart').getContext('2d');
             
+            if(conditionChartInstance) conditionChartInstance.destroy();
+
+            if (selectedWard === 'all') {
+                renderAllWardsChart(ctx, selectedQuarter);
+            } else {
+                renderSingleWardChart(ctx, selectedWard, selectedQuarter);
+            }
+            
+            // อัปเดตตัวเลข Card สถิติด้านบน
+            let tPar = 0, tTotal = 0, tGood = 0, tDefect = 0;
             filteredAdminLogs.forEach(log => {
                 tPar += parseInt(log.par) || 0;
                 tTotal += parseInt(log.total) || 0;
                 tGood += parseInt(log.good) || 0;
                 tDefect += parseInt(log.defect) || 0;
             });
-
             document.getElementById('statPar').innerText = tPar.toLocaleString();
             document.getElementById('statTotal').innerText = tTotal.toLocaleString();
             document.getElementById('statGood').innerText = tGood.toLocaleString();
             document.getElementById('statDefect').innerText = tDefect.toLocaleString();
+        }
 
-            // จัดการกราฟ Doughnut
-            const ctx = document.getElementById('conditionChart').getContext('2d');
-            if(conditionChartInstance) conditionChartInstance.destroy();
+        // 📊 กราฟแบบ "ดูทุกหน่วยงาน" (เหมือนภาพตัวอย่าง)
+        function renderAllWardsChart(ctx, quarter) {
+            document.getElementById('chartTitle').innerText = `รายงานปริมาณเครื่องผ้าต่อจำนวนเตียงประจำ ${quarter === 'all' ? 'ทุกไตรมาส' : quarter}`;
+            
+            const wards = [...new Set(filteredAdminLogs.map(l => l.ward))];
+            const categories = ["ผ้าปูเตียง", "เสื้อ", "กางเกง", "ผ้าถุง", "ผ้าห่ม"];
+            
+            // จัดกลุ่มข้อมูลแยกตามตึกและกลุ่มผ้า
+            const datasets = categories.map((cat, i) => {
+                const colors = ['#8dbb61', '#4ea8de', '#1d3557', '#386641', '#284b63'];
+                return {
+                    label: cat,
+                    data: wards.map(w => {
+                        return filteredAdminLogs
+                            .filter(l => l.ward === w && l.mainType.includes(cat))
+                            .reduce((sum, l) => sum + parseInt(l.total), 0);
+                    }),
+                    backgroundColor: colors[i],
+                    type: 'bar'
+                };
+            });
+
+            // เพิ่มเส้นเกณฑ์/เตียง (Line Chart)
+            datasets.push({
+                label: 'เกณฑ์/เตียง',
+                data: wards.map(w => wardCriteriaData[w] || 0),
+                borderColor: '#c1121f',
+                backgroundColor: '#c1121f',
+                borderWidth: 3,
+                type: 'line',
+                fill: false,
+                pointStyle: 'circle',
+                pointRadius: 5
+            });
+
+            conditionChartInstance = new Chart(ctx, {
+                data: { labels: wards, datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, title: { display: true, text: 'จำนวนผ้า / ชิ้น' } } },
+                    plugins: { legend: { position: 'bottom', labels: { font: { family: 'Prompt' } } } }
+                }
+            });
+        }
+
+        // 📈 กราฟแบบ "ดูรายหน่วยงาน" (แสดงทุกรายการในตึก)
+        function renderSingleWardChart(ctx, ward, quarter) {
+            document.getElementById('chartTitle').innerText = `สรุปปริมาณเครื่องผ้าหน่วยงาน: ${ward} (${quarter})`;
+            
+            const wardLogs = filteredAdminLogs.filter(l => l.ward === ward);
+            const labels = wardLogs.map(l => l.mainType);
             
             conditionChartInstance = new Chart(ctx, {
-                type: 'doughnut',
+                type: 'bar',
                 data: {
-                    labels: ['ผ้าสภาพดี', 'ผ้าชำรุด'],
-                    datasets: [{
-                        data: [tGood, tDefect],
-                        backgroundColor: ['#28a745', '#dc3545'],
-                        hoverOffset: 10
-                    }]
+                    labels: labels,
+                    datasets: [
+                        { label: 'นับได้จริง', data: wardLogs.map(l => l.total), backgroundColor: '#4ea8de' },
+                        { label: 'เกณฑ์', data: wardLogs.map(l => l.par), backgroundColor: '#ced4da' }
+                    ]
                 },
-                options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false, 
-                    plugins: { 
-                        legend: { position: 'bottom', labels: { font: { family: 'Prompt', size: 12 } } } 
-                    } 
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } }
                 }
             });
         }
@@ -608,7 +668,7 @@
             if(filteredAdminLogs.length === 0) return Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลให้ Export', 'warning');
             
             let csvContent = "\uFEFF"; // UTF-8 BOM สำหรับ Excel ภาษาไทย
-            csvContent += "วันที่บันทึก,รอบตรวจ,หน่วยงาน,ประเภทผ้า,ยอดดี,ยอดชำรุด,ยอดรวมนับได้,เป้าหมาย(Par),ส่วนต่าง,รายละเอียด,ผู้บันทึก\n";
+            csvContent += "วันที่บันทึก,รอบตรวจ,หน่วยงาน,ประเภทผ้า,ยอดดี,ยอดชำรุด,ยอดรวมนับได้,เกณฑ์(Par),ส่วนต่าง,รายละเอียด,ผู้บันทึก\n";
             
             filteredAdminLogs.forEach(log => {
                 const row = [
