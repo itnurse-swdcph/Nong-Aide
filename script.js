@@ -2,6 +2,14 @@
 const API_URL = "https://script.google.com/macros/s/AKfycbx_xuBauWvjIYplrefNTSf6J0Y9ZzAv-FQhOvPk1SYC1qOU7C3sdrU6LL4wQI3Uz9dTeg/exec"; 
 
 let wardList = [];
+const SESSION_KEYS = {
+    ward: "aide_ward",
+    role: "aide_role"
+};
+const ADMIN_CREDENTIALS = {
+    username: "11450",
+    password: "11450"
+};
 
 // --- PWA Service Worker Registration (4. บันทึกหน้าจอเป็นแอพ) ---
 if ('serviceWorker' in navigator) {
@@ -45,9 +53,13 @@ async function fetchWards() {
 
 // ตรวจสอบว่าเคยเลือกตึกไว้หรือยังใน Session ปัจจุบัน
 function checkLoginSession() {
-    const savedWard = sessionStorage.getItem("aide_ward");
-    if (savedWard) {
-        showDashboard(savedWard);
+    const savedRole = sessionStorage.getItem(SESSION_KEYS.role);
+    const savedWard = sessionStorage.getItem(SESSION_KEYS.ward);
+
+    if (savedRole === "admin") {
+        showDashboard("", "admin");
+    } else if (savedWard) {
+        showDashboard(savedWard, "user");
     }
 }
 
@@ -78,21 +90,28 @@ function enterSystem() {
 
     // จำลองการดีเลย์เล็กน้อยให้ดู Smooth
     setTimeout(() => {
-        sessionStorage.setItem("aide_ward", wardInput);
+        sessionStorage.setItem(SESSION_KEYS.ward, wardInput);
+        sessionStorage.setItem(SESSION_KEYS.role, "user");
         Swal.close();
-        showDashboard(wardInput);
+        showDashboard(wardInput, "user");
     }, 800);
 }
 
 // ฟังก์ชันสลับไปหน้า Dashboard
-function showDashboard(wardName) {
+function showDashboard(wardName, role = "user") {
     document.getElementById("loginSection").classList.add("hidden");
     document.getElementById("dashboardSection").classList.remove("hidden");
     
     // แสดง Navbar Item
     document.getElementById("currentWardDisplay").classList.remove("hidden");
     document.getElementById("logoutBtn").classList.remove("hidden");
-    document.getElementById("wardNameText").innerText = wardName;
+    document.getElementById("wardNameText").innerText = role === "admin" ? "ADMIN MODE" : wardName;
+    document.getElementById("logoutBtn").innerHTML = role === "admin"
+        ? '<i class="fas fa-sign-out-alt"></i> ออกจากระบบแอดมิน'
+        : '<i class="fas fa-sign-out-alt"></i> เปลี่ยนหน่วยงาน';
+    document.getElementById("dashboardSubtitle").innerText = role === "admin"
+        ? "กรุณาเลือกระบบที่ต้องการจัดการในโหมดผู้ดูแลระบบ"
+        : "กรุณาเลือกระบบที่ต้องการใช้งาน";
     
     // ปิดเมนูมือถือถ้าเปิดอยู่
     document.getElementById("navMenu").classList.remove("active");
@@ -100,21 +119,26 @@ function showDashboard(wardName) {
 
 // ฟังก์ชันออกจากระบบ (เปลี่ยนตึก)
 function logout() {
+    const currentRole = sessionStorage.getItem(SESSION_KEYS.role) || "user";
+
     // ปิดเมนูมือถือถ้าเปิดอยู่
     document.getElementById("navMenu").classList.remove("active");
 
     Swal.fire({
-        title: 'เปลี่ยนหน่วยงาน?',
-        text: "คุณต้องการออกจากหน่วยงานปัจจุบันใช่หรือไม่",
+        title: currentRole === "admin" ? 'ออกจากระบบแอดมิน?' : 'เปลี่ยนหน่วยงาน?',
+        text: currentRole === "admin"
+            ? "คุณต้องการออกจากโหมดผู้ดูแลระบบใช่หรือไม่"
+            : "คุณต้องการออกจากหน่วยงานปัจจุบันใช่หรือไม่",
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#003366',
         cancelButtonColor: '#d33',
-        confirmButtonText: 'ใช่, ออกจากระบบ',
+        confirmButtonText: currentRole === "admin" ? 'ใช่, ออกจากระบบ' : 'ใช่, ออกจากระบบ',
         cancelButtonText: 'ยกเลิก'
     }).then((result) => {
         if (result.isConfirmed) {
-            sessionStorage.removeItem("aide_ward");
+            sessionStorage.removeItem(SESSION_KEYS.ward);
+            sessionStorage.removeItem(SESSION_KEYS.role);
             document.getElementById("wardInput").value = "";
             
             // ซ่อน Dashboard กลับไปหน้า Login
@@ -130,10 +154,56 @@ function logout() {
 
 // ฟังก์ชันเปิดระบบย่อย (เปิด Tab ใหม่ พร้อมส่งชื่อตึกไปใน URL)
 function openSystem(url) {
-    const currentWard = sessionStorage.getItem("aide_ward");
-    // แปลงชื่อตึกเป็น URL Format แล้วแนบไป
-    const fullUrl = `${url}?ward=${encodeURIComponent(currentWard)}`;
+    const currentWard = sessionStorage.getItem(SESSION_KEYS.ward);
+    const currentRole = sessionStorage.getItem(SESSION_KEYS.role) || "user";
+    const params = new URLSearchParams();
+
+    if (currentRole === "admin") {
+        params.set("role", "admin");
+    } else if (currentWard) {
+        params.set("ward", currentWard);
+    }
+
+    const queryString = params.toString();
+    const fullUrl = queryString ? `${url}?${queryString}` : url;
     window.open(fullUrl, '_blank');
+}
+
+function showAdminLogin() {
+    Swal.fire({
+        title: '<i class="fas fa-user-shield"></i> เข้าสู่ระบบแอดมิน',
+        html: `
+            <input type="text" id="adminUser" class="swal2-input" placeholder="ชื่อผู้ใช้">
+            <input type="password" id="adminPass" class="swal2-input" placeholder="รหัสผ่าน">
+        `,
+        confirmButtonColor: '#003366',
+        confirmButtonText: 'เข้าสู่ระบบ',
+        showCancelButton: true,
+        cancelButtonText: 'ยกเลิก',
+        focusConfirm: false,
+        preConfirm: () => {
+            const username = document.getElementById('adminUser').value.trim();
+            const password = document.getElementById('adminPass').value.trim();
+
+            if (!username || !password) {
+                Swal.showValidationMessage('กรุณากรอกชื่อผู้ใช้และรหัสผ่าน');
+                return false;
+            }
+
+            if (username !== ADMIN_CREDENTIALS.username || password !== ADMIN_CREDENTIALS.password) {
+                Swal.showValidationMessage('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+                return false;
+            }
+
+            return true;
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            sessionStorage.removeItem(SESSION_KEYS.ward);
+            sessionStorage.setItem(SESSION_KEYS.role, "admin");
+            showDashboard("", "admin");
+        }
+    });
 }
 
 // เปิด-ปิด เมนูมือถือ (Hamburger)
