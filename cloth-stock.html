@@ -402,31 +402,49 @@
             }
         }
 
-        // ==============================
-        // โหมดผู้ดูแลระบบ (Admin Mode)
-        // ==============================
+        // ==========================================
+        // ระบบผู้ดูแลระบบ (Admin Mode) - แบบ Full System
+        // ==========================================
+
+        // 1. ฟังก์ชันเรียกหน้าต่าง Login
         function showAdminLogin() {
             Swal.fire({
-                title: 'เข้าสู่ระบบ Admin',
-                html: `<input type="text" id="adminUser" class="swal2-input" placeholder="ชื่อผู้ใช้">
-                       <input type="password" id="adminPass" class="swal2-input" placeholder="รหัสผ่าน">`,
-                confirmButtonColor: '#003366', confirmButtonText: 'เข้าสู่ระบบ',
-                preConfirm: () => { return { u: document.getElementById('adminUser').value, p: document.getElementById('adminPass').value } }
+                title: '<i class="fas fa-user-shield"></i> เข้าสู่ระบบ Admin',
+                html: `
+                    <div style="margin-top:10px;">
+                        <input type="text" id="adminUser" class="swal2-input" placeholder="ชื่อผู้ใช้" style="width:80%;">
+                        <input type="password" id="adminPass" class="swal2-input" placeholder="รหัสผ่าน" style="width:80%;">
+                    </div>`,
+                confirmButtonColor: '#003366',
+                confirmButtonText: 'เข้าสู่ระบบ',
+                showCancelButton: true,
+                cancelButtonText: 'ยกเลิก',
+                preConfirm: () => {
+                    const u = document.getElementById('adminUser').value;
+                    const p = document.getElementById('adminPass').value;
+                    if (u === '11450' && p === '11450') {
+                        return true;
+                    } else {
+                        Swal.showValidationMessage('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+                        return false;
+                    }
+                }
             }).then((result) => {
                 if (result.isConfirmed) {
-                    if (result.value.u === '11450' && result.value.p === '11450') {
-                        document.getElementById('btnAdminLogin').style.display = 'none';
-                        loadAdminData();
-                    } else {
-                        Swal.fire('ข้อผิดพลาด', 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง', 'error');
-                    }
+                    switchToAdminMode();
                 }
             });
         }
 
-        async function loadAdminData() {
-            Swal.fire({ title: 'กำลังโหลดข้อมูล...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-            
+        // 2. ฟังก์ชันสลับหน้าจอและโหลดข้อมูลแอดมิน
+        async function switchToAdminMode() {
+            Swal.fire({
+                title: 'กำลังเข้าสู่โหมดแอดมิน',
+                html: 'กรุณารอสักครู่ ระบบกำลังรวบรวมข้อมูลทั้งโรงพยาบาล...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
             try {
                 const response = await fetch(`${CLOTH_API}?action=getAllClothLogs`);
                 const result = await response.json();
@@ -435,28 +453,53 @@
                 if (result.status === 'success') {
                     allAdminLogs = result.data;
                     
-                    // สร้าง Dropdown คัดกรอง
-                    const wards = [...new Set(allAdminLogs.map(log => log.ward))].sort();
-                    const quarters = [...new Set(allAdminLogs.map(log => log.quarter))].sort().reverse();
+                    // --- ปรับปรุง UI หน้าเว็บ ---
+                    document.getElementById('userSection').style.display = 'none';   // ซ่อนส่วนของพนักงาน
+                    document.getElementById('adminSection').style.display = 'block'; // แสดงหน้า Dashboard
                     
-                    const wSelect = document.getElementById('adminWardFilter');
-                    wSelect.innerHTML = '<option value="all">ดูทุกหน่วยงาน (ทั้งโรงพยาบาล)</option>';
-                    wards.forEach(w => wSelect.innerHTML += `<option value="${w}">${w}</option>`);
+                    // เปลี่ยนสี Navbar และข้อความแจ้งเตือน
+                    const navbar = document.querySelector('.navbar');
+                    navbar.style.background = '#800000'; // สีแดงเข้ม (Maroon) สำหรับ Admin
+                    document.getElementById('btnAdminLogin').style.display = 'none';
+                    document.getElementById('displayWard').innerHTML = '<i class="fas fa-tools"></i> ADMIN MODE';
 
-                    const qSelect = document.getElementById('adminQuarterFilter');
-                    qSelect.innerHTML = '<option value="all">ดูทุกไตรมาส</option>';
-                    quarters.forEach(q => qSelect.innerHTML += `<option value="${q}">${q}</option>`);
+                    // เตรียมตัวคัดกรอง (Filters)
+                    updateAdminFilters();
 
-                    document.getElementById('userSection').style.display = 'none';
-                    document.getElementById('adminSection').style.display = 'block';
-                    
-                    filterAdminData(); // ดึงข้อมูลมาโชว์ครั้งแรก
+                    // แสดงผลข้อมูลครั้งแรก
+                    filterAdminData();
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'เข้าสู่ระบบสำเร็จ',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
+                } else {
+                    throw new Error(result.message);
                 }
             } catch (error) {
-                Swal.fire('ข้อผิดพลาด', 'ดึงข้อมูลล้มเหลว', 'error');
+                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถโหลดข้อมูลแอดมินได้: ' + error.message, 'error');
             }
         }
 
+        // 3. ฟังก์ชันสร้าง Dropdown สำหรับคัดกรองข้อมูล
+        function updateAdminFilters() {
+            const wards = [...new Set(allAdminLogs.map(log => log.ward))].sort();
+            const quarters = [...new Set(allAdminLogs.map(log => log.quarter))].sort().reverse();
+            
+            const wSelect = document.getElementById('adminWardFilter');
+            wSelect.innerHTML = '<option value="all">📊 ดูทุกหน่วยงาน (ทั้งโรงพยาบาล)</option>';
+            wards.forEach(w => wSelect.innerHTML += `<option value="${w}">${w}</option>`);
+
+            const qSelect = document.getElementById('adminQuarterFilter');
+            qSelect.innerHTML = '<option value="all">🗓️ ดูทุกไตรมาส</option>';
+            quarters.forEach(q => qSelect.innerHTML += `<option value="${q}">${q}</option>`);
+        }
+
+        // 4. ฟังก์ชันคัดกรองข้อมูลเมื่อเปลี่ยน Dropdown
         function filterAdminData() {
             const ward = document.getElementById('adminWardFilter').value;
             const quarter = document.getElementById('adminQuarterFilter').value;
@@ -471,6 +514,7 @@
             renderAdminTable();
         }
 
+        // 5. ฟังก์ชันแสดงกราฟและตัวเลขสถิติ (Cards)
         function renderAdminDashboard() {
             let tPar = 0, tTotal = 0, tGood = 0, tDefect = 0;
             
@@ -481,14 +525,15 @@
                 tDefect += parseInt(log.defect) || 0;
             });
 
-            document.getElementById('statPar').innerText = tPar;
-            document.getElementById('statTotal').innerText = tTotal;
-            document.getElementById('statGood').innerText = tGood;
-            document.getElementById('statDefect').innerText = tDefect;
+            document.getElementById('statPar').innerText = tPar.toLocaleString();
+            document.getElementById('statTotal').innerText = tTotal.toLocaleString();
+            document.getElementById('statGood').innerText = tGood.toLocaleString();
+            document.getElementById('statDefect').innerText = tDefect.toLocaleString();
 
-            // วาดกราฟ Doughnut
+            // จัดการกราฟ Doughnut
             const ctx = document.getElementById('conditionChart').getContext('2d');
             if(conditionChartInstance) conditionChartInstance.destroy();
+            
             conditionChartInstance = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
@@ -496,53 +541,60 @@
                     datasets: [{
                         data: [tGood, tDefect],
                         backgroundColor: ['#28a745', '#dc3545'],
-                        borderWidth: 1
+                        hoverOffset: 10
                     }]
                 },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: {family: 'Prompt' } } } } }
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { 
+                        legend: { position: 'bottom', labels: { font: { family: 'Prompt', size: 12 } } } 
+                    } 
+                }
             });
         }
 
+        // 6. ฟังก์ชันแสดงตารางประวัติข้อมูล
         function renderAdminTable() {
             const tbody = document.getElementById('adminTableBody');
             tbody.innerHTML = '';
             
             if(filteredAdminLogs.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding: 20px;">ไม่มีข้อมูล</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding: 30px; color:#999;">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</td></tr>';
                 return;
             }
 
             filteredAdminLogs.forEach(log => {
-                let diffStr = parseInt(log.diff);
-                let diffColor = diffStr > 0 ? "color:var(--success)" : diffStr < 0 ? "color:var(--danger)" : "color:#666";
-                diffStr = diffStr > 0 ? `+${diffStr}` : diffStr;
+                const diffNum = parseInt(log.diff);
+                const diffColor = diffNum > 0 ? "color:var(--success)" : diffNum < 0 ? "color:var(--danger)" : "color:#666";
+                const diffSign = diffNum > 0 ? `+${diffNum}` : diffNum;
 
-                tbody.innerHTML += `
-                    <tr>
-                        <td style="color:#666; font-size:0.8rem;">${log.timestamp}</td>
-                        <td style="color:var(--primary); font-weight:500;">${log.quarter}</td>
-                        <td>${log.ward}</td>
-                        <td style="font-weight:600;">${log.mainType}</td>
-                        <td style="color:var(--success);">${log.good}</td>
-                        <td style="color:var(--danger);">${log.defect}</td>
-                        <td style="font-weight:bold;">${log.total}</td>
-                        <td>${log.par}</td>
-                        <td style="font-weight:bold; ${diffColor}">${diffStr}</td>
-                        <td style="font-size:0.8rem; color:#555;">${log.details}</td>
-                    </tr>
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td style="color:#888; font-size:0.8rem;">${log.timestamp}</td>
+                    <td style="color:var(--primary); font-weight:600;">${log.quarter}</td>
+                    <td style="font-weight:500;">${log.ward}</td>
+                    <td>${log.mainType}</td>
+                    <td style="color:var(--success);">${log.good}</td>
+                    <td style="color:var(--danger);">${log.defect}</td>
+                    <td style="font-weight:bold;">${log.total}</td>
+                    <td>${log.par}</td>
+                    <td style="font-weight:bold; ${diffColor}">${diffSign}</td>
+                    <td style="font-size:0.8rem; color:#555; max-width:200px;">${log.details}</td>
                 `;
+                tbody.appendChild(row);
             });
         }
 
+        // 7. ฟังก์ชัน Export ข้อมูลเป็นไฟล์ CSV
         function exportToCSV() {
             if(filteredAdminLogs.length === 0) return Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลให้ Export', 'warning');
             
-            let csvContent = "\uFEFF"; // รองรับภาษาไทย (BOM)
+            let csvContent = "\uFEFF"; // UTF-8 BOM สำหรับ Excel ภาษาไทย
             csvContent += "วันที่บันทึก,รอบตรวจ,หน่วยงาน,ประเภทผ้า,ยอดดี,ยอดชำรุด,ยอดรวมนับได้,เป้าหมาย(Par),ส่วนต่าง,รายละเอียด,ผู้บันทึก\n";
             
             filteredAdminLogs.forEach(log => {
-                // ใส่ "" คลุม text เพื่อกันลูกน้ำในประโยคทำให้คอลัมน์เพี้ยน
-                let row = [
+                const row = [
                     `"${log.timestamp}"`, `"${log.quarter}"`, `"${log.ward}"`, `"${log.mainType}"`,
                     log.good, log.defect, log.total, log.par, log.diff, `"${log.details}"`, `"${log.recorder}"`
                 ];
@@ -552,16 +604,31 @@
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
             const url = URL.createObjectURL(blob);
+            const wardName = document.getElementById('adminWardFilter').value === 'all' ? 'ทั้งโรงพยาบาล' : document.getElementById('adminWardFilter').value;
+            
             link.setAttribute("href", url);
-            link.setAttribute("download", `รายงานตรวจนับผ้า_${document.getElementById('adminWardFilter').value}.csv`);
+            link.setAttribute("download", `รายงานStockผ้า_${wardName}.csv`);
             link.style.visibility = 'hidden';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
         }
 
+        // 8. ฟังก์ชันออกจากโหมดแอดมิน
         function exitAdminMode() {
-            window.location.reload();
+            Swal.fire({
+                title: 'ออกจากโหมด Admin?',
+                text: "ระบบจะรีเฟรชกลับสู่หน้าการใช้งานปกติ",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#003366',
+                confirmButtonText: 'ตกลง',
+                cancelButtonText: 'ยกเลิก'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.reload();
+                }
+            });
         }
     </script>
 </body>
