@@ -149,6 +149,94 @@
             .qr-label-id { font-size: 7pt; font-family: sans-serif; color: #333; }
             @page { margin: 0.5cm; size: A4 portrait; }
         }
+        /* ==========================================
+           สไตล์สำหรับ Footer (ส่วนท้ายเว็บ) ล้ำๆ
+           ========================================== */
+        .modern-footer {
+            background: linear-gradient(135deg, var(--primary, #003366) 0%, #001a33 100%);
+            color: #ffffff;
+            text-align: center;
+            padding: 35px 20px 20px;
+            margin-top: 60px;
+            position: relative;
+            box-shadow: 0 -10px 25px rgba(0,51,102,0.15);
+            font-family: 'Prompt', sans-serif;
+            border-top-left-radius: 35px;
+            border-top-right-radius: 35px;
+            overflow: hidden;
+        }
+
+        /* เส้นขอบแสง Glowing Effect ด้านบน */
+        .modern-footer::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, transparent, var(--accent, #ffc107), #ff9800, transparent);
+            box-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+        }
+
+        .footer-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .footer-brand {
+            font-size: 1.4rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--accent, #ffc107);
+            letter-spacing: 0.5px;
+        }
+
+        .footer-brand img {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            border: 2px solid var(--accent, #ffc107);
+            box-shadow: 0 0 8px rgba(255, 193, 7, 0.4);
+        }
+
+        .footer-details {
+            font-size: 0.9rem;
+            color: #a9bccc;
+            line-height: 1.6;
+        }
+
+        .footer-details strong {
+            color: #ffffff;
+            font-weight: 500;
+        }
+
+        .footer-bottom {
+            margin-top: 25px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            font-size: 0.8rem;
+            color: #7a93a8;
+            width: 100%;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        @media (max-width: 600px) {
+            .footer-bottom {
+                justify-content: center;
+                flex-direction: column;
+                align-items: center;
+            }
+        }
     </style>
 </head>
 <body>
@@ -301,6 +389,30 @@
         </div>
     </div>
     <div id="printArea"></div>
+    <footer class="modern-footer">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <img src="https://img2.pic.in.th/LINE_ALBUM_442025_251220_1.jpg" alt="AIDE Logo"> 
+                น้อง AIDE SWD
+            </div>
+            <div class="footer-details">
+                ระบบตรวจนับและบริหารจัดการครุภัณฑ์ทางการแพทย์<br>
+                <strong>โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน</strong>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <span>&copy; 2026 AIDE System. All rights reserved.| Developed By Natnarinthorn</span>
+            <span><i class="fas fa-heart" style="color: #ff4757; animation: pulse 1.5s infinite;"></i> พัฒนาเพื่อยกระดับคุณภาพการทำงาน</span>
+        </div>
+    </footer>
+    
+    <style>
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+    </style>
 
    <script>
         const urlParams = new URLSearchParams(window.location.search);
