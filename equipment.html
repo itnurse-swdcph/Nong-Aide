@@ -417,6 +417,8 @@
    <script>
         const urlParams = new URLSearchParams(window.location.search);
         const currentWard = urlParams.get('ward');
+        const entryRole = urlParams.get('role');
+        const isAdminEntry = entryRole === 'admin';
         
         // 🔴 เชื่อมต่อ API เรียบร้อย
         const EQUIPMENT_API = "https://script.google.com/macros/s/AKfycbyx7gZYzGOotSCBwm-vhQDT0K_2vTQEuY7JoyRHhiqzyHQHEOBxHUjc1HYCtNclBYOLCw/exec"; 
@@ -436,10 +438,17 @@
         // ==========================================
         document.addEventListener('DOMContentLoaded', () => {
             setCurrentMonthHeading();
-            if (currentWard) {
+            if (isAdminEntry) {
+                initializeAdminEntry();
+                fetchAllEquipmentForAdmin();
+            } else if (currentWard) {
                 document.getElementById('displayWard').innerText = currentWard;
                 document.getElementById('wardSubtitle').innerText = `หน่วยงาน: ${currentWard}`;
                 fetchEquipment();
+            } else {
+                document.getElementById('displayWard').innerText = 'หน้าหลัก';
+                document.getElementById('wardSubtitle').innerText = 'กรุณาเข้าสู่ระบบผ่านหน้าหลัก';
+                document.getElementById('loadingState').classList.add('hidden');
             }
 
             const searchInputObj = document.getElementById('searchInput');
@@ -478,6 +487,14 @@
                 });
             }
         }); // 🟢 สิ้นสุด DOMContentLoaded อย่างถูกต้องตรงนี้
+
+        function initializeAdminEntry() {
+            isAdminLoggedIn = true;
+            document.getElementById('displayWard').innerText = 'ADMIN MODE';
+            document.getElementById('wardSubtitle').innerHTML = '<span style="color:#d32f2f; font-weight:bold;"><i class="fas fa-user-shield"></i> ผู้ดูแลระบบ</span>';
+            document.getElementById('btnAdminLogin').style.display = 'none';
+            document.getElementById('tab-admin').classList.remove('hidden-tab');
+        }
 
         // ==========================================
         // ฟังก์ชันระบบทั่วไป
@@ -1156,8 +1173,11 @@
                 icon: 'info', title: 'ออกจากโหมดผู้ดูแลระบบ', text: 'กำลังพากลับไปยังหน้าหน่วยงาน...', 
                 timer: 1500, showConfirmButton: false 
             }).then(() => {
-                if (currentWard) window.location.href = window.location.pathname + "?ward=" + encodeURIComponent(currentWard);
-                else window.location.reload();
+                if (currentWard) {
+                    window.location.href = window.location.pathname + "?ward=" + encodeURIComponent(currentWard);
+                } else {
+                    window.location.href = 'index.html';
+                }
             });
         }
 
