@@ -126,28 +126,41 @@
         .risk-medium { background: #fff8e1; color: #f57f17; }
         .risk-low { background: #e8f5e9; color: #2e7d32; }
         /* --- สไตล์สำหรับระบบพิมพ์ QR Code --- */
-        #printArea { display: none; } /* ซ่อนบนหน้าจอปกติ */
+        #printArea { display: none; }
         
         @media print {
-            body * { visibility: hidden; } /* ซ่อนทุกอย่างในหน้าเว็บ */
-            #printArea, #printArea * { visibility: visible; } /* แสดงเฉพาะพื้นที่ปริ้นท์ */
+            body * { visibility: hidden; }
+            #printArea, #printArea * { visibility: visible; }
             #printArea { 
-                display: grid !important; 
-                position: absolute; left: 0; top: 0; width: 100%; 
-                gap: 5mm; padding: 5mm;
+                position: absolute; 
+                left: 0; top: 0; width: 100%; 
             }
-            .qr-label-container {
+            
+            /* สไตล์สำหรับป้าย A4 */
+            .qr-label-container-a4 {
                 border: 1px dashed #aaa; 
                 padding: 3mm; 
                 text-align: center; 
                 display: flex; flex-direction: column; align-items: center; justify-content: center;
-                page-break-inside: avoid; /* ป้องกันการโดนตัดครึ่งเมื่อขึ้นหน้าใหม่ */
+                page-break-inside: avoid;
                 background: white;
             }
-            .qr-label-container img { width: 100%; max-width: 85%; height: auto; }
-            .qr-label-title { font-size: 8pt; font-family: sans-serif; font-weight: bold; margin-top: 2px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
-            .qr-label-id { font-size: 7pt; font-family: sans-serif; color: #333; }
-            @page { margin: 0.5cm; size: A4 portrait; }
+            .qr-label-container-a4 img { width: 100%; max-width: 85%; height: auto; }
+            
+            /* สไตล์สำหรับ Sticker 2x1 นิ้ว */
+            .qr-label-container-sticker {
+                width: 2in;
+                height: 1in;
+                box-sizing: border-box;
+                padding: 0.05in;
+                display: flex;
+                align-items: center;
+                justify-content: flex-start;
+                gap: 0.05in;
+                background: white;
+                page-break-after: always; /* บังคับขึ้นหน้าใหม่ทุก 1 ดวง */
+                overflow: hidden;
+            }
         }
         /* ==========================================
            สไตล์สำหรับ Footer (ส่วนท้ายเว็บ) ล้ำๆ
@@ -1432,64 +1445,139 @@
                 html: `
                     <div style="text-align:left; margin-bottom:10px;">
                         <p style="color:var(--primary); font-weight:500;">จำนวนที่เลือก: ${selectedIds.length} รายการ</p>
-                        <label style="font-size:0.9rem;">เลือกขนาดของป้าย:</label>
-                        <select id="qrSizeSelect" class="swal-input" style="margin-top:5px;">
-                            <option value="1">ขนาด 1 นิ้ว (เล็ก - แปะเครื่องมือเล็ก)</option>
-                            <option value="1.5" selected>ขนาด 1.5 นิ้ว (กลาง - มาตรฐาน)</option>
-                            <option value="2">ขนาด 2 นิ้ว (ใหญ่ - แปะเครื่องมือใหญ่/เตียง)</option>
+                        
+                        <label style="font-size:0.9rem; font-weight: 500;">รูปแบบกระดาษ:</label>
+                        <select id="qrPaperFormat" class="swal-input" style="margin-top:5px; margin-bottom: 15px;" onchange="toggleLabelSizeSelect()">
+                            <option value="a4" selected>กระดาษ A4 (พิมพ์หลายดวงใน 1 แผ่น)</option>
+                            <option value="sticker">Sticker แนวนอน 2x1 นิ้ว (Thermal Printer)</option>
                         </select>
+
+                        <div id="labelSizeWrapper">
+                            <label style="font-size:0.9rem; font-weight: 500;">ขนาดของป้าย (สำหรับ A4):</label>
+                            <select id="qrSizeSelect" class="swal-input" style="margin-top:5px;">
+                                <option value="1">ขนาด 1 นิ้ว (เล็ก - แปะเครื่องมือเล็ก)</option>
+                                <option value="1.5" selected>ขนาด 1.5 นิ้ว (กลาง - มาตรฐาน)</option>
+                                <option value="2">ขนาด 2 นิ้ว (ใหญ่ - แปะเครื่องมือใหญ่/เตียง)</option>
+                            </select>
+                        </div>
                     </div>
                 `,
                 showCancelButton: true, confirmButtonText: '<i class="fas fa-print"></i> สร้างและพิมพ์',
                 cancelButtonText: 'ยกเลิก', confirmButtonColor: '#ffc107',
             }).then((result) => {
                 if (result.isConfirmed) {
+                    const format = document.getElementById('qrPaperFormat').value;
                     const size = document.getElementById('qrSizeSelect').value;
-                    executePrintQR(selectedIds, size);
+                    executePrintQR(selectedIds, format, size);
                 }
             });
         }
 
-        function executePrintQR(selectedIds, sizeInches) {
+        // ฟังก์ชันซ่อน/แสดง ตัวเลือกขนาดป้ายเมื่อเลือก Sticker
+        function toggleLabelSizeSelect() {
+            const format = document.getElementById('qrPaperFormat').value;
+            const sizeWrapper = document.getElementById('labelSizeWrapper');
+            if (format === 'sticker') {
+                sizeWrapper.style.display = 'none';
+            } else {
+                sizeWrapper.style.display = 'block';
+            }
+        }
+
+        function executePrintQR(selectedIds, format, sizeInches) {
             const printArea = document.getElementById('printArea');
             printArea.innerHTML = ''; 
 
-            let columns, widthMM;
-            if (sizeInches === "1") { columns = "repeat(7, 1fr)"; widthMM = "25.4mm"; } 
-            else if (sizeInches === "1.5") { columns = "repeat(5, 1fr)"; widthMM = "38.1mm"; } 
-            else { columns = "repeat(4, 1fr)"; widthMM = "50.8mm"; }
+            // จัดการ Dynamic CSS สำหรับขนาดกระดาษ (@page)
+            let pageStyle = document.getElementById('dynamic-print-style');
+            if (!pageStyle) {
+                pageStyle = document.createElement('style');
+                pageStyle.id = 'dynamic-print-style';
+                document.head.appendChild(pageStyle);
+            }
 
-            printArea.style.gridTemplateColumns = columns;
             const itemsToPrint = allEquipment.filter(item => selectedIds.includes(item['เลขครุภัณฑ์']));
             let loadedImages = 0;
             const totalImages = itemsToPrint.length;
 
-            itemsToPrint.forEach(item => {
-                const rmcNo = item['RMC No'] ? String(item['RMC No']).trim() : '-';
-                const itemId = item['เลขครุภัณฑ์'] ? String(item['เลขครุภัณฑ์']).trim() : '-';
-                const qrData = (rmcNo !== '-') ? rmcNo : (itemId !== '-' ? itemId : 'NO-ID');
-                const qrImgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrData)}`;
-                const brand = item['ยี่ห้อ'] || '-';
-                const freq = item['ความถี่การตรวจนับ'] || item['ความถี่การตรวจนับ (เดือน)'] || '1';
-                
-                const container = document.createElement('div');
-                container.className = 'qr-label-container';
-                container.style.width = widthMM; container.style.height = widthMM;
-                container.style.boxSizing = 'border-box'; container.style.overflow = 'hidden'; 
+            if (format === 'a4') {
+                // โหมด A4
+                pageStyle.innerHTML = '@media print { @page { size: A4 portrait; margin: 0.5cm; } }';
+                printArea.style.display = 'grid';
+                printArea.style.padding = '5mm';
+                printArea.style.gap = '5mm';
 
-                container.innerHTML = `
-                    <div style="font-size: 7pt; font-weight: bold; line-height: 1.2; margin-bottom: 2px; height: 2.4em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; word-break: break-word; text-align: center;">
-                        ${item['ชื่อครุภัณฑ์'] || '-'}
-                    </div>
-                    <div style="font-size: 6pt; color: #444; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">ยี่ห้อ: ${brand}</div>
-                    <img src="${qrImgSrc}" alt="QR" onload="checkImagesLoaded()" onerror="checkImagesLoaded()" style="width: 100%; max-width: 42%; height: auto; margin: 0 auto;">
-                    <div style="font-size: 5.5pt; color: #666; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">RMC: ${rmcNo}</div>
-                    <div style="font-size: 7.5pt; font-weight: bold; color: #000; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">ID: ${itemId}</div>
-                    <div style="font-size: 5.5pt; color: #555; background: #eee; padding: 1px 4px; border-radius: 4px; margin-top: 1px; display: inline-block;">ตรวจทุก ${freq} เดือน</div>
-                `;
-                printArea.appendChild(container);
-            });
+                let columns, widthMM;
+                if (sizeInches === "1") { columns = "repeat(7, 1fr)"; widthMM = "25.4mm"; } 
+                else if (sizeInches === "1.5") { columns = "repeat(5, 1fr)"; widthMM = "38.1mm"; } 
+                else { columns = "repeat(4, 1fr)"; widthMM = "50.8mm"; }
 
+                printArea.style.gridTemplateColumns = columns;
+
+                itemsToPrint.forEach(item => {
+                    const rmcNo = item['RMC No'] ? String(item['RMC No']).trim() : '-';
+                    const itemId = item['เลขครุภัณฑ์'] ? String(item['เลขครุภัณฑ์']).trim() : '-';
+                    const qrData = (rmcNo !== '-') ? rmcNo : (itemId !== '-' ? itemId : 'NO-ID');
+                    const qrImgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrData)}`;
+                    const brand = item['ยี่ห้อ'] || '-';
+                    const freq = item['ความถี่การตรวจนับ'] || item['ความถี่การตรวจนับ (เดือน)'] || '1';
+                    
+                    const container = document.createElement('div');
+                    container.className = 'qr-label-container-a4';
+                    container.style.width = widthMM; container.style.height = widthMM;
+
+                    container.innerHTML = `
+                        <div style="font-size: 7pt; font-weight: bold; line-height: 1.2; margin-bottom: 2px; height: 2.4em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; word-break: break-word; text-align: center;">
+                            ${item['ชื่อครุภัณฑ์'] || '-'}
+                        </div>
+                        <div style="font-size: 6pt; color: #444; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">ยี่ห้อ: ${brand}</div>
+                        <img src="${qrImgSrc}" alt="QR" onload="checkImagesLoaded()" onerror="checkImagesLoaded()" style="width: 100%; max-width: 42%; height: auto; margin: 0 auto;">
+                        <div style="font-size: 5.5pt; color: #666; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">RMC: ${rmcNo}</div>
+                        <div style="font-size: 7.5pt; font-weight: bold; color: #000; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">ID: ${itemId}</div>
+                        <div style="font-size: 5.5pt; color: #555; background: #eee; padding: 1px 4px; border-radius: 4px; margin-top: 1px; display: inline-block;">ตรวจทุก ${freq} เดือน</div>
+                    `;
+                    printArea.appendChild(container);
+                });
+
+            } else {
+                // โหมด Sticker 2x1 นิ้ว
+                pageStyle.innerHTML = '@media print { @page { size: 2in 1in; margin: 0; } }';
+                printArea.style.display = 'block'; // เปลี่ยนจาก Grid เป็น Block เพื่อให้หน้ากระดาษรันต่อได้
+                printArea.style.padding = '0';
+                printArea.style.gap = '0';
+
+                itemsToPrint.forEach(item => {
+                    const rmcNo = item['RMC No'] ? String(item['RMC No']).trim() : '-';
+                    const itemId = item['เลขครุภัณฑ์'] ? String(item['เลขครุภัณฑ์']).trim() : '-';
+                    const qrData = (rmcNo !== '-') ? rmcNo : (itemId !== '-' ? itemId : 'NO-ID');
+                    // ลด Request Size เล็กน้อยให้เหมาะกับสติกเกอร์
+                    const qrImgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(qrData)}`;
+                    const brand = item['ยี่ห้อ'] || '-';
+                    const freq = item['ความถี่การตรวจนับ'] || item['ความถี่การตรวจนับ (เดือน)'] || '1';
+                    
+                    const container = document.createElement('div');
+                    container.className = 'qr-label-container-sticker';
+
+                    // Layout แบบ Flexbox: ซ้าย QR (0.85 นิ้ว) / ขวา รายละเอียด (ส่วนที่เหลือ)
+                    container.innerHTML = `
+                        <div style="flex-shrink: 0; width: 0.85in; height: 0.85in; display: flex; align-items: center; justify-content: center;">
+                            <img src="${qrImgSrc}" alt="QR" onload="checkImagesLoaded()" onerror="checkImagesLoaded()" style="width: 100%; height: 100%; object-fit: contain;">
+                        </div>
+                        <div style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center; height: 100%; overflow: hidden; padding-right: 0.05in;">
+                            <div style="font-size: 7.5pt; font-weight: bold; line-height: 1.1; margin-bottom: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word;">
+                                ${item['ชื่อครุภัณฑ์'] || '-'}
+                            </div>
+                            <div style="font-size: 5pt; color: #444; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">ยี่ห้อ: ${brand}</div>
+                            <div style="font-size: 6.5pt; color: #000; font-weight: bold; margin-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">ID: ${itemId}</div>
+                            <div style="font-size: 5.5pt; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">RMC: ${rmcNo}</div>
+                            <div style="font-size: 5pt; color: #333; margin-top: 2px; font-style: italic;">รอบตรวจ: ${freq} เดือน/ครั้ง</div>
+                        </div>
+                    `;
+                    printArea.appendChild(container);
+                });
+            }
+
+            // ตัวจัดการการ Load Image แบบสากล
             window.checkImagesLoaded = function() {
                 loadedImages++;
                 if (loadedImages === totalImages) {
@@ -1497,6 +1585,7 @@
                     setTimeout(() => {
                         Swal.close(); 
                         window.print(); 
+                        // ดีเลย์เล็กน้อยก่อนล้างข้อมูลหน้าจอ เผื่อระบบ Print Spooler ของ OS ดึงข้อมูล
                         setTimeout(() => { printArea.innerHTML = ''; }, 1000);
                     }, 800);
                 }
