@@ -1558,19 +1558,28 @@
                     const container = document.createElement('div');
                     container.className = 'qr-label-container-sticker';
 
-                    // Layout แบบ Flexbox: ซ้าย QR (0.85 นิ้ว) / ขวา รายละเอียด (ส่วนที่เหลือ)
+                    // Layout แบบ Flexbox: ซ้าย QR (0.8 นิ้ว) / ขวา รายละเอียด (ส่วนที่เหลือ)
+                    // ปรับขนาด font ลงและยกเลิกการตัดคำทิ้ง เพื่อให้แสดงข้อมูลครบ
                     container.innerHTML = `
-                        <div style="flex-shrink: 0; width: 0.85in; height: 0.85in; display: flex; align-items: center; justify-content: center;">
+                        <div style="flex-shrink: 0; width: 0.8in; height: 0.8in; display: flex; align-items: center; justify-content: center; margin-right: 0.05in;">
                             <img src="${qrImgSrc}" alt="QR" onload="checkImagesLoaded()" onerror="checkImagesLoaded()" style="width: 100%; height: 100%; object-fit: contain;">
                         </div>
-                        <div style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center; height: 100%; overflow: hidden; padding-right: 0.05in;">
-                            <div style="font-size: 7.5pt; font-weight: bold; line-height: 1.1; margin-bottom: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word;">
+                        <div style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center; height: 100%; padding-right: 0.05in; overflow: hidden;">
+                            <div style="font-size: 6pt; font-weight: bold; line-height: 1.1; margin-bottom: 2px; word-break: break-word; white-space: normal;">
                                 ${item['ชื่อครุภัณฑ์'] || '-'}
                             </div>
-                            <div style="font-size: 5pt; color: #444; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">ยี่ห้อ: ${brand}</div>
-                            <div style="font-size: 6.5pt; color: #000; font-weight: bold; margin-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">ID: ${itemId}</div>
-                            <div style="font-size: 5.5pt; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">RMC: ${rmcNo}</div>
-                            <div style="font-size: 5pt; color: #333; margin-top: 2px; font-style: italic;">รอบตรวจ: ${freq} เดือน/ครั้ง</div>
+                            <div style="font-size: 5pt; color: #444; margin-bottom: 2px; line-height: 1; word-break: break-word; white-space: normal;">
+                                ยี่ห้อ: ${brand}
+                            </div>
+                            <div style="font-size: 6pt; color: #000; font-weight: bold; margin-bottom: 1px; word-break: break-all; line-height: 1.1; white-space: normal;">
+                                ID: ${itemId}
+                            </div>
+                            <div style="font-size: 5pt; color: #555; word-break: break-all; line-height: 1.1; white-space: normal;">
+                                RMC: ${rmcNo}
+                            </div>
+                            <div style="font-size: 4.5pt; color: #333; margin-top: 2px; font-style: italic; line-height: 1;">
+                                รอบตรวจ: ${freq} เดือน/ครั้ง
+                            </div>
                         </div>
                     `;
                     printArea.appendChild(container);
