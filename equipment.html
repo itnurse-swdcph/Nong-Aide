@@ -1521,6 +1521,7 @@
                     const qrImgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrData)}`;
                     const brand = item['ยี่ห้อ'] || '-';
                     const freq = item['ความถี่การตรวจนับ'] || item['ความถี่การตรวจนับ (เดือน)'] || '1';
+                    const ward = item['หน่วยงาน'] || '-'; // ดึงข้อมูลหน่วยงาน
                     
                     const container = document.createElement('div');
                     container.className = 'qr-label-container-a4';
@@ -1534,7 +1535,8 @@
                         <img src="${qrImgSrc}" alt="QR" onload="checkImagesLoaded()" onerror="checkImagesLoaded()" style="width: 100%; max-width: 42%; height: auto; margin: 0 auto;">
                         <div style="font-size: 5.5pt; color: #666; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">RMC: ${rmcNo}</div>
                         <div style="font-size: 7.5pt; font-weight: bold; color: #000; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">ID: ${itemId}</div>
-                        <div style="font-size: 5.5pt; color: #555; background: #eee; padding: 1px 4px; border-radius: 4px; margin-top: 1px; display: inline-block;">ตรวจทุก ${freq} เดือน</div>
+                        <div style="font-size: 5.5pt; color: #003366; font-weight: 500; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">หน่วยงาน: ${ward}</div>
+                        <div style="font-size: 5.5pt; color: #555; background: #eee; padding: 1px 4px; border-radius: 4px; margin-top: 2px; display: inline-block;">ตรวจทุก ${freq} เดือน</div>
                     `;
                     printArea.appendChild(container);
                 });
@@ -1550,16 +1552,14 @@
                     const rmcNo = item['RMC No'] ? String(item['RMC No']).trim() : '-';
                     const itemId = item['เลขครุภัณฑ์'] ? String(item['เลขครุภัณฑ์']).trim() : '-';
                     const qrData = (rmcNo !== '-') ? rmcNo : (itemId !== '-' ? itemId : 'NO-ID');
-                    // ลด Request Size เล็กน้อยให้เหมาะกับสติกเกอร์
                     const qrImgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(qrData)}`;
                     const brand = item['ยี่ห้อ'] || '-';
                     const freq = item['ความถี่การตรวจนับ'] || item['ความถี่การตรวจนับ (เดือน)'] || '1';
+                    const ward = item['หน่วยงาน'] || '-'; // ดึงข้อมูลหน่วยงาน
                     
                     const container = document.createElement('div');
                     container.className = 'qr-label-container-sticker';
 
-                    // Layout แบบ Flexbox: ซ้าย QR (0.8 นิ้ว) / ขวา รายละเอียด (ส่วนที่เหลือ)
-                    // ปรับขนาด font ลงและยกเลิกการตัดคำทิ้ง เพื่อให้แสดงข้อมูลครบ
                     container.innerHTML = `
                         <div style="flex-shrink: 0; width: 0.8in; height: 0.8in; display: flex; align-items: center; justify-content: center; margin-right: 0.05in;">
                             <img src="${qrImgSrc}" alt="QR" onload="checkImagesLoaded()" onerror="checkImagesLoaded()" style="width: 100%; height: 100%; object-fit: contain;">
@@ -1577,8 +1577,11 @@
                             <div style="font-size: 5pt; color: #555; word-break: break-all; line-height: 1.1; white-space: normal;">
                                 RMC: ${rmcNo}
                             </div>
-                            <div style="font-size: 4.5pt; color: #333; margin-top: 2px; font-style: italic; line-height: 1;">
-                                รอบตรวจ: ${freq} เดือน/ครั้ง
+                            <div style="font-size: 4.5pt; color: #003366; font-weight: bold; margin-top: 1px; word-break: break-word; line-height: 1; white-space: normal;">
+                                จุด: ${ward}
+                            </div>
+                            <div style="font-size: 4.5pt; color: #333; margin-top: 1px; font-style: italic; line-height: 1;">
+                                รอบตรวจ: ${freq} ด./ครั้ง
                             </div>
                         </div>
                     `;
