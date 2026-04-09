@@ -569,6 +569,7 @@
         
         // 🔴 เชื่อมต่อ API เรียบร้อย
         const EQUIPMENT_API = "https://script.google.com/macros/s/AKfycbyx7gZYzGOotSCBwm-vhQDT0K_2vTQEuY7JoyRHhiqzyHQHEOBxHUjc1HYCtNclBYOLCw/exec"; 
+        const WARD_API = "https://script.google.com/macros/s/AKfycbx_xuBauWvjIYplrefNTSf6J0Y9ZzAv-FQhOvPk1SYC1qOU7C3sdrU6LL4wQI3Uz9dTeg/exec";
 
         let allEquipment = []; 
         let filteredEquipment = []; 
@@ -640,6 +641,29 @@
             return [...new Set(
                 items.flatMap(item => [item._ownerWard, item._usageWard]).filter(Boolean)
             )].sort((a, b) => a.localeCompare(b, 'th'));
+        }
+
+        function mergeWardOptions(newWards = []) {
+            const merged = [...new Set([
+                ...wardOptions.map(normalizeWard),
+                ...newWards.map(normalizeWard)
+            ].filter(Boolean))];
+            wardOptions = merged.sort((a, b) => a.localeCompare(b, 'th'));
+        }
+
+        async function ensureWardOptionsLoaded() {
+            if (wardOptions.length > 1) return;
+            if (!WARD_API || WARD_API === "YOUR_WEB_APP_URL_FROM_GAS_HERE") return;
+
+            try {
+                const response = await fetch(WARD_API);
+                const result = await response.json();
+                if (result.status === 'success' && Array.isArray(result.data)) {
+                    mergeWardOptions(result.data);
+                }
+            } catch (error) {
+                console.error('Error fetching ward master:', error);
+            }
         }
 
         function matchesSearchTerm(item, searchTerm) {
@@ -847,9 +871,10 @@
                     if (result.status === 'success') {
                         allEquipment = (result.data || []).map(prepareEquipmentItem);
                         filteredEquipment = [...allEquipment];
-                        wardOptions = getWardOptionsFromItems(allEquipment);
+                        mergeWardOptions(getWardOptionsFromItems(allEquipment));
                         updateDashboardStats(); 
                         switchTab(currentActiveTab); 
+                        ensureWardOptionsLoaded();
                     } else {
                         allEquipment = [];
                         filteredEquipment = [];
@@ -1202,6 +1227,8 @@
         }
 
         async function openManageModal(item) {
+            await ensureWardOptionsLoaded();
+
             if (!item._needsInspection) {
                 let lastInspectStr = "ยังไม่เคยตรวจ";
                 if (item['วันที่ตรวจล่าสุด']) {
