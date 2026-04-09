@@ -169,7 +169,8 @@ body {
 }
 
 .input-group { margin-bottom: 20px; text-align: left; }
-.input-group input {
+.input-group input,
+.input-group select {
     width: 100%;
     padding: 15px;
     border: 2px solid #e0e6ed;
@@ -177,8 +178,11 @@ body {
     font-size: 1rem;
     font-family: 'Prompt', sans-serif;
     transition: 0.3s;
+    background: var(--white);
+    color: var(--text-main);
 }
-.input-group input:focus {
+.input-group input:focus,
+.input-group select:focus {
     border-color: var(--primary);
     outline: none;
     box-shadow: 0 0 0 3px rgba(0,51,102,0.1);
