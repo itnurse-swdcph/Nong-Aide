@@ -109,6 +109,9 @@
                     <button class="help-icon" onclick="showClothHelpModal()" title="วิธีใช้งาน"><i class="fas fa-info"></i></button>
                 </h1>
                 <div class="quarter-badge" id="displayQuarter">ประจำไตรมาส -</div>
+                <div style="margin-top:12px; background:#fff9db; border:1px solid #ffe066; color:#7a5c00; border-radius:12px; padding:12px 14px; font-size:0.92rem;">
+                    ระบบเปิดรอบตรวจผ้าพร้อมกันตั้งแต่วันที่ 1 ของเดือนแรกในแต่ละไตรมาส โดยไม่อิงตามวันบันทึกล่าสุดของแต่ละหน่วยงาน
+                </div>
             </div>
 
             <div id="alreadyCountedMessage" class="already-counted" style="display: none;">
@@ -132,12 +135,7 @@
     </div>
 
     <div class="admin-container" id="adminSection">
-        <h2 style="color: var(--primary); margin-bottom: 20px;">
-            <i class="fas fa-chart-line"></i>รายงานสรุปการตรวจนับ Stock ผ้า
-            <div style="font-size: 0.65em; font-weight: normal; margin-top: 8px; color: #666;">
-                โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน
-            </div>
-        </h2>
+        <h2 style="color: var(--primary); margin-bottom: 20px;"><i class="fas fa-chart-line"></i> Dashboard สรุปผลการตรวจนับผ้า</h2>
         
         <div class="admin-toolbar">
             <select id="adminQuarterFilter" onchange="filterAdminData()">
@@ -252,7 +250,7 @@
                     <div style="text-align: left; font-size: 0.95rem; line-height: 1.6; color: #444;">
                         <div style="background: #fff9db; border: 1px solid #ffe066; padding: 10px; border-radius: 8px; margin-bottom: 15px; color: #856404; font-weight: 500;">
                             <i class="fas fa-calendar-alt"></i> <b>กำหนดการตรวจนับ:</b><br>
-                            ระบบกำหนดให้เข้าตรวจนับใน <b>"เดือนแรก"</b> ของแต่ละไตรมาส ดังนี้:<br>
+                            ระบบเปิดให้เข้าตรวจนับตั้งแต่ <b>"วันที่ 1 ของเดือนแรก"</b> ในแต่ละไตรมาส ดังนี้:<br>
                             • มกราคม | • เมษายน | • กรกฎาคม | • ตุลาคม
                         </div>
                         <h4 style="color: var(--primary); margin-bottom: 8px; border-bottom: 2px solid #eee; padding-bottom: 5px;"><i class="fas fa-list-ol"></i> ขั้นตอนการใช้งาน</h4>
