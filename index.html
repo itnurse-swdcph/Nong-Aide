@@ -51,14 +51,14 @@
             <h3><i class="fas fa-map-marker-alt" style="color: var(--accent);"></i> เลือกหน่วยงานของคุณ</h3>
             
             <div class="input-group">
-                <input type="text" id="wardInput" list="wardsList" placeholder="พิมพ์เพื่อค้นหาหน่วยงาน..." autocomplete="off">
-                <datalist id="wardsList">
-                    </datalist>
+                <select id="wardInput">
+                    <option value="" selected disabled>กำลังโหลดรายชื่อหน่วยงาน...</option>
+                </select>
             </div>
             
             <button class="btn-primary" onclick="enterSystem()">เข้าสู่ระบบ</button>
             <button class="btn-admin-entry" onclick="showAdminLogin()"><i class="fas fa-user-shield"></i> เข้าสู่ระบบแอดมิน</button>
-            <p class="login-hint">&copy; 2026 AIDE System. All rights reserved.| Developed By Natnarinthorn</p>
+            <p class="login-hint">สำหรับผู้ดูแลระบบ ใช้ชื่อผู้ใช้และรหัสผ่านที่กำหนดไว้เพื่อเข้าสู่โหมดแอดมิน</p>
         </div>
     </section>
 
