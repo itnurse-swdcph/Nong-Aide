@@ -37,17 +37,22 @@ async function fetchWards() {
         
         if (result.status === 'success') {
             wardList = result.data;
-            const datalist = document.getElementById('wardsList');
-            datalist.innerHTML = ''; // เคลียร์ของเก่า
+            const wardSelect = document.getElementById('wardInput');
+            wardSelect.innerHTML = '<option value="" selected disabled>-- กรุณาเลือกหน่วยงาน --</option>';
             
             wardList.forEach(ward => {
                 let option = document.createElement('option');
                 option.value = ward;
-                datalist.appendChild(option);
+                option.textContent = ward;
+                wardSelect.appendChild(option);
             });
         }
     } catch (error) {
         console.error("Error fetching wards:", error);
+        const wardSelect = document.getElementById('wardInput');
+        if (wardSelect) {
+            wardSelect.innerHTML = '<option value="" selected disabled>ไม่สามารถโหลดรายชื่อหน่วยงานได้</option>';
+        }
     }
 }
 
