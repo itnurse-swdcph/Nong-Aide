@@ -10,6 +10,10 @@ const ADMIN_CREDENTIALS = {
     username: "11450",
     password: "11450"
 };
+const AVAILABLE_SYSTEMS = new Set([
+    "equipment.html",
+    "cloth-stock.html"
+]);
 
 // --- PWA Service Worker Registration (4. บันทึกหน้าจอเป็นแอพ) ---
 if ('serviceWorker' in navigator) {
@@ -163,6 +167,17 @@ function openSystem(url) {
     const currentRole = sessionStorage.getItem(SESSION_KEYS.role) || "user";
     const params = new URLSearchParams();
 
+    if (!AVAILABLE_SYSTEMS.has(url)) {
+        Swal.fire({
+            icon: 'info',
+            title: 'ระบบนี้กำลังปรับปรุง',
+            text: 'เมนูนี้ยังไม่พร้อมใช้งานในเวอร์ชันปัจจุบัน กรุณาใช้งานเมนูอื่นก่อนครับ',
+            confirmButtonColor: '#003366',
+            confirmButtonText: 'รับทราบ'
+        });
+        return;
+    }
+
     if (currentRole === "admin") {
         params.set("role", "admin");
     } else if (currentWard) {
@@ -171,7 +186,7 @@ function openSystem(url) {
 
     const queryString = params.toString();
     const fullUrl = queryString ? `${url}?${queryString}` : url;
-    window.open(fullUrl, '_blank');
+    window.location.href = fullUrl;
 }
 
 function showAdminLogin() {
