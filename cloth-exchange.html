@@ -454,7 +454,7 @@
                 <div class="toolbar">
                     <div class="tabs">
                         <button class="tab-btn active" onclick="switchPanel('unitWorkspace', 'unitDashboard', this)">Dashboard</button>
-                        <button class="tab-btn" onclick="switchPanel('unitWorkspace', 'unitRequest', this)">สร้างใบเบิก</button>
+                        <button id="unitCreateTabBtn" class="tab-btn" onclick="switchPanel('unitWorkspace', 'unitRequest', this)">สร้างใบเบิก</button>
                         <button class="tab-btn" onclick="switchPanel('unitWorkspace', 'unitRequests', this)">รายการของฉัน</button>
                     </div>
                 </div>
@@ -519,17 +519,12 @@
                                     ผู้ส่งใบเบิก
                                     <input type="text" id="requesterName" placeholder="ชื่อ-นามสกุล" required>
                                 </label>
-                                <label class="field">
-                                    ลายเซ็นผู้ส่งใบเบิก
-                                    <input type="text" id="requesterSignature" placeholder="พิมพ์ชื่อแทนลายเซ็น">
-                                </label>
                             </div>
                             <div class="table-wrap">
                                 <table>
                                     <thead>
                                         <tr>
                                             <th>รายการผ้า</th>
-                                            <th>หมวดหมู่</th>
                                             <th>Par</th>
                                             <th>คงเหลือในคลัง</th>
                                             <th>ส่งซัก</th>
@@ -896,6 +891,21 @@
         }
 
         function renderUnitWorkspace() {
+            const createTabBtn = document.getElementById('unitCreateTabBtn');
+            const requestPanel = document.getElementById('unitRequest');
+            const hideCreate = isLaundryWard();
+
+            createTabBtn.classList.toggle('hidden', hideCreate);
+            requestPanel.classList.toggle('hidden', hideCreate);
+
+            if (hideCreate && requestPanel.classList.contains('active')) {
+                requestPanel.classList.remove('active');
+                document.getElementById('unitDashboard').classList.add('active');
+                const tabs = document.querySelectorAll('#unitWorkspace .tab-btn');
+                tabs.forEach(btn => btn.classList.remove('active'));
+                if (tabs[0]) tabs[0].classList.add('active');
+            }
+
             document.getElementById('unitOpenMetric').innerText = unitRequests.filter(req => ['submitted', 'received', 'processing', 'partial_issued'].includes(req.status)).length.toLocaleString();
             document.getElementById('unitAwaitMetric').innerText = unitRequests.filter(req => req.status === 'issued_waiting_receipt').length.toLocaleString();
             document.getElementById('dashSubmitted').innerText = unitRequests.filter(req => req.status === 'submitted').length.toLocaleString();
@@ -909,19 +919,18 @@
         function renderRequestFormRows() {
             const tbody = document.getElementById('requestLineBody');
             if (masterItems.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">ไม่พบรายการ master ของหน่วยงานนี้</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;">ไม่พบรายการ master ของหน่วยงานนี้</td></tr>`;
                 return;
             }
 
             tbody.innerHTML = masterItems.map((item, index) => `
                 <tr>
                     <td>${escapeHtml(item.itemName)}</td>
-                    <td>${escapeHtml(item.mainCategory)}</td>
                     <td>${item.parLevel}</td>
                     <td><input class="number-input" type="number" min="0" value="0" id="stockBalance-${index}" oninput="recalculateLine(${index})"></td>
                     <td><input class="number-input" type="number" min="0" value="0" id="sentLaundry-${index}"></td>
                     <td><input class="number-input" type="number" value="${item.parLevel}" id="suggestedQty-${index}" readonly></td>
-                    <td><input class="number-input" type="number" min="0" value="${item.parLevel}" id="requestedQty-${index}"></td>
+                    <td><input class="number-input" type="number" min="0" value="0" id="requestedQty-${index}"></td>
                     <td><input class="text-input" type="text" id="wardNote-${index}" placeholder="หมายเหตุ"></td>
                 </tr>
             `).join('');
@@ -931,13 +940,7 @@
             const par = Number(masterItems[index].parLevel || 0);
             const stock = Number(document.getElementById(`stockBalance-${index}`).value || 0);
             const suggested = Math.max(par - stock, 0);
-            const suggestedInput = document.getElementById(`suggestedQty-${index}`);
-            const requestedInput = document.getElementById(`requestedQty-${index}`);
-            suggestedInput.value = suggested;
-            if (!requestedInput.dataset.touched || requestedInput.value === '' || Number(requestedInput.value) === Number(requestedInput.dataset.lastSuggested || par)) {
-                requestedInput.value = suggested;
-            }
-            requestedInput.dataset.lastSuggested = suggested;
+            document.getElementById(`suggestedQty-${index}`).value = suggested;
         }
 
         async function submitExchangeRequest(event) {
@@ -945,7 +948,6 @@
             ensureExchangeApiReady();
 
             const requesterName = document.getElementById('requesterName').value.trim();
-            const requesterSignature = document.getElementById('requesterSignature').value.trim() || requesterName;
             const requestDate = document.getElementById('requestDate').value;
             const shift = document.getElementById('requestShift').value;
             if (!requesterName || !requestDate || !shift) {
@@ -996,7 +998,6 @@
                         requestDate,
                         shift,
                         requesterName,
-                        requesterSignature,
                         lines
                     })
                 });
@@ -1495,7 +1496,7 @@
                 `
                 : `
                     <div style="display:flex; justify-content:flex-end; margin-top:32px;">
-                        <div style="width:32%; text-align:center;">ผู้ส่งใบเบิก<br><br>........................................<br>${escapeHtml(detail.header.requesterSignature || detail.header.requesterName || '')}</div>
+                        <div style="width:32%; text-align:center;">ผู้ส่งใบเบิก<br><br>........................................<br>${escapeHtml(detail.header.requesterName || '')}</div>
                     </div>
                 `;
 
