@@ -621,7 +621,7 @@
                 <div class="hero">
                     <div>
                         <h2>ภาพรวมหน่วยงาน</h2>
-                        <p>ฟอร์มตรวจนับใช้ 4 สถานะหลัก: พร้อมใช้, กำลังใช้งาน, ส่งซัก, ติดผู้ป่วยรอติดตาม</p>
+                        <p>ฟอร์มตรวจนับใช้ 4 สถานะหลัก: พร้อมใช้, กำลังใช้งาน, ส่งซัก, ติดผู้ป่วยกลับบ้านรอติดตาม</p>
                     </div>
                     <div class="hero-side">
                         <div class="metric">
@@ -656,7 +656,7 @@
                         <div class="metric"><small>พร้อมใช้</small><strong id="metricReady">0</strong></div>
                         <div class="metric"><small>กำลังใช้งาน</small><strong id="metricInUse">0</strong></div>
                         <div class="metric"><small>ส่งซัก</small><strong id="metricLaundry">0</strong></div>
-                        <div class="metric"><small>ติดผู้ป่วย</small><strong id="metricPending">0</strong></div>
+                        <div class="metric"><small>ติดผู้ป่วยกลับบ้าน</small><strong id="metricPending">0</strong></div>
                     </div>
                     <div class="grid-2">
                         <div class="card">
@@ -673,7 +673,7 @@
                         <div class="card">
                             <div class="section-head">
                                 <div>
-                                    <h3>สถานะติดตามผ้าติดผู้ป่วย</h3>
+                                    <h3>สถานะติดตามผ้าติดผู้ป่วยกลับบ้าน</h3>
                                     <p>สรุปรายการของหน่วยงาน</p>
                                 </div>
                             </div>
@@ -715,7 +715,7 @@
                     <div class="card">
                         <div class="section-head">
                             <div>
-                                <h3>แจ้งผ้าติดผู้ป่วย</h3>
+                                <h3>แจ้งผ้าติดผู้ป่วยกลับบ้าน</h3>
                                 <p>แจ้งได้ทุกวัน รายการจะเข้าสู่คิวของหน่วยงานซักฟอก</p>
                             </div>
                         </div>
@@ -803,7 +803,7 @@
                                         <th>พร้อมใช้</th>
                                         <th>ใช้งาน</th>
                                         <th>ส่งซัก</th>
-                                        <th>ติดผู้ป่วย</th>
+                                        <th>ติดผู้ป่วยกลับบ้าน</th>
                                         <th>รวม</th>
                                         <th>Par</th>
                                         <th>ต่าง</th>
@@ -821,7 +821,7 @@
             <section id="laundrySection" class="hidden">
                 <div class="hero">
                     <div>
-                        <h2>คิวติดตามผ้าติดผู้ป่วย</h2>
+                        <h2>คิวติดตามผ้าติดผู้ป่วยกลับบ้าน</h2>
                         <p>หน่วยงานซักฟอกใช้ส่วนนี้เพื่อติดตามและเปลี่ยนสถานะรายการ</p>
                     </div>
                     <div class="hero-side">
@@ -957,7 +957,7 @@
                         <div class="metric"><small>พร้อมใช้</small><strong id="adminReadyMetric">0</strong></div>
                         <div class="metric"><small>กำลังใช้งาน</small><strong id="adminUseMetric">0</strong></div>
                         <div class="metric"><small>ส่งซัก</small><strong id="adminLaundryMetric">0</strong></div>
-                        <div class="metric"><small>ติดผู้ป่วย</small><strong id="adminPendingMetric">0</strong></div>
+                        <div class="metric"><small>ติดผู้ป่วยกลับบ้าน</small><strong id="adminPendingMetric">0</strong></div>
                     </div>
                     <div class="card">
                         <div class="section-head">
@@ -978,7 +978,7 @@
                                         <th>พร้อมใช้</th>
                                         <th>ใช้งาน</th>
                                         <th>ส่งซัก</th>
-                                        <th>ติดผู้ป่วย</th>
+                                        <th>ติดผู้ป่วยกลับบ้าน</th>
                                         <th>รวม</th>
                                         <th>Par</th>
                                         <th>ต่าง</th>
@@ -1035,7 +1035,7 @@
             { key: "readyStock", label: "ผ้าพร้อมใช้", hint: "อยู่ใน stock", icon: "fa-box-open" },
             { key: "inUse", label: "กำลังใช้งาน", hint: "อยู่กับผู้ป่วย", icon: "fa-bed-pulse" },
             { key: "inLaundry", label: "ส่งซัก", hint: "รอเบิกกลับ", icon: "fa-soap" },
-            { key: "pendingTracking", label: "ติดผู้ป่วย", hint: "รอติดตาม", icon: "fa-user-clock" }
+            { key: "pendingTracking", label: "ติดผู้ป่วยกลับบ้าน", hint: "รอติดตาม", icon: "fa-user-clock" }
         ];
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -1143,7 +1143,7 @@
             }
 
             if (trackingResult.status === "rejected") {
-                showNotice("ระบบติดตามผ้าติดผู้ป่วยยังไม่พร้อม", trackingResult.reason?.message || "Backend ยังไม่รองรับ action สำหรับงานติดตาม", "warning");
+                showNotice("ระบบติดตามผ้าติดผู้ป่วยกลับบ้านยังไม่พร้อม", trackingResult.reason?.message || "Backend ยังไม่รองรับ action สำหรับงานติดตาม", "warning");
             }
 
             document.getElementById("trackingDate").value = new Date().toISOString().slice(0, 10);
@@ -1457,7 +1457,7 @@
                         { label: "พร้อมใช้", data: rows.map(row => row.readyStock), backgroundColor: "#1d8f5a" },
                         { label: "กำลังใช้งาน", data: rows.map(row => row.inUse), backgroundColor: "#2f6db0" },
                         { label: "ส่งซัก", data: rows.map(row => row.inLaundry), backgroundColor: "#8a63c7" },
-                        { label: "ติดผู้ป่วย", data: rows.map(row => row.pendingTracking), backgroundColor: "#c48313" },
+                        { label: "ติดผู้ป่วยกลับบ้าน", data: rows.map(row => row.pendingTracking), backgroundColor: "#c48313" },
                         { label: "Par", data: rows.map(row => row.par), backgroundColor: "#dbe8f7" }
                     ]
                 },
@@ -1647,7 +1647,7 @@
                 "ผ้าพร้อมใช้": log.readyStock,
                 "กำลังใช้งาน": log.inUse,
                 "ส่งซัก": log.inLaundry,
-                "ติดผู้ป่วยรอติดตาม": log.pendingTracking,
+                "ติดผู้ป่วยกลับบ้านรอติดตาม": log.pendingTracking,
                 ยอดนับได้จริง: log.totalCounted,
                 ยอดมาตรฐาน: log.parLevel,
                 "ส่วนต่าง (+/-)": log.difference,
@@ -1926,7 +1926,7 @@
             const readyStock = toNumber(pickValue(log, ["ผ้าพร้อมใช้", "readyStock", "good", "ยอดดี", "totalGood"]), 0);
             const inUse = toNumber(pickValue(log, ["กำลังใช้งาน", "inUse"]), 0);
             const inLaundry = toNumber(pickValue(log, ["ส่งซัก", "inLaundry"]), 0);
-            const pendingTracking = toNumber(pickValue(log, ["ติดผู้ป่วยรอติดตาม", "pendingTracking"]), 0);
+            const pendingTracking = toNumber(pickValue(log, ["ติดผู้ป่วยกลับบ้านรอติดตาม", "pendingTracking"]), 0);
             const par = toNumber(pickValue(log, ["ยอดมาตรฐาน", "par", "parLevel", "ยอดมาตรฐาน (Par)"]), 0);
             const total = toNumber(pickValue(log, ["ยอดนับได้จริง", "total", "totalCounted"]), readyStock + inUse + inLaundry + pendingTracking);
             const diff = toNumber(pickValue(log, ["ส่วนต่าง (+/-)", "diff", "difference"]), total - par);
@@ -2043,7 +2043,7 @@
                 ["พร้อมใช้", row => row.readyStock],
                 ["กำลังใช้งาน", row => row.inUse],
                 ["ส่งซัก", row => row.inLaundry],
-                ["ติดผู้ป่วย", row => row.pendingTracking],
+                ["ติดผู้ป่วยกลับบ้าน", row => row.pendingTracking],
                 ["รวม", row => row.total],
                 ["Par", row => row.par],
                 ["ต่าง", row => formatDifference(row.diff)],
@@ -2065,7 +2065,7 @@
                 ["พร้อมใช้", row => row.readyStock],
                 ["กำลังใช้งาน", row => row.inUse],
                 ["ส่งซัก", row => row.inLaundry],
-                ["ติดผู้ป่วย", row => row.pendingTracking],
+                ["ติดผู้ป่วยกลับบ้าน", row => row.pendingTracking],
                 ["รวม", row => row.total],
                 ["Par", row => row.par],
                 ["ต่าง", row => formatDifference(row.diff)]
