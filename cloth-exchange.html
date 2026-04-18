@@ -453,7 +453,9 @@
 
     <div class="page">
         <section id="globalNotice" class="notice hidden"></section>
-        <section id="loader" class="loader">
+        
+        <!-- ซ่อน loader เดิมไว้เพราะถูกแทนที่ด้วย Popup SweetAlert แล้ว -->
+        <section id="loader" class="loader hidden">
             <i class="fas fa-spinner fa-spin fa-3x" style="color: var(--navy); margin-bottom: 12px;"></i>
             <div id="loaderText">กำลังโหลดข้อมูล</div>
         </section>
@@ -786,11 +788,31 @@
             setLoading(false);
         }
 
+        // --- แก้ไขเฉพาะฟังก์ชัน setLoading ตรงนี้ ---
         function setLoading(isLoading, text) {
-            document.getElementById('loaderText').innerText = text || 'กำลังโหลดข้อมูล';
-            document.getElementById('loader').classList.toggle('hidden', !isLoading);
-            document.getElementById('app').classList.toggle('hidden', isLoading);
+            if (isLoading) {
+                // ใช้ SweetAlert2 สร้าง Pop up รอโหลด
+                Swal.fire({
+                    title: text || 'กำลังโหลดข้อมูล',
+                    html: 'กรุณารอสักครู่...',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+            } else {
+                // ปิด Pop up เมื่อโหลดเสร็จ
+                Swal.close();
+                // แสดงผลหน้าต่างหลัก
+                document.getElementById('app').classList.remove('hidden');
+            }
+            
+            // ปิดและซ่อนตัวโหลดดั้งเดิมแบบฝังในหน้า
+            document.getElementById('loader').classList.add('hidden');
         }
+        // ----------------------------------------
 
         function updateHeader() {
             let title = 'ระบบส่งแลกผ้าสะอาด';
