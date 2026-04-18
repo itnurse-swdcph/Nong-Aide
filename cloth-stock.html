@@ -1152,14 +1152,19 @@
 
         async function loadLaundryMode() {
             hideNotice();
-            document.getElementById("unitSection").classList.add("hidden");
+            document.getElementById("unitSection").classList.remove("hidden");
             document.getElementById("laundrySection").classList.remove("hidden");
             document.getElementById("adminSection").classList.add("hidden");
 
-            const [logsResult, trackingResult] = await Promise.allSettled([
+            const [masterResult, logsResult, trackingResult] = await Promise.allSettled([
+                fetchClothMaster(),
                 fetchAllLogs(),
                 fetchTrackingRecords()
             ]);
+
+            if (masterResult.status === "rejected") {
+                showNotice("โหลดรายการมาตรฐานไม่สำเร็จ", masterResult.reason?.message || "ไม่สามารถเชื่อมต่อ ClothMaster ได้", "warning");
+            }
 
             if (logsResult.status === "rejected") {
                 showNotice("โหลด ClothLog ไม่สำเร็จ", logsResult.reason?.message || "ไม่สามารถเชื่อมต่อข้อมูลตรวจนับได้", "warning");
@@ -1169,6 +1174,8 @@
                 showNotice("โหลดรายการติดตามไม่สำเร็จ", trackingResult.reason?.message || "Backend ยังไม่รองรับ action สำหรับงานติดตาม", "danger");
             }
 
+            document.getElementById("trackingDate").value = new Date().toISOString().slice(0, 10);
+            renderUnitView();
             renderLaundryView();
         }
 
