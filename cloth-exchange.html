@@ -565,6 +565,7 @@
                                 </table>
                             </div>
                             <div class="actions">
+                                <button type="button" class="ghost-btn" onclick="addCustomFormRow()"><i class="fas fa-plus"></i> เพิ่มรายการอื่นๆ</button>
                                 <button type="submit" class="primary-btn" id="submitRequestBtn"><i class="fas fa-floppy-disk"></i> ส่งใบเบิก</button>
                             </div>
                         </form>
@@ -985,10 +986,33 @@
         }
 
         function recalculateLine(index) {
-            const par = Number(masterItems[index].parLevel || 0);
+            const par = index < masterItems.length ? Number(masterItems[index].parLevel || 0) : 0;
             const stock = Number(document.getElementById(`stockBalance-${index}`).value || 0);
             const suggested = Math.max(par - stock, 0);
             document.getElementById(`suggestedQty-${index}`).value = suggested;
+        }
+
+        function addCustomFormRow() {
+            const tbody = document.getElementById('requestLineBody');
+            
+            // กรณีไม่มีรายการ master เลย ให้ลบข้อความที่บอกว่าไม่พบรายการออกก่อน
+            if (tbody.children.length === 1 && tbody.children[0].textContent.includes('ไม่พบรายการ')) {
+                tbody.innerHTML = '';
+            }
+
+            const index = tbody.children.length; // ใช้จำนวนแถวปัจจุบันเป็น index ถัดไป
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><input class="text-input" type="text" id="customItemName-${index}" placeholder="ระบุชื่อผ้าอื่นๆ"></td>
+                <td>0</td>
+                <td><input class="number-input" type="number" min="0" id="stockBalance-${index}" placeholder="คงเหลือ" oninput="recalculateLine(${index})"></td>
+                <td><input class="number-input" type="number" min="0" id="sentLaundry-${index}" placeholder="ส่งซัก"></td>
+                <td><input class="number-input" type="number" value="0" id="suggestedQty-${index}" readonly></td>
+                <td><input class="number-input" type="number" min="0" id="requestedQty-${index}" placeholder="ขอเบิก"></td>
+                <td><input class="text-input" type="text" id="wardNote-${index}" placeholder="หมายเหตุ"></td>
+            `;
+            tbody.appendChild(tr);
         }
 
         async function submitExchangeRequest(event) {
@@ -1003,23 +1027,50 @@
                 return;
             }
 
-            const lines = masterItems.map((item, index) => {
-                const stockBalance = Number(document.getElementById(`stockBalance-${index}`).value || 0);
-                const sentLaundryQty = Number(document.getElementById(`sentLaundry-${index}`).value || 0);
-                const suggestedQty = Math.max(Number(item.parLevel || 0) - stockBalance, 0);
-                const requestedQty = Number(document.getElementById(`requestedQty-${index}`).value || 0);
-                const wardNote = document.getElementById(`wardNote-${index}`).value.trim();
-                return {
-                    itemName: item.itemName,
-                    mainCategory: item.mainCategory,
-                    parLevel: item.parLevel,
+            const tbody = document.getElementById('requestLineBody');
+            const rowCount = tbody.children.length;
+            const lines = [];
+
+            for (let i = 0; i < rowCount; i++) {
+                let itemName, mainCategory, parLevel;
+
+                if (i < masterItems.length) {
+                    itemName = masterItems[i].itemName;
+                    mainCategory = masterItems[i].mainCategory;
+                    parLevel = masterItems[i].parLevel;
+                } else {
+                    const nameInput = document.getElementById(`customItemName-${i}`);
+                    if (!nameInput || !nameInput.value.trim()) {
+                        const requestedQty = Number(document.getElementById(`requestedQty-${i}`).value || 0);
+                        const sentQty = Number(document.getElementById(`sentLaundry-${i}`).value || 0);
+                        if (requestedQty > 0 || sentQty > 0) {
+                            Swal.fire({ icon: 'warning', title: 'กรุณาระบุชื่อผ้าในรายการที่เพิ่มใหม่' });
+                            return;
+                        }
+                        continue; // ข้ามแถวที่ไม่ได้พิมพ์ชื่อ
+                    }
+                    itemName = nameInput.value.trim();
+                    mainCategory = 'อื่นๆ';
+                    parLevel = 0;
+                }
+
+                const stockBalance = Number(document.getElementById(`stockBalance-${i}`).value || 0);
+                const sentLaundryQty = Number(document.getElementById(`sentLaundry-${i}`).value || 0);
+                const suggestedQty = Math.max(Number(parLevel || 0) - stockBalance, 0);
+                const requestedQty = Number(document.getElementById(`requestedQty-${i}`).value || 0);
+                const wardNote = document.getElementById(`wardNote-${i}`).value.trim();
+
+                lines.push({
+                    itemName,
+                    mainCategory,
+                    parLevel,
                     stockBalance,
                     sentLaundryQty,
                     suggestedQty,
                     requestedQty,
                     wardNote
-                };
-            });
+                });
+            }
 
             if (!lines.some(line => line.requestedQty > 0)) {
                 Swal.fire({ icon: 'warning', title: 'ยังไม่มีรายการที่ขอเบิก' });
