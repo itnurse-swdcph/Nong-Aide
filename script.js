@@ -12,7 +12,8 @@ const ADMIN_CREDENTIALS = {
 };
 const AVAILABLE_SYSTEMS = new Set([
     "equipment.html",
-    "cloth-stock.html"
+    "cloth-stock.html",
+    "cloth-exchange.html"
 ]);
 
 // --- PWA Service Worker Registration (4. บันทึกหน้าจอเป็นแอพ) ---
