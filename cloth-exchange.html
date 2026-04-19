@@ -38,6 +38,10 @@
             color: var(--text);
         }
 
+        body.guide-open {
+            overflow: hidden;
+        }
+
         button,
         input,
         select,
@@ -416,9 +420,341 @@
             color: var(--muted);
         }
 
+        .guide-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 120;
+            display: flex;
+            align-items: stretch;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(10, 24, 41, 0.52);
+            backdrop-filter: blur(6px);
+        }
+
+        .guide-sheet {
+            width: min(1180px, 100%);
+            height: 100%;
+            overflow-y: auto;
+            padding: 24px;
+            border-radius: 26px;
+            background: linear-gradient(180deg, #f7fbff 0%, #ffffff 18%);
+            box-shadow: 0 24px 60px rgba(13, 39, 66, 0.22);
+        }
+
+        .guide-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+
+        .guide-head h2 {
+            font-size: 1.45rem;
+            margin-bottom: 8px;
+        }
+
+        .guide-head p {
+            max-width: 760px;
+            color: var(--muted);
+            line-height: 1.8;
+        }
+
+        .guide-close {
+            border: none;
+            border-radius: 999px;
+            padding: 10px 14px;
+            color: #fff;
+            background: var(--navy);
+            cursor: pointer;
+        }
+
+        .guide-chip-row,
+        .guide-role-grid,
+        .guide-flow-grid,
+        .guide-screen-grid,
+        .guide-rule-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .guide-chip-row {
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            margin-bottom: 16px;
+        }
+
+        .guide-chip {
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            background: #fff;
+            box-shadow: var(--shadow);
+        }
+
+        .guide-chip strong,
+        .guide-role-card h3,
+        .guide-flow-card h3,
+        .guide-section h3 {
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .guide-chip span,
+        .guide-role-card p,
+        .guide-flow-card p,
+        .guide-section p,
+        .guide-rule-card p,
+        .guide-status-table td,
+        .guide-status-table th,
+        .mock-table td,
+        .mock-table th,
+        .mock-note {
+            line-height: 1.7;
+            color: var(--muted);
+        }
+
+        .guide-section {
+            margin-bottom: 22px;
+        }
+
+        .guide-role-grid {
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            margin-bottom: 18px;
+        }
+
+        .guide-role-card,
+        .guide-flow-card,
+        .guide-rule-card {
+            padding: 18px;
+            border: 1px solid var(--border);
+            border-radius: 22px;
+            background: #fff;
+            box-shadow: var(--shadow);
+        }
+
+        .guide-role-card.unit {
+            background: linear-gradient(180deg, #f5fbff 0%, #ffffff 100%);
+        }
+
+        .guide-role-card.laundry {
+            background: linear-gradient(180deg, #fff8ee 0%, #ffffff 100%);
+        }
+
+        .guide-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            margin-bottom: 10px;
+        }
+
+        .guide-badge.unit {
+            background: var(--ward-soft);
+            color: #1f5688;
+        }
+
+        .guide-badge.laundry {
+            background: var(--laundry-soft);
+            color: #8d5b0f;
+        }
+
+        .guide-steps {
+            display: grid;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .guide-step {
+            display: grid;
+            grid-template-columns: 40px 1fr;
+            gap: 12px;
+            padding: 12px 14px;
+            border-radius: 16px;
+            background: #f8fbff;
+            border: 1px solid #e1ebf5;
+        }
+
+        .guide-step strong {
+            color: var(--text);
+        }
+
+        .guide-step-no {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 14px;
+            color: #fff;
+            background: var(--navy);
+            font-weight: 600;
+        }
+
+        .guide-flow-grid {
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            margin-bottom: 18px;
+        }
+
+        .guide-flow-card {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .guide-flow-card::after {
+            content: "";
+            position: absolute;
+            inset: auto -30px -30px auto;
+            width: 100px;
+            height: 100px;
+            border-radius: 999px;
+            background: rgba(21, 59, 99, 0.06);
+        }
+
+        .guide-screen-grid {
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            margin-bottom: 18px;
+        }
+
+        .mock-browser {
+            border: 1px solid var(--border);
+            border-radius: 22px;
+            overflow: hidden;
+            background: #fff;
+            box-shadow: var(--shadow);
+        }
+
+        .mock-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 14px;
+            color: #fff;
+            background: linear-gradient(135deg, var(--navy-dark), var(--navy));
+        }
+
+        .mock-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .mock-dots span {
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.72);
+        }
+
+        .mock-body {
+            padding: 16px;
+            background: linear-gradient(180deg, #fbfdff 0%, #ffffff 100%);
+        }
+
+        .mock-tabs {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .mock-tab {
+            padding: 7px 12px;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            border: 1px solid var(--border);
+            background: #f5f9fd;
+            color: var(--text);
+        }
+
+        .mock-tab.active {
+            color: #fff;
+            background: var(--navy);
+            border-color: var(--navy);
+        }
+
+        .mock-summary {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .mock-box {
+            padding: 12px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            background: #fff;
+        }
+
+        .mock-box strong {
+            display: block;
+            margin-top: 4px;
+            color: var(--text);
+        }
+
+        .mock-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .mock-table th,
+        .mock-table td {
+            padding: 8px;
+            font-size: 0.8rem;
+            border-bottom: 1px solid #edf2f7;
+        }
+
+        .mock-table th {
+            color: var(--text);
+            background: #f5f9fd;
+        }
+
+        .mock-note {
+            margin-top: 10px;
+            font-size: 0.85rem;
+        }
+
+        .guide-status-table-wrap {
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            background: #fff;
+            box-shadow: var(--shadow);
+        }
+
+        .guide-status-table {
+            width: 100%;
+            min-width: 720px;
+            border-collapse: collapse;
+        }
+
+        .guide-status-table th,
+        .guide-status-table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid #edf2f7;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .guide-status-table th {
+            color: var(--text);
+            background: #f4f8fc;
+        }
+
+        .guide-rule-grid {
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        }
+
         @media (max-width: 980px) {
             .hero {
                 grid-template-columns: 1fr;
+            }
+
+            .guide-head {
+                flex-direction: column;
             }
         }
 
@@ -429,6 +765,23 @@
 
             .page {
                 padding: 14px;
+            }
+
+            .guide-modal {
+                padding: 12px;
+            }
+
+            .guide-sheet {
+                padding: 18px;
+                border-radius: 20px;
+            }
+
+            .mock-summary,
+            .guide-flow-grid,
+            .guide-role-grid,
+            .guide-screen-grid,
+            .guide-rule-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -443,6 +796,7 @@
             </div>
         </div>
         <div class="nav-actions">
+            <button class="nav-btn" onclick="openUsageGuide()"><i class="fas fa-book-open"></i> คู่มือการใช้งาน</button>
             <button class="nav-btn" onclick="reloadPage()"><i class="fas fa-rotate-right"></i> รีเฟรช</button>
             <button id="btnAdminLogin" class="nav-btn" onclick="showAdminLogin()"><i class="fas fa-user-shield"></i> Admin</button>
             <button id="btnExitAdmin" class="nav-btn hidden" onclick="exitAdminMode()"><i class="fas fa-shield-halved"></i> ออกจาก Admin</button>
@@ -453,9 +807,7 @@
 
     <div class="page">
         <section id="globalNotice" class="notice hidden"></section>
-        
-        <!-- ซ่อน loader เดิมไว้เพราะถูกแทนที่ด้วย Popup SweetAlert แล้ว -->
-        <section id="loader" class="loader hidden">
+        <section id="loader" class="loader">
             <i class="fas fa-spinner fa-spin fa-3x" style="color: var(--navy); margin-bottom: 12px;"></i>
             <div id="loaderText">กำลังโหลดข้อมูล</div>
         </section>
@@ -565,7 +917,6 @@
                                 </table>
                             </div>
                             <div class="actions">
-                                <button type="button" class="ghost-btn" onclick="addCustomFormRow()"><i class="fas fa-plus"></i> เพิ่มรายการอื่นๆ</button>
                                 <button type="submit" class="primary-btn" id="submitRequestBtn"><i class="fas fa-floppy-disk"></i> ส่งใบเบิก</button>
                             </div>
                         </form>
@@ -735,6 +1086,304 @@
         </main>
     </div>
 
+    <div id="usageGuideModal" class="guide-modal hidden" onclick="handleGuideBackdrop(event)">
+        <div class="guide-sheet">
+            <div class="guide-head">
+                <div>
+                    <h2>คู่มือการใช้งานระบบส่งแลกผ้าสะอาด</h2>
+                    <p>คู่มือนี้ใช้ร่วมกันทั้งหน่วยผู้ใช้งานและงานซักฟอก เพื่อให้เข้าใจหน้าที่ของตนเอง เห็นภาพงานของอีกฝ่าย และติดตามเอกสารตั้งแต่เปิดใบเบิกจนปิดงานได้ครบทั้ง flow</p>
+                </div>
+                <button class="guide-close" type="button" onclick="closeUsageGuide()"><i class="fas fa-xmark"></i> ปิดคู่มือ</button>
+            </div>
+
+            <section class="guide-section">
+                <div class="guide-chip-row">
+                    <div class="guide-chip">
+                        <strong>ใช้คู่มือเดียวกัน</strong>
+                        <span>ทั้งหน่วยงานและซักฟอกอ่านชุดเดียวกัน เพื่อเห็นขั้นตอนของกันและกัน</span>
+                    </div>
+                    <div class="guide-chip">
+                        <strong>จุดเริ่มต้นของระบบ</strong>
+                        <span>หน่วยงานเป็นผู้เปิดใบเบิก โดยบันทึกคงเหลือ ส่งซัก ขอเบิก และหมายเหตุรายรายการ</span>
+                    </div>
+                    <div class="guide-chip">
+                        <strong>จุดปิดงานของระบบ</strong>
+                        <span>หน่วยงานลงรับผ้าในระบบ หลังจากซักฟอกบันทึกรับใบและจ่ายผ้าแล้ว</span>
+                    </div>
+                    <div class="guide-chip">
+                        <strong>ประโยชน์หลัก</strong>
+                        <span>ติดตามสถานะเอกสาร ตรวจสอบยอดค้าง และทวนข้อมูลย้อนหลังได้เป็นมาตรฐานเดียวกัน</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="guide-section">
+                <h3>ภาพรวม Flow การทำงาน</h3>
+                <p>ลำดับงานจริงในระบบจะเดินตาม 4 ช่วงหลักนี้เสมอ ไม่ว่าผู้ใช้งานจะเข้าจากฝั่งหน่วยงานหรือฝั่งซักฟอก</p>
+                <div class="guide-flow-grid">
+                    <div class="guide-flow-card">
+                        <h3>1. หน่วยงานเปิดใบเบิก</h3>
+                        <p>กรอกวันที่ เวร ผู้ส่งใบเบิก และยอดรายรายการ เช่น Stock, คงเหลือ, ส่งซัก, ขอเบิก และหมายเหตุ</p>
+                    </div>
+                    <div class="guide-flow-card">
+                        <h3>2. ซักฟอกรับใบ</h3>
+                        <p>เปิดเอกสารจากคิวงาน ลงชื่อผู้รับใบเบิก และเริ่มจัดการยอดผ้าที่เกี่ยวข้องในแต่ละรายการ</p>
+                    </div>
+                    <div class="guide-flow-card">
+                        <h3>3. ซักฟอกจ่ายผ้า</h3>
+                        <p>บันทึกรับจริง จ่ายจริง คงค้าง และหมายเหตุซักฟอก จากนั้นพิมพ์ใบนำจ่ายส่งกลับหน่วยงาน</p>
+                    </div>
+                    <div class="guide-flow-card">
+                        <h3>4. หน่วยงานลงรับผ้า</h3>
+                        <p>ตรวจรับผ้าจริง ลงชื่อผู้รับผ้า และปิดงานในระบบให้เอกสารเปลี่ยนเป็นเสร็จสิ้น</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="guide-section">
+                <h3>จำลองหน้าจอในระบบ</h3>
+                <p>ตัวอย่างด้านล่างเป็นภาพจำลองของหน้าที่ผู้ใช้จะพบจริงในระบบ เพื่อช่วยให้เห็นว่าแต่ละเมนูใช้ทำอะไร</p>
+                <div class="guide-screen-grid">
+                    <div class="mock-browser">
+                        <div class="mock-topbar">
+                            <div>
+                                <strong>มุมมองหน่วยงาน</strong>
+                                <div style="font-size:0.82rem; opacity:0.88;">Dashboard / สร้างใบเบิก / รายการของฉัน</div>
+                            </div>
+                            <div class="mock-dots"><span></span><span></span><span></span></div>
+                        </div>
+                        <div class="mock-body">
+                            <div class="mock-tabs">
+                                <span class="mock-tab">Dashboard</span>
+                                <span class="mock-tab active">สร้างใบเบิก</span>
+                                <span class="mock-tab">รายการของฉัน</span>
+                            </div>
+                            <div class="mock-summary">
+                                <div class="mock-box"><small>วันที่ / เวร</small><strong>19 เม.ย. 2569 / เช้า</strong></div>
+                                <div class="mock-box"><small>ผู้ส่งใบเบิก</small><strong>พยาบาลเวรเช้า</strong></div>
+                            </div>
+                            <table class="mock-table">
+                                <thead>
+                                    <tr>
+                                        <th>รายการ</th>
+                                        <th>Stock</th>
+                                        <th>คงเหลือ</th>
+                                        <th>ส่งซัก</th>
+                                        <th>ขอเบิก</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>ผ้าปูเตียง</td>
+                                        <td>40</td>
+                                        <td>12</td>
+                                        <td>18</td>
+                                        <td>20</td>
+                                    </tr>
+                                    <tr>
+                                        <td>ปลอกหมอน</td>
+                                        <td>30</td>
+                                        <td>10</td>
+                                        <td>12</td>
+                                        <td>15</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div class="mock-note">ผู้ใช้ตรวจยอดจริงก่อนกดส่งใบเบิก และสามารถกลับมาดูสถานะหรือพิมพ์ใบเบิกจากเมนูรายการของฉันได้</div>
+                        </div>
+                    </div>
+
+                    <div class="mock-browser">
+                        <div class="mock-topbar">
+                            <div>
+                                <strong>มุมมองงานซักฟอก</strong>
+                                <div style="font-size:0.82rem; opacity:0.88;">คิวงาน / ประวัติ / รายละเอียดการจ่าย</div>
+                            </div>
+                            <div class="mock-dots"><span></span><span></span><span></span></div>
+                        </div>
+                        <div class="mock-body">
+                            <div class="mock-tabs">
+                                <span class="mock-tab active">คิวงาน</span>
+                                <span class="mock-tab">ประวัติ</span>
+                            </div>
+                            <div class="mock-summary">
+                                <div class="mock-box"><small>คิวใหม่</small><strong>4 ใบ</strong></div>
+                                <div class="mock-box"><small>รอหน่วยงานรับ</small><strong>2 ใบ</strong></div>
+                            </div>
+                            <table class="mock-table">
+                                <thead>
+                                    <tr>
+                                        <th>รายการ</th>
+                                        <th>คงเหลือ</th>
+                                        <th>ส่งซัก</th>
+                                        <th>ขอเบิก</th>
+                                        <th>จ่ายจริง</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>ผ้าปูเตียง</td>
+                                        <td>12</td>
+                                        <td>18</td>
+                                        <td>20</td>
+                                        <td>18</td>
+                                    </tr>
+                                    <tr>
+                                        <td>ปลอกหมอน</td>
+                                        <td>10</td>
+                                        <td>12</td>
+                                        <td>15</td>
+                                        <td>15</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div class="mock-note">ซักฟอกใช้หน้ารายละเอียดในการลงรับใบ เบิกผ้าจริง คำนวณคงค้าง และพิมพ์ใบนำจ่ายกลับไปยังหน่วยงาน</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="guide-section">
+                <h3>บทบาทและหน้าที่ของแต่ละฝ่าย</h3>
+                <div class="guide-role-grid">
+                    <div class="guide-role-card unit">
+                        <span class="guide-badge unit"><i class="fas fa-hospital-user"></i> ระบบหน่วยผู้ใช้งาน</span>
+                        <h3>หน้าที่หลักของหน่วยงาน</h3>
+                        <p>เป็นผู้เริ่มต้นเอกสาร ตรวจนับยอดจริงของผ้าในคลังหน่วยงาน ระบุจำนวนส่งซักและจำนวนที่ต้องการเบิก จากนั้นติดตามสถานะและลงรับผ้าเมื่อได้รับของจริง</p>
+                        <div class="guide-steps">
+                            <div class="guide-step">
+                                <div class="guide-step-no">1</div>
+                                <div><strong>เข้าเมนู Dashboard</strong><br>ดูภาพรวมใบเบิกที่เปิดอยู่ คิวที่กำลังดำเนินการ และใบที่รอหน่วยงานรับผ้า</div>
+                            </div>
+                            <div class="guide-step">
+                                <div class="guide-step-no">2</div>
+                                <div><strong>สร้างใบเบิกใหม่</strong><br>ระบุวันที่ เวร ผู้ส่งใบเบิก แล้วกรอกข้อมูลในแต่ละรายการผ้า โดยให้ตรงกับสภาพจริงหน้างาน</div>
+                            </div>
+                            <div class="guide-step">
+                                <div class="guide-step-no">3</div>
+                                <div><strong>กรอกรายละเอียดรายรายการ</strong><br>Stock คือยอดมาตรฐานของหน่วยงาน, คงเหลือคือผ้าพร้อมใช้ที่มีอยู่จริง, ส่งซักคือจำนวนที่ส่งออกไป และขอเบิกคือจำนวนที่ต้องการให้ซักฟอกจ่ายกลับ</div>
+                            </div>
+                            <div class="guide-step">
+                                <div class="guide-step-no">4</div>
+                                <div><strong>ตรวจสอบก่อนส่งใบ</strong><br>ถ้าขอเบิกมากกว่าที่ระบบแนะนำ ควรใส่หมายเหตุให้ชัด เช่น ผ้ามีการใช้งานเพิ่ม หรือมีความจำเป็นเฉพาะรอบเวร</div>
+                            </div>
+                            <div class="guide-step">
+                                <div class="guide-step-no">5</div>
+                                <div><strong>พิมพ์ใบเบิก</strong><br>หลังส่งเอกสารแล้ว หน่วยงานพิมพ์ใบเบิกเพื่อใช้ประกอบการส่งเอกสารลงงานซักฟอก</div>
+                            </div>
+                            <div class="guide-step">
+                                <div class="guide-step-no">6</div>
+                                <div><strong>ติดตามสถานะและลงรับผ้า</strong><br>เมื่อซักฟอกจ่ายผ้าแล้ว ให้กลับมาที่เมนูรายการของฉัน เปิดเอกสารและลงชื่อผู้รับผ้าเพื่อปิดงาน</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="guide-role-card laundry">
+                        <span class="guide-badge laundry"><i class="fas fa-soap"></i> ระบบงานซักฟอก</span>
+                        <h3>หน้าที่หลักของงานซักฟอก</h3>
+                        <p>รับเอกสารจากหน่วยงาน ตรวจสอบยอดที่ขอเบิกกับยอดที่รับจริง บันทึกการจ่ายผ้า คงค้าง และหมายเหตุ เพื่อให้การส่งคืนผ้าสะอาดมีร่องรอยครบถ้วน</p>
+                        <div class="guide-steps">
+                            <div class="guide-step">
+                                <div class="guide-step-no">1</div>
+                                <div><strong>เปิดคิวงาน</strong><br>ดูใบเบิกใหม่ที่ส่งเข้าระบบทั้งหมด พร้อมสถานะ วันที่ และยอดคงค้างที่ต้องดำเนินการ</div>
+                            </div>
+                            <div class="guide-step">
+                                <div class="guide-step-no">2</div>
+                                <div><strong>ลงรับใบเบิก</strong><br>เปิดเอกสาร ระบุชื่อผู้รับใบเบิก แล้วบันทึกในระบบเพื่อเปลี่ยนสถานะเป็นงานซักฟอกรับใบแล้ว</div>
+                            </div>
+                            <div class="guide-step">
+                                <div class="guide-step-no">3</div>
+                                <div><strong>บันทึกยอดที่เกี่ยวข้อง</strong><br>ตรวจดูฝั่งหน่วยงานที่ระบุ Stock, คงเหลือ, ส่งซัก, ขอเบิก แล้วกรอกยอดรับจริง ยอดจ่ายจริง และยอดคงค้างในแต่ละรายการ</div>
+                            </div>
+                            <div class="guide-step">
+                                <div class="guide-step-no">4</div>
+                                <div><strong>ระบุหมายเหตุซักฟอก</strong><br>ใช้เมื่อมีการจ่ายไม่ครบ มีการรับจริงไม่ตรง หรือมีเหตุผลที่หน่วยงานควรรับทราบก่อนรับผ้า</div>
+                            </div>
+                            <div class="guide-step">
+                                <div class="guide-step-no">5</div>
+                                <div><strong>พิมพ์ใบนำจ่าย</strong><br>หลังบันทึกการจ่ายแล้ว ให้พิมพ์ใบนำจ่ายเพื่อใช้ประกอบการส่งผ้าสะอาดกลับไปยังหน่วยงาน</div>
+                            </div>
+                            <div class="guide-step">
+                                <div class="guide-step-no">6</div>
+                                <div><strong>ติดตามเอกสารจนหน่วยงานลงรับ</strong><br>เมื่อหน่วยงานรับผ้าและลงชื่อในระบบ เอกสารจะปิดงานและย้ายไปอยู่ในประวัติ</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="guide-section">
+                <h3>ความหมายของสถานะเอกสาร</h3>
+                <p>ทั้งสองฝ่ายควรใช้ความหมายของสถานะเดียวกัน เพื่อสื่อสารงานและติดตามค้างงานได้ตรงกัน</p>
+                <div class="guide-status-table-wrap">
+                    <table class="guide-status-table">
+                        <thead>
+                            <tr>
+                                <th>สถานะ</th>
+                                <th>ความหมาย</th>
+                                <th>ผู้รับผิดชอบหลัก</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>ส่งคำขอแล้ว</td>
+                                <td>หน่วยงานกรอกข้อมูลและส่งใบเบิกเข้าระบบเรียบร้อย รอซักฟอกเปิดรับงาน</td>
+                                <td>หน่วยงานรอ / ซักฟอกเตรียมรับใบ</td>
+                            </tr>
+                            <tr>
+                                <td>งานซักฟอกรับใบแล้ว</td>
+                                <td>ซักฟอกลงรับเอกสารและเริ่มตรวจสอบรายการในใบเบิก</td>
+                                <td>งานซักฟอก</td>
+                            </tr>
+                            <tr>
+                                <td>กำลังจัดผ้า</td>
+                                <td>ซักฟอกอยู่ระหว่างรวบรวมผ้าสะอาดและบันทึกยอดที่เกี่ยวข้อง</td>
+                                <td>งานซักฟอก</td>
+                            </tr>
+                            <tr>
+                                <td>จ่ายบางส่วน</td>
+                                <td>มีบางรายการที่จ่ายให้หน่วยงานแล้ว แต่ยังมียอดคงค้างที่ต้องตามต่อ</td>
+                                <td>งานซักฟอก</td>
+                            </tr>
+                            <tr>
+                                <td>จ่ายครบ รอหน่วยงานรับ</td>
+                                <td>ซักฟอกบันทึกการจ่ายเรียบร้อยแล้ว รอหน่วยงานเข้ามายืนยันการรับผ้า</td>
+                                <td>หน่วยงาน</td>
+                            </tr>
+                            <tr>
+                                <td>เสร็จสิ้น</td>
+                                <td>หน่วยงานรับผ้าและลงรับในระบบแล้ว เอกสารถูกปิดงาน</td>
+                                <td>ทั้งสองฝ่ายรับทราบ</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="guide-section">
+                <h3>ข้อควรปฏิบัติร่วมกัน</h3>
+                <div class="guide-rule-grid">
+                    <div class="guide-rule-card">
+                        <h3>ตรวจยอดก่อนบันทึก</h3>
+                        <p>ยอดคงเหลือและยอดส่งซักควรอ้างอิงจากสภาพจริงในช่วงเวรนั้น เพื่อลดความคลาดเคลื่อนตอนซักฟอกรับใบ</p>
+                    </div>
+                    <div class="guide-rule-card">
+                        <h3>ใช้หมายเหตุเมื่อมีข้อยกเว้น</h3>
+                        <p>หากยอดขอเบิกสูงผิดปกติ จ่ายไม่ครบ หรือรับจริงไม่ตรง ให้ใส่หมายเหตุเพื่อให้ทั้งสองฝ่ายเห็นข้อมูลเดียวกัน</p>
+                    </div>
+                    <div class="guide-rule-card">
+                        <h3>ติดตามคงค้างต่อเนื่อง</h3>
+                        <p>ใบที่อยู่ในสถานะจ่ายบางส่วนหรือรอหน่วยงานรับ ไม่ควรถูกปล่อยค้างไว้ ควรกลับมาตรวจสอบทุกวัน</p>
+                    </div>
+                    <div class="guide-rule-card">
+                        <h3>พิมพ์เอกสารถูกแบบ</h3>
+                        <p>หน่วยงานพิมพ์ใบเบิก ส่วนซักฟอกพิมพ์ใบนำจ่ายเมื่อต้องส่งผ้ากลับ เพื่อให้หลักฐานเอกสารสอดคล้องกับ flow จริง</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
     <script>
         const EXCHANGE_API = 'https://script.google.com/macros/s/AKfycbwB42c0EM8n64wEGm76Ap5Kq-VSJKaBNfCPnBUEEN_TztQ_f5za1bOlJU_vfYo05T7nVw/exec';
         const SESSION_KEYS = { ward: 'aide_ward', role: 'aide_role' };
@@ -789,31 +1438,11 @@
             setLoading(false);
         }
 
-        // --- แก้ไขเฉพาะฟังก์ชัน setLoading ตรงนี้ ---
         function setLoading(isLoading, text) {
-            if (isLoading) {
-                // ใช้ SweetAlert2 สร้าง Pop up รอโหลด
-                Swal.fire({
-                    title: text || 'กำลังโหลดข้อมูล',
-                    html: 'กรุณารอสักครู่...',
-                    allowOutsideClick: false,
-                    allowEscapeKey: false,
-                    showConfirmButton: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    }
-                });
-            } else {
-                // ปิด Pop up เมื่อโหลดเสร็จ
-                Swal.close();
-                // แสดงผลหน้าต่างหลัก
-                document.getElementById('app').classList.remove('hidden');
-            }
-            
-            // ปิดและซ่อนตัวโหลดดั้งเดิมแบบฝังในหน้า
-            document.getElementById('loader').classList.add('hidden');
+            document.getElementById('loaderText').innerText = text || 'กำลังโหลดข้อมูล';
+            document.getElementById('loader').classList.toggle('hidden', !isLoading);
+            document.getElementById('app').classList.toggle('hidden', isLoading);
         }
-        // ----------------------------------------
 
         function updateHeader() {
             let title = 'ระบบส่งแลกผ้าสะอาด';
@@ -986,33 +1615,10 @@
         }
 
         function recalculateLine(index) {
-            const par = index < masterItems.length ? Number(masterItems[index].parLevel || 0) : 0;
+            const par = Number(masterItems[index].parLevel || 0);
             const stock = Number(document.getElementById(`stockBalance-${index}`).value || 0);
             const suggested = Math.max(par - stock, 0);
             document.getElementById(`suggestedQty-${index}`).value = suggested;
-        }
-
-        function addCustomFormRow() {
-            const tbody = document.getElementById('requestLineBody');
-            
-            // กรณีไม่มีรายการ master เลย ให้ลบข้อความที่บอกว่าไม่พบรายการออกก่อน
-            if (tbody.children.length === 1 && tbody.children[0].textContent.includes('ไม่พบรายการ')) {
-                tbody.innerHTML = '';
-            }
-
-            const index = tbody.children.length; // ใช้จำนวนแถวปัจจุบันเป็น index ถัดไป
-
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td><input class="text-input" type="text" id="customItemName-${index}" placeholder="ระบุชื่อผ้าอื่นๆ"></td>
-                <td>0</td>
-                <td><input class="number-input" type="number" min="0" id="stockBalance-${index}" placeholder="คงเหลือ" oninput="recalculateLine(${index})"></td>
-                <td><input class="number-input" type="number" min="0" id="sentLaundry-${index}" placeholder="ส่งซัก"></td>
-                <td><input class="number-input" type="number" value="0" id="suggestedQty-${index}" readonly></td>
-                <td><input class="number-input" type="number" min="0" id="requestedQty-${index}" placeholder="ขอเบิก"></td>
-                <td><input class="text-input" type="text" id="wardNote-${index}" placeholder="หมายเหตุ"></td>
-            `;
-            tbody.appendChild(tr);
         }
 
         async function submitExchangeRequest(event) {
@@ -1027,50 +1633,23 @@
                 return;
             }
 
-            const tbody = document.getElementById('requestLineBody');
-            const rowCount = tbody.children.length;
-            const lines = [];
-
-            for (let i = 0; i < rowCount; i++) {
-                let itemName, mainCategory, parLevel;
-
-                if (i < masterItems.length) {
-                    itemName = masterItems[i].itemName;
-                    mainCategory = masterItems[i].mainCategory;
-                    parLevel = masterItems[i].parLevel;
-                } else {
-                    const nameInput = document.getElementById(`customItemName-${i}`);
-                    if (!nameInput || !nameInput.value.trim()) {
-                        const requestedQty = Number(document.getElementById(`requestedQty-${i}`).value || 0);
-                        const sentQty = Number(document.getElementById(`sentLaundry-${i}`).value || 0);
-                        if (requestedQty > 0 || sentQty > 0) {
-                            Swal.fire({ icon: 'warning', title: 'กรุณาระบุชื่อผ้าในรายการที่เพิ่มใหม่' });
-                            return;
-                        }
-                        continue; // ข้ามแถวที่ไม่ได้พิมพ์ชื่อ
-                    }
-                    itemName = nameInput.value.trim();
-                    mainCategory = 'อื่นๆ';
-                    parLevel = 0;
-                }
-
-                const stockBalance = Number(document.getElementById(`stockBalance-${i}`).value || 0);
-                const sentLaundryQty = Number(document.getElementById(`sentLaundry-${i}`).value || 0);
-                const suggestedQty = Math.max(Number(parLevel || 0) - stockBalance, 0);
-                const requestedQty = Number(document.getElementById(`requestedQty-${i}`).value || 0);
-                const wardNote = document.getElementById(`wardNote-${i}`).value.trim();
-
-                lines.push({
-                    itemName,
-                    mainCategory,
-                    parLevel,
+            const lines = masterItems.map((item, index) => {
+                const stockBalance = Number(document.getElementById(`stockBalance-${index}`).value || 0);
+                const sentLaundryQty = Number(document.getElementById(`sentLaundry-${index}`).value || 0);
+                const suggestedQty = Math.max(Number(item.parLevel || 0) - stockBalance, 0);
+                const requestedQty = Number(document.getElementById(`requestedQty-${index}`).value || 0);
+                const wardNote = document.getElementById(`wardNote-${index}`).value.trim();
+                return {
+                    itemName: item.itemName,
+                    mainCategory: item.mainCategory,
+                    parLevel: item.parLevel,
                     stockBalance,
                     sentLaundryQty,
                     suggestedQty,
                     requestedQty,
                     wardNote
-                });
-            }
+                };
+            });
 
             if (!lines.some(line => line.requestedQty > 0)) {
                 Swal.fire({ icon: 'warning', title: 'ยังไม่มีรายการที่ขอเบิก' });
@@ -1573,6 +2152,22 @@
             return `<span class="status-pill status-${escapeAttribute(status || '')}">${escapeHtml(label)}</span>`;
         }
 
+        function openUsageGuide() {
+            document.getElementById('usageGuideModal').classList.remove('hidden');
+            document.body.classList.add('guide-open');
+        }
+
+        function closeUsageGuide() {
+            document.getElementById('usageGuideModal').classList.add('hidden');
+            document.body.classList.remove('guide-open');
+        }
+
+        function handleGuideBackdrop(event) {
+            if (event.target.id === 'usageGuideModal') {
+                closeUsageGuide();
+            }
+        }
+
         function sortByDate(a, b) {
             return parseDateValue(a) - parseDateValue(b);
         }
@@ -1840,6 +2435,12 @@
                 .map((line, index) => ({ ...line, _index: index }))
                 .filter(line => Number(line.requestedQty || 0) > 0 || Number(line.sentLaundryQty || 0) > 0);
         }
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !document.getElementById('usageGuideModal').classList.contains('hidden')) {
+                closeUsageGuide();
+            }
+        });
     </script>
 </body>
 </html>
