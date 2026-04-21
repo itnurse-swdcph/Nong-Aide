@@ -1,0 +1,475 @@
+:root {
+    --primary: #003366; /* น้ำเงิน - สีหลัก รพ. */
+    --secondary: #4B0082; /* คราม */
+    --accent: #FFD700; /* เหลืองทอง */
+    --bg-color: #f0f4f8;
+    --text-main: #2c3e50;
+    --white: #ffffff;
+    --shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Prompt', sans-serif;
+    -webkit-tap-highlight-color: transparent; /* ลบสีฟ้าตอนกดบนมือถือ */
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    overflow-x: hidden;
+    line-height: 1.6;
+}
+
+.hidden { display: none !important; }
+
+/* Navbar */
+.navbar {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--white);
+    box-shadow: var(--shadow);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    height: 70px;
+}
+
+.nav-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.hosp-logo {
+    height: 50px;
+    width: 50px;
+    border-radius: 50%;
+    border: 2px solid var(--accent);
+    background: white;
+    object-fit: cover;
+}
+
+.brand-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.app-title {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: var(--accent);
+    line-height: 1.2;
+}
+
+.app-subtitle {
+    font-size: 0.8rem;
+    font-weight: 300;
+    opacity: 0.9;
+}
+
+.nav-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.ward-badge {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+
+.logout-btn {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 6px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: 0.3s;
+    font-family: 'Prompt', sans-serif;
+    font-size: 0.85rem;
+}
+
+.logout-btn:hover {
+    background: var(--accent);
+    color: var(--primary);
+}
+
+.hamburger {
+    display: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--accent);
+}
+
+/* Sections */
+.section-container {
+    min-height: calc(100vh - 70px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+/* Login Card */
+.login-card {
+    background: var(--white);
+    padding: 40px 30px;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    text-align: center;
+    width: 100%;
+    max-width: 480px;
+    border-top: 5px solid var(--accent);
+}
+
+/* 2. Style สำหรับหัวข้อแบบจัดวางใหม่ */
+.main-header {
+    color: var(--primary);
+    font-size: 2.5rem;
+    font-weight: 600;
+    line-height: 1;
+    margin-bottom: 5px;
+}
+
+.sub-header {
+    color: var(--secondary);
+    font-size: 1rem;
+    font-weight: 400;
+    margin-bottom: 5px;
+}
+
+.hosp-name-header {
+    color: #7f8c8d;
+    font-size: 0.9rem;
+    font-weight: 300;
+    margin-bottom: 20px;
+}
+
+.divider {
+    border: 0;
+    border-top: 1px solid #eee;
+    margin-bottom: 25px;
+}
+
+.login-card h3 {
+    margin-bottom: 15px;
+    color: #34495e;
+    font-weight: 500;
+    font-size: 1.1rem;
+}
+
+.input-group { margin-bottom: 20px; text-align: left; }
+.input-group input,
+.input-group select {
+    width: 100%;
+    padding: 15px;
+    border: 2px solid #e0e6ed;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-family: 'Prompt', sans-serif;
+    transition: 0.3s;
+    background: var(--white);
+    color: var(--text-main);
+}
+.input-group input:focus,
+.input-group select:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0,51,102,0.1);
+}
+
+.btn-primary {
+    width: 100%;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: var(--white);
+    border: none;
+    padding: 15px;
+    border-radius: 10px;
+    font-size: 1.1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: 0.3s;
+    font-family: 'Prompt', sans-serif;
+    box-shadow: 0 4px 10px rgba(0,51,102,0.2);
+}
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0,51,102,0.3);
+}
+
+.btn-admin-entry {
+    width: 100%;
+    margin-top: 12px;
+    background: transparent;
+    color: var(--primary);
+    border: 1.5px solid var(--primary);
+    padding: 13px 15px;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: 0.3s;
+    font-family: 'Prompt', sans-serif;
+}
+
+.btn-admin-entry:hover {
+    background: var(--primary);
+    color: var(--white);
+}
+
+.login-hint {
+    margin-top: 12px;
+    color: #6c7a89;
+    font-size: 0.85rem;
+}
+
+/* Dashboard */
+.dashboard-content {
+    text-align: center;
+    width: 100%;
+    max-width: 900px;
+}
+
+/* 3. Style สำหรับตัวการ์ตูนใหม่ (ปรับขนาดให้เหมาะสม) */
+.mascot {
+    width: 180px; /* ปรับลดขนาดลงเล็กน้อยเพื่อให้ดูทันสมัย */
+    height: auto;
+    margin-bottom: 20px;
+    filter: drop-shadow(0 10px 15px rgba(0,0,0,0.1));
+}
+
+.floating-anim {
+    animation: float 4s ease-in-out infinite;
+}
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-15px); }
+}
+
+.welcome-text {
+    font-size: 1.8rem;
+    color: var(--primary);
+    margin-bottom: 40px;
+    line-height: 1.3;
+}
+
+.sub-welcome {
+    font-size: 1.1rem;
+    color: var(--secondary);
+    font-weight: 300;
+}
+
+.fade-in-text {
+    font-weight: 600;
+    animation: fadeIn 1.5s ease-in;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Menu Grid */
+.menu-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    padding: 10px;
+}
+
+.menu-card {
+    background: var(--white);
+    padding: 30px 20px;
+    border-radius: 20px;
+    text-decoration: none;
+    color: var(--text-main);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.03);
+    transition: all 0.3s ease;
+    border: 1px solid #f0f0f0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.menu-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 25px rgba(0,0,0,0.1);
+    border-color: rgba(255,215,0,0.3);
+}
+
+.icon-circle {
+    width: 70px;
+    height: 70px;
+    background: rgba(0, 51, 102, 0.05);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 20px;
+    font-size: 2.2rem;
+    color: var(--primary);
+    transition: 0.3s;
+}
+
+.menu-card:hover .icon-circle {
+    background: var(--primary);
+    color: var(--accent);
+    transform: scale(1.1);
+}
+
+.menu-card h3 {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--primary);
+}
+
+/* Responsive Mobile */
+@media (max-width: 768px) {
+    .hide-on-mobile { display: none !important; }
+    
+    .navbar { padding: 10px 15px; }
+    .hosp-logo { height: 40px; width: 40px; }
+    .app-title { font-size: 1.2rem; }
+
+    .nav-right {
+        display: none; /* ซ่อนเมนูจริง */
+        flex-direction: column;
+        position: absolute;
+        top: 70px;
+        left: 0;
+        width: 100%;
+        background: var(--white);
+        padding: 20px;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        border-top: 1px solid #eee;
+        gap: 10px;
+    }
+    .nav-right.active { display: flex; } /* แสดงเมื่อกด Hamburger */
+    
+    .nav-right .ward-badge {
+        color: var(--text-main);
+        background: #f0f4f8;
+        border: none;
+        width: 100%;
+        text-align: center;
+    }
+    
+    .nav-right .logout-btn {
+        width: 100%;
+        background: #e74c3c;
+        color: white;
+        border: none;
+    }
+
+    .hamburger { display: block; }
+    
+    .main-header { font-size: 2rem; }
+    .sub-header { font-size: 0.9rem; }
+    
+    .login-card { padding: 30px 20px; }
+    
+    .mascot { width: 150px; }
+    .welcome-text { font-size: 1.4rem; margin-bottom: 30px; }
+    .sub-welcome { font-size: 1rem; }
+    
+    .menu-grid { grid-template-columns: 1fr; gap: 15px; }
+    .menu-card { padding: 20px; flex-direction: row; gap: 15px; }
+    .icon-circle { width: 50px; height: 50px; font-size: 1.5rem; margin-bottom: 0; }
+}
+/* ==========================================
+           สไตล์สำหรับ Footer (ส่วนท้ายเว็บ) ล้ำๆ
+           ========================================== */
+        .modern-footer {
+            background: linear-gradient(135deg, var(--primary, #003366) 0%, #001a33 100%);
+            color: #ffffff;
+            text-align: center;
+            padding: 35px 20px 20px;
+            margin-top: 60px;
+            position: relative;
+            box-shadow: 0 -10px 25px rgba(0,51,102,0.15);
+            font-family: 'Prompt', sans-serif;
+            border-top-left-radius: 35px;
+            border-top-right-radius: 35px;
+            overflow: hidden;
+        }
+
+        /* เส้นขอบแสง Glowing Effect ด้านบน */
+        .modern-footer::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, transparent, var(--accent, #ffc107), #ff9800, transparent);
+            box-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+        }
+
+        .footer-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .footer-brand {
+            font-size: 1.4rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--accent, #ffc107);
+            letter-spacing: 0.5px;
+        }
+
+        .footer-brand img {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            border: 2px solid var(--accent, #ffc107);
+            box-shadow: 0 0 8px rgba(255, 193, 7, 0.4);
+        }
+
+        .footer-details {
+            font-size: 0.9rem;
+            color: #a9bccc;
+            line-height: 1.6;
+        }
+
+        .footer-details strong {
+            color: #ffffff;
+            font-weight: 500;
+        }
+
+        .footer-bottom {
+            margin-top: 25px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            font-size: 0.8rem;
+            color: #7a93a8;
+            width: 100%;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        @media (max-width: 600px) {
+            .footer-bottom {
+                justify-content: center;
+                flex-direction: column;
+                align-items: center;
+            }
+        }

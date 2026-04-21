@@ -1,0 +1,2177 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ระบบตรวจนับ Stock เครื่องผ้า</title>
+    <link rel="icon" type="image/png" href="icon-192.png">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --navy: #123559;
+            --navy-dark: #0b2239;
+            --blue-soft: #eef5fd;
+            --blue-line: #d7e5f3;
+            --surface: #ffffff;
+            --bg: #f4f7fb;
+            --text: #1b2e44;
+            --muted: #66788a;
+            --success: #1d8f5a;
+            --warning: #c48313;
+            --danger: #c34b4b;
+            --shadow: 0 12px 28px rgba(18, 53, 89, 0.08);
+            --radius-lg: 18px;
+            --radius-md: 14px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: "Prompt", sans-serif;
+        }
+
+        body {
+            background: linear-gradient(180deg, #eef4fb 0%, #f7f9fc 100%);
+            color: var(--text);
+        }
+
+        button,
+        input,
+        select,
+        textarea {
+            font: inherit;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            padding: 16px 20px;
+            background: linear-gradient(135deg, var(--navy-dark), var(--navy));
+            color: #fff;
+            box-shadow: 0 8px 24px rgba(11, 34, 57, 0.18);
+        }
+
+        .nav-title {
+            font-size: 1.18rem;
+            font-weight: 600;
+            line-height: 1.5;
+        }
+
+        .nav-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .nav-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.12);
+            font-size: 0.88rem;
+        }
+
+        .nav-actions {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .nav-btn {
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            border-radius: 999px;
+            padding: 10px 14px;
+        }
+
+        .page {
+            max-width: 1320px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .notice,
+        .loader,
+        .card,
+        .hero,
+        .metric {
+            background: var(--surface);
+            border: 1px solid var(--blue-line);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+        }
+
+        .notice {
+            padding: 14px 16px;
+            margin-bottom: 16px;
+            color: var(--text);
+        }
+
+        .notice strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .notice.warning {
+            border-left: 4px solid var(--warning);
+        }
+
+        .notice.danger {
+            border-left: 4px solid var(--danger);
+        }
+
+        .notice.info {
+            border-left: 4px solid var(--navy);
+        }
+
+        .loader {
+            padding: 48px 18px;
+            text-align: center;
+        }
+
+        .loader i {
+            color: var(--navy);
+            margin-bottom: 12px;
+        }
+
+        .hero {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .hero h2 {
+            font-size: 1.3rem;
+            margin-bottom: 8px;
+        }
+
+        .hero p {
+            color: var(--muted);
+            line-height: 1.75;
+        }
+
+        .hero-side {
+            display: grid;
+            gap: 10px;
+        }
+
+        .metric-stack {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .metric {
+            padding: 16px;
+        }
+
+        .metric small {
+            display: block;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        .metric strong {
+            font-size: 1.5rem;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .tabs {
+            display: inline-flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 6px;
+            border-radius: 999px;
+            background: #fff;
+            border: 1px solid var(--blue-line);
+            box-shadow: var(--shadow);
+        }
+
+        .tab-btn {
+            border: none;
+            border-radius: 999px;
+            padding: 10px 16px;
+            background: transparent;
+            color: var(--text);
+        }
+
+        .tab-btn.active {
+            background: var(--navy);
+            color: #fff;
+        }
+
+        .filters {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .field,
+        .inline-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 180px;
+            color: var(--text);
+            font-size: 0.92rem;
+        }
+
+        .field input,
+        .field select,
+        .field textarea,
+        .inline-field input,
+        .inline-field select,
+        .inline-field textarea {
+            width: 100%;
+            padding: 12px 13px;
+            border: 1px solid var(--blue-line);
+            border-radius: var(--radius-md);
+            background: #fff;
+            color: var(--text);
+        }
+
+        .field textarea {
+            min-height: 90px;
+            resize: vertical;
+        }
+
+        .panel {
+            display: none;
+        }
+
+        .panel.active {
+            display: block;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1.4fr 1fr;
+            gap: 16px;
+        }
+
+        .card {
+            padding: 18px;
+        }
+
+        .section-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .section-head h3 {
+            font-size: 1.05rem;
+        }
+
+        .section-head p {
+            color: var(--muted);
+            margin-top: 4px;
+            line-height: 1.7;
+            font-size: 0.92rem;
+        }
+
+        .chart-box {
+            min-height: 340px;
+            position: relative;
+        }
+
+        .empty {
+            padding: 40px 16px;
+            text-align: center;
+            color: var(--muted);
+        }
+
+        .count-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+
+        .count-card {
+            padding: 18px;
+            border: 1px solid var(--blue-line);
+            border-radius: var(--radius-lg);
+            background: #fff;
+            box-shadow: var(--shadow);
+        }
+
+        .count-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .count-head h4 {
+            font-size: 1.04rem;
+            line-height: 1.6;
+        }
+
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: var(--blue-soft);
+            color: var(--navy);
+            font-size: 0.8rem;
+        }
+
+        .par-box {
+            min-width: 88px;
+            padding: 10px;
+            border-radius: var(--radius-md);
+            background: var(--navy);
+            color: #fff;
+            text-align: center;
+        }
+
+        .par-box small {
+            display: block;
+            opacity: 0.85;
+            font-size: 0.72rem;
+            margin-bottom: 4px;
+        }
+
+        .status-grid {
+            display: grid;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            border: 1px solid var(--blue-line);
+            border-radius: var(--radius-md);
+            background: #fbfdff;
+        }
+
+        .status-label strong {
+            display: block;
+            margin-bottom: 2px;
+            font-size: 0.92rem;
+        }
+
+        .status-label span {
+            color: var(--muted);
+            font-size: 0.82rem;
+        }
+
+        .stepper {
+            display: inline-flex;
+            align-items: center;
+            border: 1px solid var(--blue-line);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            background: #fff;
+        }
+
+        .stepper button {
+            width: 38px;
+            height: 38px;
+            border: none;
+            background: #f1f6fb;
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .stepper input {
+            width: 64px;
+            height: 38px;
+            border: none;
+            text-align: center;
+        }
+
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .summary-item {
+            padding: 12px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--blue-line);
+            background: #fbfdff;
+            text-align: center;
+        }
+
+        .summary-item small {
+            display: block;
+            color: var(--muted);
+            margin-bottom: 5px;
+            font-size: 0.78rem;
+        }
+
+        .summary-item strong {
+            font-size: 1rem;
+        }
+
+        .summary-item.positive strong {
+            color: var(--success);
+        }
+
+        .summary-item.negative strong {
+            color: var(--danger);
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .primary-btn,
+        .ghost-btn,
+        .table-btn {
+            border: none;
+            border-radius: 12px;
+            padding: 12px 16px;
+        }
+
+        .primary-btn {
+            background: var(--navy);
+            color: #fff;
+        }
+
+        .ghost-btn {
+            background: #f1f6fb;
+            color: var(--text);
+            border: 1px solid var(--blue-line);
+        }
+
+        .table-btn {
+            background: var(--navy);
+            color: #fff;
+            padding: 8px 12px;
+            font-size: 0.84rem;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            border: 1px solid var(--blue-line);
+            border-radius: var(--radius-lg);
+        }
+
+        table {
+            width: 100%;
+            min-width: 960px;
+            border-collapse: collapse;
+            background: #fff;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #e8eef5;
+            text-align: left;
+            vertical-align: top;
+            font-size: 0.88rem;
+        }
+
+        th {
+            background: #f3f8fd;
+            color: var(--text);
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 5px 10px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            background: var(--blue-soft);
+        }
+
+        .status-pill.new,
+        .status-pill.open {
+            color: var(--navy);
+        }
+
+        .status-pill.in_progress {
+            color: var(--warning);
+        }
+
+        .status-pill.returned {
+            color: var(--success);
+        }
+
+        .status-pill.lost,
+        .status-pill.cancelled {
+            color: var(--danger);
+        }
+
+        .text-success {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .text-danger {
+            color: var(--danger);
+            font-weight: 600;
+        }
+
+        .tight {
+            min-width: 120px;
+        }
+
+        @media (max-width: 980px) {
+            .hero,
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .navbar {
+                flex-direction: column;
+            }
+
+            .nav-actions {
+                justify-content: flex-start;
+            }
+
+            .page {
+                padding: 14px;
+            }
+
+            .summary {
+                grid-template-columns: 1fr;
+            }
+
+            .count-head,
+            .status-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div>
+            <div class="nav-title" id="systemTitle">ระบบตรวจนับ Stock เครื่องผ้า</div>
+            <div class="nav-meta">
+                <span class="nav-chip"><i class="fas fa-hospital-user"></i> <span id="navWardText">หน่วยงาน: -</span></span>
+                <span class="nav-chip"><i class="fas fa-calendar-alt"></i> <span id="navQuarterText">รอบ: -</span></span>
+            </div>
+        </div>
+        <div class="nav-actions">
+            <button class="nav-btn" onclick="reloadPage()"><i class="fas fa-rotate-right"></i> รีเฟรช</button>
+            <button id="btnAdminLogin" class="nav-btn" onclick="showAdminLogin()"><i class="fas fa-user-shield"></i> Admin</button>
+            <button id="btnExitAdmin" class="nav-btn hidden" onclick="exitAdminMode()"><i class="fas fa-shield-halved"></i> ออกจาก Admin</button>
+            <button class="nav-btn" onclick="goHome()"><i class="fas fa-house"></i> หน้าหลัก</button>
+            <button class="nav-btn" onclick="logoutSystem()"><i class="fas fa-right-from-bracket"></i> ออกจากระบบ</button>
+        </div>
+    </nav>
+
+    <div class="page">
+        <section id="globalNotice" class="notice info hidden"></section>
+
+        <section id="loader" class="loader">
+            <i class="fas fa-spinner fa-spin fa-3x"></i>
+            <div id="loaderText">กำลังโหลดข้อมูล</div>
+        </section>
+
+        <main id="app" class="hidden">
+            <section id="unitSection" class="hidden">
+                <div class="hero">
+                    <div>
+                        <h2>ภาพรวมหน่วยงาน</h2>
+                        <p>ฟอร์มตรวจนับใช้ 4 สถานะหลัก: พร้อมใช้, กำลังใช้งาน, ส่งซัก, ติดผู้ป่วยกลับบ้านรอติดตาม</p>
+                    </div>
+                    <div class="hero-side">
+                        <div class="metric">
+                            <small>จำนวนรายการมาตรฐาน</small>
+                            <strong id="unitItemCount">0</strong>
+                        </div>
+                        <div class="metric">
+                            <small>สถานะรอบปัจจุบัน</small>
+                            <strong id="unitRoundStatus">รอตรวจนับ</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="toolbar">
+                    <div class="tabs">
+                        <button class="tab-btn active" data-tab="unitDashboard" onclick="switchPanel('unitSection', 'unitDashboard', this)">Dashboard</button>
+                        <button class="tab-btn" data-tab="unitCount" onclick="switchPanel('unitSection', 'unitCount', this)">ตรวจนับ</button>
+                        <button class="tab-btn" data-tab="unitTracking" onclick="switchPanel('unitSection', 'unitTracking', this)">แจ้งติดตาม</button>
+                        <button class="tab-btn" data-tab="unitHistory" onclick="switchPanel('unitSection', 'unitHistory', this)">ประวัติ</button>
+                    </div>
+                    <div class="filters">
+                        <label class="field">
+                            รอบข้อมูล
+                            <select id="unitQuarterFilter" onchange="renderUnitDashboard(); renderUnitHistory();"></select>
+                        </label>
+                    </div>
+                </div>
+
+                <section id="unitDashboard" class="panel active">
+                    <div class="metric-stack">
+                        <div class="metric"><small>Par รวม</small><strong id="metricPar">0</strong></div>
+                        <div class="metric"><small>พร้อมใช้</small><strong id="metricReady">0</strong></div>
+                        <div class="metric"><small>กำลังใช้งาน</small><strong id="metricInUse">0</strong></div>
+                        <div class="metric"><small>ส่งซัก</small><strong id="metricLaundry">0</strong></div>
+                        <div class="metric"><small>ติดผู้ป่วยกลับบ้าน</small><strong id="metricPending">0</strong></div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="card">
+                            <div class="section-head">
+                                <div>
+                                    <h3>กราฟตามหมวดหมู่หลัก</h3>
+                                    <p>ดูสัดส่วนแต่ละสถานะของผ้าในรอบที่เลือก</p>
+                                </div>
+                            </div>
+                            <div class="chart-box">
+                                <canvas id="unitChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="section-head">
+                                <div>
+                                    <h3>สถานะติดตามผ้าติดผู้ป่วยกลับบ้าน</h3>
+                                    <p>สรุปรายการของหน่วยงาน</p>
+                                </div>
+                            </div>
+                            <div id="unitTrackingSummary" class="empty">ยังไม่มีข้อมูล</div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="unitCount" class="panel">
+                    <section id="countLockedNotice" class="notice info hidden"></section>
+                    <form id="countForm" onsubmit="submitCountForm(event)">
+                        <div id="countCards" class="count-grid"></div>
+                        <div class="card">
+                            <div class="section-head">
+                                <div>
+                                    <h3>ผู้บันทึก</h3>
+                                    <p>ระบุชื่อผู้บันทึกก่อนส่งข้อมูล</p>
+                                </div>
+                            </div>
+                            <div class="grid-2">
+                                <label class="field">
+                                    ชื่อผู้บันทึก
+                                    <input type="text" id="countRecorder" placeholder="ชื่อ-นามสกุล" required>
+                                </label>
+                                <label class="field">
+                                    หมายเหตุรวม
+                                    <textarea id="countNote" placeholder="ระบุเฉพาะกรณีมีส่วนต่างหรือมีเหตุพิเศษ"></textarea>
+                                </label>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="primary-btn" id="countSubmitBtn"><i class="fas fa-floppy-disk"></i> บันทึกการตรวจนับ</button>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="countEmpty" class="empty hidden">ไม่พบรายการมาตรฐานของหน่วยงานนี้</div>
+                </section>
+
+                <section id="unitTracking" class="panel">
+                    <div class="card">
+                        <div class="section-head">
+                            <div>
+                                <h3>แจ้งผ้าติดผู้ป่วยกลับบ้าน</h3>
+                                <p>แจ้งได้ทุกวัน รายการจะเข้าสู่คิวของหน่วยงานซักฟอก</p>
+                            </div>
+                        </div>
+                        <form id="trackingForm" onsubmit="submitTrackingForm(event)">
+                            <div class="grid-2">
+                                <label class="field">
+                                    วันที่แจ้ง
+                                    <input type="date" id="trackingDate" required>
+                                </label>
+                                <label class="field">
+                                    ผู้แจ้ง
+                                    <input type="text" id="trackingReporter" placeholder="ชื่อ-นามสกุล" required>
+                                </label>
+                                <label class="field">
+                                    รายการผ้า
+                                    <select id="trackingItem" required></select>
+                                </label>
+                                <label class="field">
+                                    จำนวน
+                                    <input type="number" id="trackingQty" min="1" value="1" required>
+                                </label>
+                                <label class="field">
+                                    สาเหตุ
+                                    <select id="trackingReason" required>
+                                        <option value="">เลือกสาเหตุ</option>
+                                        <option value="Refer">Refer</option>
+                                        <option value="กลับบ้าน">ผู้ป่วยกลับบ้าน</option>
+                                        <option value="ย้ายหน่วยงาน">ย้ายหน่วยงาน</option>
+                                        <option value="อื่นๆ">อื่นๆ</option>
+                                    </select>
+                                </label>
+                                <label class="field">
+                                    หมายเหตุ
+                                    <textarea id="trackingNote" placeholder="ระบุรายละเอียดเพิ่มเติมถ้ามี"></textarea>
+                                </label>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="primary-btn" id="trackingSubmitBtn"><i class="fas fa-paper-plane"></i> ส่งรายการติดตาม</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="card" style="margin-top: 16px;">
+                        <div class="section-head">
+                            <div>
+                                <h3>รายการติดตามของหน่วยงาน</h3>
+                                <p>ดูสถานะล่าสุดของรายการที่แจ้งไปแล้ว</p>
+                            </div>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>วันที่แจ้ง</th>
+                                        <th>รายการผ้า</th>
+                                        <th>จำนวน</th>
+                                        <th>สาเหตุ</th>
+                                        <th>สถานะ</th>
+                                        <th>ผลติดตาม</th>
+                                        <th>หมายเหตุ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="unitTrackingBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="unitHistory" class="panel">
+                    <div class="card">
+                        <div class="section-head">
+                            <div>
+                                <h3>ประวัติการตรวจนับ</h3>
+                                <p>แสดงตามรายการผ้า</p>
+                            </div>
+                            <button class="ghost-btn" type="button" onclick="exportUnitHistory()">Export CSV</button>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>วัน/เวลา</th>
+                                        <th>รอบ</th>
+                                        <th>หมวดหมู่หลัก</th>
+                                        <th>ชื่อรายการผ้า</th>
+                                        <th>พร้อมใช้</th>
+                                        <th>ใช้งาน</th>
+                                        <th>ส่งซัก</th>
+                                        <th>ติดผู้ป่วยกลับบ้าน</th>
+                                        <th>รวม</th>
+                                        <th>Par</th>
+                                        <th>ต่าง</th>
+                                        <th>ผู้บันทึก</th>
+                                        <th>หมายเหตุ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="unitHistoryBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </section>
+
+            <section id="laundrySection" class="hidden">
+                <div class="hero">
+                    <div>
+                        <h2>คิวติดตามผ้าติดผู้ป่วยกลับบ้าน</h2>
+                        <p>หน่วยงานซักฟอกใช้ส่วนนี้เพื่อติดตามและเปลี่ยนสถานะรายการ</p>
+                    </div>
+                    <div class="hero-side">
+                        <div class="metric">
+                            <small>รายการค้างติดตาม</small>
+                            <strong id="laundryOpenCount">0</strong>
+                        </div>
+                        <div class="metric">
+                            <small>รายการปิดแล้ว</small>
+                            <strong id="laundryClosedCount">0</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="toolbar">
+                    <div class="tabs">
+                        <button class="tab-btn active" data-tab="laundryQueue" onclick="switchPanel('laundrySection', 'laundryQueue', this)">คิวติดตาม</button>
+                        <button class="tab-btn" data-tab="laundryHistory" onclick="switchPanel('laundrySection', 'laundryHistory', this)">ประวัติ</button>
+                    </div>
+                    <div class="filters">
+                        <label class="field">
+                            สถานะ
+                            <select id="laundryStatusFilter" onchange="renderLaundryTables()">
+                                <option value="all">ทั้งหมด</option>
+                                <option value="open">แจ้งใหม่</option>
+                                <option value="in_progress">กำลังติดตาม</option>
+                                <option value="returned">คืนคลังแล้ว</option>
+                                <option value="lost">ติดตามไม่ได้</option>
+                                <option value="cancelled">ยกเลิก</option>
+                            </select>
+                        </label>
+                    </div>
+                </div>
+
+                <section id="laundryQueue" class="panel active">
+                    <div class="card">
+                        <div class="section-head">
+                            <div>
+                                <h3>อัปเดตสถานะ</h3>
+                                <p>เปลี่ยนสถานะและบันทึกผลติดตาม</p>
+                            </div>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>วันที่แจ้ง</th>
+                                        <th>หน่วยงาน</th>
+                                        <th>รายการผ้า</th>
+                                        <th>จำนวน</th>
+                                        <th>สาเหตุ</th>
+                                        <th>สถานะ</th>
+                                        <th class="tight">สถานะใหม่</th>
+                                        <th>ผลติดตาม</th>
+                                        <th class="tight">ผู้ดำเนินการ</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="laundryQueueBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="laundryHistory" class="panel">
+                    <div class="card">
+                        <div class="section-head">
+                            <div>
+                                <h3>ประวัติรายการติดตาม</h3>
+                                <p>ดูผลการติดตามย้อนหลัง</p>
+                            </div>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>วันที่แจ้ง</th>
+                                        <th>หน่วยงาน</th>
+                                        <th>รายการผ้า</th>
+                                        <th>จำนวน</th>
+                                        <th>สาเหตุ</th>
+                                        <th>สถานะ</th>
+                                        <th>ผลติดตาม</th>
+                                        <th>ผู้ดำเนินการ</th>
+                                        <th>อัปเดตล่าสุด</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="laundryHistoryBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </section>
+
+            <section id="adminSection" class="hidden">
+                <div class="hero">
+                    <div>
+                        <h2>ภาพรวมแอดมิน</h2>
+                        <p>ดูข้อมูลตรวจนับและรายการติดตามทุกหน่วยงาน</p>
+                    </div>
+                    <div class="hero-side">
+                        <div class="metric">
+                            <small>จำนวนหน่วยงาน</small>
+                            <strong id="adminWardCount">0</strong>
+                        </div>
+                        <div class="metric">
+                            <small>รายการติดตามค้าง</small>
+                            <strong id="adminTrackingOpen">0</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="toolbar">
+                    <div class="tabs">
+                        <button class="tab-btn active" data-tab="adminLogs" onclick="switchPanel('adminSection', 'adminLogs', this)">ตรวจนับ</button>
+                        <button class="tab-btn" data-tab="adminTracking" onclick="switchPanel('adminSection', 'adminTracking', this)">ติดตามผ้า</button>
+                    </div>
+                    <div class="filters">
+                        <label class="field">
+                            หน่วยงาน
+                            <select id="adminWardFilter" onchange="renderAdminViews()"></select>
+                        </label>
+                        <label class="field">
+                            รอบ
+                            <select id="adminQuarterFilter" onchange="renderAdminViews()"></select>
+                        </label>
+                    </div>
+                </div>
+
+                <section id="adminLogs" class="panel active">
+                    <div class="metric-stack">
+                        <div class="metric"><small>Par</small><strong id="adminParMetric">0</strong></div>
+                        <div class="metric"><small>พร้อมใช้</small><strong id="adminReadyMetric">0</strong></div>
+                        <div class="metric"><small>กำลังใช้งาน</small><strong id="adminUseMetric">0</strong></div>
+                        <div class="metric"><small>ส่งซัก</small><strong id="adminLaundryMetric">0</strong></div>
+                        <div class="metric"><small>ติดผู้ป่วยกลับบ้าน</small><strong id="adminPendingMetric">0</strong></div>
+                    </div>
+                    <div class="card">
+                        <div class="section-head">
+                            <div>
+                                <h3>ประวัติการตรวจนับทั้งหมด</h3>
+                            </div>
+                            <button class="ghost-btn" type="button" onclick="exportAdminLogs()">Export CSV</button>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>วัน/เวลา</th>
+                                        <th>รอบ</th>
+                                        <th>หน่วยงาน</th>
+                                        <th>หมวดหมู่หลัก</th>
+                                        <th>ชื่อรายการผ้า</th>
+                                        <th>พร้อมใช้</th>
+                                        <th>ใช้งาน</th>
+                                        <th>ส่งซัก</th>
+                                        <th>ติดผู้ป่วยกลับบ้าน</th>
+                                        <th>รวม</th>
+                                        <th>Par</th>
+                                        <th>ต่าง</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminLogBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="adminTracking" class="panel">
+                    <div class="card">
+                        <div class="section-head">
+                            <div>
+                                <h3>รายการติดตามทุกหน่วยงาน</h3>
+                            </div>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>วันที่แจ้ง</th>
+                                        <th>หน่วยงาน</th>
+                                        <th>รายการผ้า</th>
+                                        <th>จำนวน</th>
+                                        <th>สาเหตุ</th>
+                                        <th>สถานะ</th>
+                                        <th>ผลติดตาม</th>
+                                        <th>ผู้ดำเนินการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminTrackingBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const CLOTH_API = "https://script.google.com/macros/s/AKfycbwX02hKklePV0IIiMNkn-f-_l44ig0B_GdjYxemy8iLQ2JIrMgJg7MiWonIZuajW5DL1Q/exec";
+        const SESSION_KEYS = { ward: "aide_ward", role: "aide_role" };
+        const ADMIN_PASSWORD = "11450";
+        const TRACKING_STATUS_LABELS = {
+            open: "แจ้งใหม่",
+            in_progress: "กำลังติดตาม",
+            returned: "คืนคลังแล้ว",
+            lost: "ติดตามไม่ได้",
+            cancelled: "ยกเลิก"
+        };
+        const COUNT_FIELDS = [
+            { key: "readyStock", label: "ผ้าพร้อมใช้", hint: "อยู่ใน stock", icon: "fa-box-open" },
+            { key: "inUse", label: "กำลังใช้งาน", hint: "อยู่กับผู้ป่วย", icon: "fa-bed-pulse" },
+            { key: "inLaundry", label: "ส่งซัก", hint: "รอเบิกกลับ", icon: "fa-soap" },
+            { key: "pendingTracking", label: "ติดผู้ป่วยกลับบ้าน", hint: "รอติดตาม", icon: "fa-user-clock" }
+        ];
+
+        const urlParams = new URLSearchParams(window.location.search);
+        let currentWard = urlParams.get("ward") || sessionStorage.getItem(SESSION_KEYS.ward) || "";
+        let currentRole = urlParams.get("role") || sessionStorage.getItem(SESSION_KEYS.role) || "user";
+        let currentQuarter = "";
+        let masterItems = [];
+        let allLogs = [];
+        let unitLogs = [];
+        let trackingRecords = [];
+        let trackingApiAvailable = true;
+        let isAlreadyCounted = false;
+        let lastCountDate = "";
+        let unitChart = null;
+
+        const isAdminMode = () => currentRole === "admin";
+        const isLaundryUnit = () => !isAdminMode() && currentWard === "ซักฟอก";
+
+        document.addEventListener("DOMContentLoaded", bootstrap);
+
+        async function bootstrap() {
+            if (!currentWard && !isAdminMode()) {
+                setLoading(false);
+                showNotice("ไม่พบหน่วยงาน", "กรุณาเข้าสู่ระบบจากหน้าหลักก่อน", "warning");
+                updateHeader();
+                return;
+            }
+
+            if (currentWard) {
+                sessionStorage.setItem(SESSION_KEYS.ward, currentWard);
+            }
+            sessionStorage.setItem(SESSION_KEYS.role, currentRole);
+
+            setLoading(true, "กำลังโหลดข้อมูล");
+            updateHeader();
+
+            if (isAdminMode()) {
+                await loadAdminMode();
+            } else if (isLaundryUnit()) {
+                await loadLaundryMode();
+            } else {
+                await loadUnitMode();
+            }
+
+            setLoading(false);
+        }
+
+        function setLoading(isLoading, text) {
+            document.getElementById("loaderText").innerText = text || "กำลังโหลดข้อมูล";
+            document.getElementById("loader").classList.toggle("hidden", !isLoading);
+            document.getElementById("app").classList.toggle("hidden", isLoading);
+        }
+
+        function updateHeader() {
+            let title = "ระบบตรวจนับ Stock เครื่องผ้า";
+            let wardText = currentWard || "-";
+
+            if (isAdminMode()) {
+                title = "ระบบตรวจนับ Stock เครื่องผ้า : Admin";
+                wardText = "ภาพรวมทั้งองค์กร";
+            } else if (isLaundryUnit()) {
+                title = "ระบบตรวจนับ Stock เครื่องผ้า หน่วยงาน : ซักฟอก";
+                wardText = "ซักฟอก";
+            } else {
+                title = `ระบบตรวจนับ Stock เครื่องผ้า หน่วยงาน : ${currentWard}`;
+            }
+
+            document.title = title;
+            document.getElementById("systemTitle").innerText = title;
+            document.getElementById("navWardText").innerText = `หน่วยงาน: ${wardText}`;
+            document.getElementById("navQuarterText").innerText = `รอบ: ${currentQuarter || "-"}`;
+            document.getElementById("btnAdminLogin").classList.toggle("hidden", isAdminMode());
+            document.getElementById("btnExitAdmin").classList.toggle("hidden", !isAdminMode());
+        }
+
+        function showNotice(title, detail, type = "info") {
+            const el = document.getElementById("globalNotice");
+            el.className = `notice ${type}`;
+            el.innerHTML = `<strong>${escapeHtml(title)}</strong><span>${escapeHtml(detail)}</span>`;
+            el.classList.remove("hidden");
+        }
+
+        function hideNotice() {
+            document.getElementById("globalNotice").classList.add("hidden");
+        }
+
+        async function loadUnitMode() {
+            hideNotice();
+            document.getElementById("unitSection").classList.remove("hidden");
+            document.getElementById("laundrySection").classList.add("hidden");
+            document.getElementById("adminSection").classList.add("hidden");
+
+            const [masterResult, logsResult, trackingResult] = await Promise.allSettled([
+                fetchClothMaster(),
+                fetchAllLogs(),
+                fetchTrackingRecords()
+            ]);
+
+            if (masterResult.status === "rejected") {
+                showNotice("โหลดรายการมาตรฐานไม่สำเร็จ", masterResult.reason?.message || "ไม่สามารถเชื่อมต่อ ClothMaster ได้", "danger");
+            }
+
+            if (logsResult.status === "rejected") {
+                showNotice("โหลดประวัติการตรวจนับไม่สำเร็จ", logsResult.reason?.message || "ไม่สามารถเชื่อมต่อ ClothLog ได้", "warning");
+            }
+
+            if (trackingResult.status === "rejected") {
+                showNotice("ระบบติดตามผ้าติดผู้ป่วยกลับบ้านยังไม่พร้อม", trackingResult.reason?.message || "Backend ยังไม่รองรับ action สำหรับงานติดตาม", "warning");
+            }
+
+            document.getElementById("trackingDate").value = new Date().toISOString().slice(0, 10);
+            renderUnitView();
+        }
+
+        async function loadLaundryMode() {
+            hideNotice();
+            document.getElementById("unitSection").classList.remove("hidden");
+            document.getElementById("laundrySection").classList.remove("hidden");
+            document.getElementById("adminSection").classList.add("hidden");
+
+            const [masterResult, logsResult, trackingResult] = await Promise.allSettled([
+                fetchClothMaster(),
+                fetchAllLogs(),
+                fetchTrackingRecords()
+            ]);
+
+            if (masterResult.status === "rejected") {
+                showNotice("โหลดรายการมาตรฐานไม่สำเร็จ", masterResult.reason?.message || "ไม่สามารถเชื่อมต่อ ClothMaster ได้", "warning");
+            }
+
+            if (logsResult.status === "rejected") {
+                showNotice("โหลด ClothLog ไม่สำเร็จ", logsResult.reason?.message || "ไม่สามารถเชื่อมต่อข้อมูลตรวจนับได้", "warning");
+            }
+
+            if (trackingResult.status === "rejected") {
+                showNotice("โหลดรายการติดตามไม่สำเร็จ", trackingResult.reason?.message || "Backend ยังไม่รองรับ action สำหรับงานติดตาม", "danger");
+            }
+
+            document.getElementById("trackingDate").value = new Date().toISOString().slice(0, 10);
+            renderUnitView();
+            renderLaundryView();
+        }
+
+        async function loadAdminMode() {
+            hideNotice();
+            document.getElementById("unitSection").classList.add("hidden");
+            document.getElementById("laundrySection").classList.add("hidden");
+            document.getElementById("adminSection").classList.remove("hidden");
+
+            const [logsResult, trackingResult] = await Promise.allSettled([
+                fetchAllLogs(),
+                fetchTrackingRecords()
+            ]);
+
+            if (logsResult.status === "rejected") {
+                showNotice("โหลด ClothLog ไม่สำเร็จ", logsResult.reason?.message || "ไม่สามารถเชื่อมต่อข้อมูลตรวจนับได้", "danger");
+            }
+
+            if (trackingResult.status === "rejected") {
+                showNotice("โหลดรายการติดตามไม่สำเร็จ", trackingResult.reason?.message || "Backend ยังไม่รองรับ action สำหรับงานติดตาม", "warning");
+            }
+
+            renderAdminView();
+        }
+
+        async function fetchClothMaster() {
+            const response = await fetch(`${CLOTH_API}?action=getClothMaster&ward=${encodeURIComponent(currentWard)}`);
+            const result = await response.json();
+            if (result.status !== "success") {
+                throw new Error(result.message || "โหลด ClothMaster ไม่สำเร็จ");
+            }
+
+            currentQuarter = result.currentQuarter || currentQuarter || "รอบปัจจุบัน";
+            isAlreadyCounted = Boolean(result.isAlreadyCounted);
+            lastCountDate = result.lastCountDate || "";
+            masterItems = (result.data || []).map(normalizeMasterItem).filter(item => item.itemName);
+            updateHeader();
+        }
+
+        async function fetchAllLogs() {
+            const response = await fetch(`${CLOTH_API}?action=getAllClothLogs`);
+            const result = await response.json();
+            if (result.status !== "success") {
+                throw new Error(result.message || "โหลด ClothLog ไม่สำเร็จ");
+            }
+
+            allLogs = (result.data || []).map(normalizeLog);
+            unitLogs = allLogs.filter(log => log.ward === currentWard);
+            document.getElementById("adminWardCount").innerText = Array.isArray(result.allWards) ? result.allWards.length.toLocaleString() : "0";
+        }
+
+        async function fetchTrackingRecords() {
+            const response = await fetch(`${CLOTH_API}?action=getClothTracking`);
+            const result = await response.json();
+
+            if (result.status !== "success") {
+                trackingApiAvailable = false;
+                throw new Error(result.message || "โหลดรายการติดตามไม่สำเร็จ");
+            }
+
+            trackingApiAvailable = true;
+            trackingRecords = (result.data || []).map(normalizeTracking);
+        }
+
+        function renderUnitView() {
+            renderUnitHero();
+            populateUnitQuarterFilter();
+            populateTrackingItemOptions();
+            renderCountCards();
+            renderCountLockState();
+            renderUnitDashboard();
+            renderUnitTrackingTable();
+            renderUnitHistory();
+        }
+
+        function renderUnitHero() {
+            document.getElementById("unitItemCount").innerText = masterItems.length.toLocaleString();
+            document.getElementById("unitRoundStatus").innerText = isAlreadyCounted
+                ? `บันทึกแล้ว${lastCountDate ? ` (${lastCountDate})` : ""}`
+                : "รอตรวจนับ";
+        }
+
+        function populateUnitQuarterFilter() {
+            const select = document.getElementById("unitQuarterFilter");
+            const quarters = [...new Set(unitLogs.map(log => log.quarter).filter(Boolean))].sort().reverse();
+            const options = [];
+            if (currentQuarter) {
+                options.push({ value: "__current__", label: `รอบปัจจุบัน: ${currentQuarter}` });
+            }
+            options.push({ value: "all", label: "ทุกช่วง" });
+            quarters.filter(q => q !== currentQuarter).forEach(q => options.push({ value: q, label: q }));
+            select.innerHTML = options.map(option => `<option value="${escapeAttribute(option.value)}">${escapeHtml(option.label)}</option>`).join("");
+        }
+
+        function populateTrackingItemOptions() {
+            const select = document.getElementById("trackingItem");
+            const items = masterItems.map(item => `<option value="${escapeAttribute(item.itemName)}">${escapeHtml(item.itemName)}</option>`).join("");
+            select.innerHTML = `<option value="">เลือกรายการผ้า</option>${items}`;
+        }
+
+        function renderCountCards() {
+            const container = document.getElementById("countCards");
+            const empty = document.getElementById("countEmpty");
+            const form = document.getElementById("countForm");
+
+            if (masterItems.length === 0) {
+                empty.classList.remove("hidden");
+                form.classList.add("hidden");
+                container.innerHTML = "";
+                return;
+            }
+
+            empty.classList.add("hidden");
+            form.classList.remove("hidden");
+            container.innerHTML = masterItems.map((item, index) => {
+                const rows = COUNT_FIELDS.map(field => `
+                    <div class="status-row">
+                        <div class="status-label">
+                            <strong><i class="fas ${field.icon}"></i> ${field.label}</strong>
+                            <span>${field.hint}</span>
+                        </div>
+                        <div class="stepper">
+                            <button type="button" onclick="changeCount(${index}, '${field.key}', -1)">-</button>
+                            <input type="number" id="${field.key}-${index}" value="0" min="0" oninput="calculateItem(${index})">
+                            <button type="button" onclick="changeCount(${index}, '${field.key}', 1)">+</button>
+                        </div>
+                    </div>
+                `).join("");
+
+                return `
+                    <article class="count-card">
+                        <div class="count-head">
+                            <div>
+                                <span class="tag"><i class="fas fa-layer-group"></i> ${escapeHtml(item.mainCategory)}</span>
+                                <h4>${escapeHtml(item.itemName)}</h4>
+                            </div>
+                            <div class="par-box">
+                                <small>Par</small>
+                                <strong>${item.parLevel}</strong>
+                            </div>
+                        </div>
+                        <div class="status-grid">${rows}</div>
+                        <div class="summary">
+                            <div class="summary-item">
+                                <small>รวม</small>
+                                <strong id="total-${index}">0</strong>
+                            </div>
+                            <div class="summary-item">
+                                <small>Par</small>
+                                <strong>${item.parLevel}</strong>
+                            </div>
+                            <div class="summary-item negative" id="diffBox-${index}">
+                                <small>ส่วนต่าง</small>
+                                <strong id="diff-${index}">${item.parLevel ? `-${item.parLevel}` : "0"}</strong>
+                            </div>
+                        </div>
+                    </article>
+                `;
+            }).join("");
+        }
+
+        function renderCountLockState() {
+            const notice = document.getElementById("countLockedNotice");
+            const disabled = isAlreadyCounted;
+            notice.classList.toggle("hidden", !disabled);
+            if (disabled) {
+                notice.className = "notice info";
+                notice.innerHTML = `<strong>รอบนี้บันทึกแล้ว</strong><span>${escapeHtml(lastCountDate ? `ล่าสุด ${lastCountDate}` : "ปิดการกรอกซ้ำในรอบเดียวกัน")}</span>`;
+            }
+
+            document.querySelectorAll("#countForm input, #countForm textarea, #countForm button, #countForm select").forEach(el => {
+                el.disabled = disabled;
+            });
+        }
+
+        function changeCount(index, key, delta) {
+            const input = document.getElementById(`${key}-${index}`);
+            input.value = Math.max(0, (parseInt(input.value, 10) || 0) + delta);
+            calculateItem(index);
+        }
+
+        function calculateItem(index) {
+            const totals = COUNT_FIELDS.reduce((sum, field) => {
+                return sum + (parseInt(document.getElementById(`${field.key}-${index}`)?.value, 10) || 0);
+            }, 0);
+            const diff = totals - (masterItems[index]?.parLevel || 0);
+            document.getElementById(`total-${index}`).innerText = totals.toLocaleString();
+            document.getElementById(`diff-${index}`).innerText = formatDifference(diff);
+            const diffBox = document.getElementById(`diffBox-${index}`);
+            diffBox.classList.remove("positive", "negative");
+            if (diff > 0) {
+                diffBox.classList.add("positive");
+            } else if (diff < 0) {
+                diffBox.classList.add("negative");
+            }
+        }
+
+        function getSelectedQuarter() {
+            const select = document.getElementById("unitQuarterFilter");
+            return select ? select.value : "all";
+        }
+
+        function getFilteredUnitLogs() {
+            const quarter = getSelectedQuarter();
+            if (quarter === "__current__") {
+                return unitLogs.filter(log => log.quarter === currentQuarter);
+            }
+            if (quarter === "all") {
+                return [...unitLogs];
+            }
+            return unitLogs.filter(log => log.quarter === quarter);
+        }
+
+        function renderUnitDashboard() {
+            const grouped = getUnitCategoryRows();
+            const summary = grouped.reduce((acc, row) => {
+                acc.par += row.par;
+                acc.ready += row.readyStock;
+                acc.use += row.inUse;
+                acc.laundry += row.inLaundry;
+                acc.pending += row.pendingTracking;
+                return acc;
+            }, { par: 0, ready: 0, use: 0, laundry: 0, pending: 0 });
+
+            document.getElementById("metricPar").innerText = summary.par.toLocaleString();
+            document.getElementById("metricReady").innerText = summary.ready.toLocaleString();
+            document.getElementById("metricInUse").innerText = summary.use.toLocaleString();
+            document.getElementById("metricLaundry").innerText = summary.laundry.toLocaleString();
+            document.getElementById("metricPending").innerText = summary.pending.toLocaleString();
+
+            renderUnitChart(grouped);
+            renderUnitTrackingSummary();
+        }
+
+        function getUnitCategoryRows() {
+            const logs = getFilteredUnitLogs();
+            const grouped = new Map();
+
+            if (logs.length > 0) {
+                logs.forEach(log => {
+                    const key = log.mainCategory;
+                    const target = grouped.get(key) || createCategoryRow(key);
+                    target.par += log.par;
+                    target.readyStock += log.readyStock;
+                    target.inUse += log.inUse;
+                    target.inLaundry += log.inLaundry;
+                    target.pendingTracking += log.pendingTracking;
+                    grouped.set(key, target);
+                });
+                return [...grouped.values()];
+            }
+
+            masterItems.forEach(item => {
+                const target = grouped.get(item.mainCategory) || createCategoryRow(item.mainCategory);
+                target.par += item.parLevel;
+                grouped.set(item.mainCategory, target);
+            });
+            return [...grouped.values()];
+        }
+
+        function createCategoryRow(category) {
+            return { category, par: 0, readyStock: 0, inUse: 0, inLaundry: 0, pendingTracking: 0 };
+        }
+
+        function renderUnitChart(rows) {
+            const ctx = document.getElementById("unitChart").getContext("2d");
+            if (unitChart) {
+                unitChart.destroy();
+            }
+            if (rows.length === 0) {
+                return;
+            }
+
+            unitChart = new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels: rows.map(row => row.category),
+                    datasets: [
+                        { label: "พร้อมใช้", data: rows.map(row => row.readyStock), backgroundColor: "#1d8f5a" },
+                        { label: "กำลังใช้งาน", data: rows.map(row => row.inUse), backgroundColor: "#2f6db0" },
+                        { label: "ส่งซัก", data: rows.map(row => row.inLaundry), backgroundColor: "#8a63c7" },
+                        { label: "ติดผู้ป่วยกลับบ้าน", data: rows.map(row => row.pendingTracking), backgroundColor: "#c48313" },
+                        { label: "Par", data: rows.map(row => row.par), backgroundColor: "#dbe8f7" }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+                    plugins: { legend: { position: "bottom" } }
+                }
+            });
+        }
+
+        function renderUnitTrackingSummary() {
+            const records = trackingRecords.filter(record => record.ward === currentWard);
+            if (records.length === 0) {
+                document.getElementById("unitTrackingSummary").innerHTML = "ยังไม่มีรายการติดตาม";
+                return;
+            }
+
+            const counts = records.reduce((acc, record) => {
+                acc[record.status] = (acc[record.status] || 0) + record.qty;
+                return acc;
+            }, {});
+
+            document.getElementById("unitTrackingSummary").innerHTML = `
+                <div class="metric-stack">
+                    <div class="metric"><small>แจ้งใหม่</small><strong>${(counts.open || 0).toLocaleString()}</strong></div>
+                    <div class="metric"><small>กำลังติดตาม</small><strong>${(counts.in_progress || 0).toLocaleString()}</strong></div>
+                    <div class="metric"><small>คืนแล้ว</small><strong>${(counts.returned || 0).toLocaleString()}</strong></div>
+                    <div class="metric"><small>ติดตามไม่ได้</small><strong>${(counts.lost || 0).toLocaleString()}</strong></div>
+                </div>
+            `;
+        }
+
+        function renderUnitTrackingTable() {
+            const tbody = document.getElementById("unitTrackingBody");
+            const records = trackingRecords
+                .filter(record => record.ward === currentWard)
+                .sort((a, b) => b.sortValue - a.sortValue);
+
+            if (records.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;">ยังไม่มีรายการ</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = records.map(record => `
+                <tr>
+                    <td>${escapeHtml(record.reportDate || record.timestamp)}</td>
+                    <td>${escapeHtml(record.itemName)}</td>
+                    <td>${record.qty}</td>
+                    <td>${escapeHtml(record.reason)}</td>
+                    <td><span class="status-pill ${escapeAttribute(record.status)}">${escapeHtml(getTrackingStatusLabel(record.status))}</span></td>
+                    <td>${escapeHtml(record.followupNote || "-")}</td>
+                    <td>${escapeHtml(record.note || "-")}</td>
+                </tr>
+            `).join("");
+        }
+
+        function renderUnitHistory() {
+            const tbody = document.getElementById("unitHistoryBody");
+            const logs = getFilteredUnitLogs().sort((a, b) => b.sortValue - a.sortValue);
+            if (logs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;">ยังไม่มีประวัติ</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = logs.map(log => `
+                <tr>
+                    <td>${escapeHtml(log.timestamp)}</td>
+                    <td>${escapeHtml(log.quarter)}</td>
+                    <td>${escapeHtml(log.mainCategory)}</td>
+                    <td>${escapeHtml(log.itemName)}</td>
+                    <td>${log.readyStock}</td>
+                    <td>${log.inUse}</td>
+                    <td>${log.inLaundry}</td>
+                    <td>${log.pendingTracking}</td>
+                    <td>${log.total}</td>
+                    <td>${log.par}</td>
+                    <td class="${log.diff < 0 ? "text-danger" : log.diff > 0 ? "text-success" : ""}">${escapeHtml(formatDifference(log.diff))}</td>
+                    <td>${escapeHtml(log.recorder || "-")}</td>
+                    <td>${escapeHtml(log.note || "-")}</td>
+                </tr>
+            `).join("");
+        }
+
+        async function submitCountForm(event) {
+            event.preventDefault();
+            if (isAlreadyCounted) {
+                return;
+            }
+
+            const recorder = document.getElementById("countRecorder").value.trim();
+            const note = document.getElementById("countNote").value.trim();
+            if (!recorder) {
+                Swal.fire({ icon: "warning", title: "กรุณาระบุผู้บันทึก" });
+                return;
+            }
+
+            const logs = masterItems.map((item, index) => {
+                const values = {};
+                COUNT_FIELDS.forEach(field => {
+                    values[field.key] = parseInt(document.getElementById(`${field.key}-${index}`)?.value, 10) || 0;
+                });
+                const total = values.readyStock + values.inUse + values.inLaundry + values.pendingTracking;
+                return {
+                    itemName: item.itemName,
+                    mainCategory: item.mainCategory,
+                    parLevel: item.parLevel,
+                    readyStock: values.readyStock,
+                    inUse: values.inUse,
+                    inLaundry: values.inLaundry,
+                    pendingTracking: values.pendingTracking,
+                    totalCounted: total,
+                    difference: total - item.parLevel
+                };
+            });
+
+            const totalDiff = logs.reduce((sum, log) => sum + log.difference, 0);
+            if (totalDiff !== 0 && !note) {
+                Swal.fire({ icon: "warning", title: "กรุณาระบุหมายเหตุรวม", text: "เมื่อมีส่วนต่างจาก Par ระบบต้องการหมายเหตุประกอบ" });
+                return;
+            }
+
+            const btn = document.getElementById("countSubmitBtn");
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก`;
+
+            try {
+                const response = await fetch(CLOTH_API, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({
+                        action: "submitClothLog",
+                        countModel: "hospital_v2",
+                        ward: currentWard,
+                        quarter: currentQuarter,
+                        recorder,
+                        note,
+                        logs: logs.map(log => ({
+                            ...log,
+                            good: log.readyStock,
+                            defect: 0,
+                            totalGood: log.readyStock,
+                            totalDefect: 0,
+                            totalCounted: log.totalCounted,
+                            subTypeDetails: note || "-"
+                        }))
+                    })
+                });
+
+                let result = null;
+                try {
+                    result = await response.json();
+                } catch (error) {
+                    result = null;
+                }
+
+                if (!response.ok || (result && result.status === "error")) {
+                    throw new Error(result?.message || "บันทึกข้อมูลไม่สำเร็จ");
+                }
+
+                appendSubmittedLogs(logs, recorder, note);
+                isAlreadyCounted = true;
+                lastCountDate = new Date().toLocaleString("th-TH");
+                renderUnitHero();
+                renderCountLockState();
+                renderUnitDashboard();
+                renderUnitHistory();
+
+                Swal.fire({ icon: "success", title: "บันทึกสำเร็จ" });
+            } catch (error) {
+                Swal.fire({ icon: "error", title: "บันทึกไม่สำเร็จ", text: error.message || "เกิดข้อผิดพลาด" });
+            } finally {
+                btn.disabled = isAlreadyCounted;
+                btn.innerHTML = `<i class="fas fa-floppy-disk"></i> บันทึกการตรวจนับ`;
+            }
+        }
+
+        function appendSubmittedLogs(logs, recorder, note) {
+            const timestamp = new Date().toLocaleString("th-TH");
+            const appended = logs.map(log => normalizeLog({
+                Timestamp: timestamp,
+                หน่วยงาน: currentWard,
+                รอบการตรวจ: currentQuarter,
+                ชื่อรายการผ้า: log.itemName,
+                หมวดหมู่ภาพรวม: log.mainCategory,
+                "ผ้าพร้อมใช้": log.readyStock,
+                "กำลังใช้งาน": log.inUse,
+                "ส่งซัก": log.inLaundry,
+                "ติดผู้ป่วยกลับบ้านรอติดตาม": log.pendingTracking,
+                ยอดนับได้จริง: log.totalCounted,
+                ยอดมาตรฐาน: log.parLevel,
+                "ส่วนต่าง (+/-)": log.difference,
+                ผู้บันทึก: recorder,
+                หมายเหตุ: note
+            }));
+            allLogs = [...appended, ...allLogs];
+            unitLogs = allLogs.filter(log => log.ward === currentWard);
+        }
+
+        async function submitTrackingForm(event) {
+            event.preventDefault();
+            const reporter = document.getElementById("trackingReporter").value.trim();
+            const reportDate = document.getElementById("trackingDate").value;
+            const itemName = document.getElementById("trackingItem").value;
+            const qty = parseInt(document.getElementById("trackingQty").value, 10) || 0;
+            const reason = document.getElementById("trackingReason").value;
+            const note = document.getElementById("trackingNote").value.trim();
+
+            if (!reporter || !reportDate || !itemName || !qty || !reason) {
+                Swal.fire({ icon: "warning", title: "กรอกข้อมูลให้ครบ" });
+                return;
+            }
+
+            const btn = document.getElementById("trackingSubmitBtn");
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> กำลังส่ง`;
+
+            try {
+                const payload = {
+                    action: "submitClothTracking",
+                    ward: currentWard,
+                    reportDate,
+                    reporter,
+                    itemName,
+                    qty,
+                    reason,
+                    note,
+                    status: "open"
+                };
+                const response = await fetch(CLOTH_API, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                if (!response.ok || result.status !== "success") {
+                    throw new Error(result.message || "ส่งรายการติดตามไม่สำเร็จ");
+                }
+
+                trackingRecords = [normalizeTracking({
+                    Timestamp: new Date().toLocaleString("th-TH"),
+                    วันที่แจ้ง: reportDate,
+                    หน่วยงาน: currentWard,
+                    ชื่อรายการผ้า: itemName,
+                    จำนวน: qty,
+                    สาเหตุ: reason,
+                    หมายเหตุ: note,
+                    ผู้แจ้ง: reporter,
+                    สถานะ: "open"
+                }), ...trackingRecords];
+
+                document.getElementById("trackingForm").reset();
+                document.getElementById("trackingDate").value = new Date().toISOString().slice(0, 10);
+                populateTrackingItemOptions();
+                renderUnitTrackingSummary();
+                renderUnitTrackingTable();
+                Swal.fire({ icon: "success", title: "ส่งรายการแล้ว" });
+            } catch (error) {
+                trackingApiAvailable = false;
+                Swal.fire({
+                    icon: "error",
+                    title: "ส่งรายการไม่สำเร็จ",
+                    text: error.message || "Backend ยังไม่รองรับ action submitClothTracking"
+                });
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fas fa-paper-plane"></i> ส่งรายการติดตาม`;
+            }
+        }
+
+        function renderLaundryView() {
+            const openQty = trackingRecords.filter(record => record.status === "open" || record.status === "in_progress").reduce((sum, record) => sum + record.qty, 0);
+            const closedQty = trackingRecords.filter(record => record.status === "returned" || record.status === "lost").reduce((sum, record) => sum + record.qty, 0);
+            document.getElementById("laundryOpenCount").innerText = openQty.toLocaleString();
+            document.getElementById("laundryClosedCount").innerText = closedQty.toLocaleString();
+            renderLaundryTables();
+        }
+
+        function renderLaundryTables() {
+            const status = document.getElementById("laundryStatusFilter").value;
+            const filtered = trackingRecords.filter(record => status === "all" || record.status === status);
+            const queueBody = document.getElementById("laundryQueueBody");
+            const historyBody = document.getElementById("laundryHistoryBody");
+
+            const queueRows = filtered.filter(record => record.status === "open" || record.status === "in_progress");
+            if (queueRows.length === 0) {
+                queueBody.innerHTML = `<tr><td colspan="10" style="text-align:center;">ไม่มีรายการ</td></tr>`;
+            } else {
+                queueBody.innerHTML = queueRows.map(record => `
+                    <tr>
+                        <td>${escapeHtml(record.reportDate || record.timestamp)}</td>
+                        <td>${escapeHtml(record.ward)}</td>
+                        <td>${escapeHtml(record.itemName)}</td>
+                        <td>${record.qty}</td>
+                        <td>${escapeHtml(record.reason)}</td>
+                        <td><span class="status-pill ${escapeAttribute(record.status)}">${escapeHtml(getTrackingStatusLabel(record.status))}</span></td>
+                        <td>
+                            <select id="nextStatus-${record.domId}">
+                                <option value="open" ${record.status === "open" ? "selected" : ""}>แจ้งใหม่</option>
+                                <option value="in_progress" ${record.status === "in_progress" ? "selected" : ""}>กำลังติดตาม</option>
+                                <option value="returned">คืนคลังแล้ว</option>
+                                <option value="lost">ติดตามไม่ได้</option>
+                                <option value="cancelled">ยกเลิก</option>
+                            </select>
+                        </td>
+                        <td><textarea id="followup-${record.domId}" placeholder="ผลติดตาม">${escapeHtml(record.followupNote || "")}</textarea></td>
+                        <td><input id="operator-${record.domId}" type="text" placeholder="ชื่อผู้ดำเนินการ"></td>
+                        <td><button type="button" class="table-btn" onclick="updateTrackingStatus('${escapeJs(record.id)}', '${record.domId}')">บันทึก</button></td>
+                    </tr>
+                `).join("");
+            }
+
+            const historyRows = filtered.filter(record => record.status === "returned" || record.status === "lost" || record.status === "cancelled").sort((a, b) => b.sortValue - a.sortValue);
+            if (historyRows.length === 0) {
+                historyBody.innerHTML = `<tr><td colspan="9" style="text-align:center;">ไม่มีรายการ</td></tr>`;
+            } else {
+                historyBody.innerHTML = historyRows.map(record => `
+                    <tr>
+                        <td>${escapeHtml(record.reportDate || record.timestamp)}</td>
+                        <td>${escapeHtml(record.ward)}</td>
+                        <td>${escapeHtml(record.itemName)}</td>
+                        <td>${record.qty}</td>
+                        <td>${escapeHtml(record.reason)}</td>
+                        <td><span class="status-pill ${escapeAttribute(record.status)}">${escapeHtml(getTrackingStatusLabel(record.status))}</span></td>
+                        <td>${escapeHtml(record.followupNote || "-")}</td>
+                        <td>${escapeHtml(record.updatedBy || "-")}</td>
+                        <td>${escapeHtml(record.updatedAt || "-")}</td>
+                    </tr>
+                `).join("");
+            }
+        }
+
+        async function updateTrackingStatus(id, domId) {
+            const nextStatus = document.getElementById(`nextStatus-${domId}`).value;
+            const followupNote = document.getElementById(`followup-${domId}`).value.trim();
+            const operator = document.getElementById(`operator-${domId}`).value.trim();
+
+            if (!operator) {
+                Swal.fire({ icon: "warning", title: "กรุณาระบุผู้ดำเนินการ" });
+                return;
+            }
+
+            try {
+                const response = await fetch(CLOTH_API, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({
+                        action: "updateClothTrackingStatus",
+                        id,
+                        status: nextStatus,
+                        followupNote,
+                        updatedBy: operator
+                    })
+                });
+                const result = await response.json();
+                if (!response.ok || result.status !== "success") {
+                    throw new Error(result.message || "อัปเดตสถานะไม่สำเร็จ");
+                }
+
+                trackingRecords = trackingRecords.map(record => {
+                    if (record.id !== id) return record;
+                    return {
+                        ...record,
+                        status: nextStatus,
+                        followupNote,
+                        updatedBy: operator,
+                        updatedAt: new Date().toLocaleString("th-TH")
+                    };
+                });
+                renderLaundryView();
+                if (isAdminMode()) {
+                    renderAdminView();
+                }
+                Swal.fire({ icon: "success", title: "อัปเดตแล้ว" });
+            } catch (error) {
+                Swal.fire({
+                    icon: "error",
+                    title: "อัปเดตไม่สำเร็จ",
+                    text: error.message || "Backend ยังไม่รองรับ action updateClothTrackingStatus"
+                });
+            }
+        }
+
+        function renderAdminView() {
+            populateAdminFilters();
+            renderAdminViews();
+            document.getElementById("adminTrackingOpen").innerText = trackingRecords.filter(record => record.status === "open" || record.status === "in_progress").length.toLocaleString();
+        }
+
+        function populateAdminFilters() {
+            const wardSelect = document.getElementById("adminWardFilter");
+            const quarterSelect = document.getElementById("adminQuarterFilter");
+            const wards = [...new Set(allLogs.map(log => log.ward).filter(Boolean))].sort((a, b) => a.localeCompare(b, "th"));
+            const quarters = [...new Set(allLogs.map(log => log.quarter).filter(Boolean))].sort().reverse();
+
+            wardSelect.innerHTML = `<option value="all">ทุกหน่วยงาน</option>${wards.map(ward => `<option value="${escapeAttribute(ward)}">${escapeHtml(ward)}</option>`).join("")}`;
+            quarterSelect.innerHTML = `<option value="all">ทุกรอบ</option>${quarters.map(q => `<option value="${escapeAttribute(q)}">${escapeHtml(q)}</option>`).join("")}`;
+        }
+
+        function renderAdminViews() {
+            const ward = document.getElementById("adminWardFilter").value;
+            const quarter = document.getElementById("adminQuarterFilter").value;
+            const logs = allLogs.filter(log => (ward === "all" || log.ward === ward) && (quarter === "all" || log.quarter === quarter));
+            const tracking = trackingRecords.filter(record => ward === "all" || record.ward === ward);
+
+            const summary = logs.reduce((acc, log) => {
+                acc.par += log.par;
+                acc.ready += log.readyStock;
+                acc.use += log.inUse;
+                acc.laundry += log.inLaundry;
+                acc.pending += log.pendingTracking;
+                return acc;
+            }, { par: 0, ready: 0, use: 0, laundry: 0, pending: 0 });
+
+            document.getElementById("adminParMetric").innerText = summary.par.toLocaleString();
+            document.getElementById("adminReadyMetric").innerText = summary.ready.toLocaleString();
+            document.getElementById("adminUseMetric").innerText = summary.use.toLocaleString();
+            document.getElementById("adminLaundryMetric").innerText = summary.laundry.toLocaleString();
+            document.getElementById("adminPendingMetric").innerText = summary.pending.toLocaleString();
+
+            document.getElementById("adminLogBody").innerHTML = logs.length === 0
+                ? `<tr><td colspan="12" style="text-align:center;">ไม่มีข้อมูล</td></tr>`
+                : logs.sort((a, b) => b.sortValue - a.sortValue).map(log => `
+                    <tr>
+                        <td>${escapeHtml(log.timestamp)}</td>
+                        <td>${escapeHtml(log.quarter)}</td>
+                        <td>${escapeHtml(log.ward)}</td>
+                        <td>${escapeHtml(log.mainCategory)}</td>
+                        <td>${escapeHtml(log.itemName)}</td>
+                        <td>${log.readyStock}</td>
+                        <td>${log.inUse}</td>
+                        <td>${log.inLaundry}</td>
+                        <td>${log.pendingTracking}</td>
+                        <td>${log.total}</td>
+                        <td>${log.par}</td>
+                        <td class="${log.diff < 0 ? "text-danger" : log.diff > 0 ? "text-success" : ""}">${escapeHtml(formatDifference(log.diff))}</td>
+                    </tr>
+                `).join("");
+
+            document.getElementById("adminTrackingBody").innerHTML = tracking.length === 0
+                ? `<tr><td colspan="8" style="text-align:center;">ไม่มีข้อมูล</td></tr>`
+                : tracking.sort((a, b) => b.sortValue - a.sortValue).map(record => `
+                    <tr>
+                        <td>${escapeHtml(record.reportDate || record.timestamp)}</td>
+                        <td>${escapeHtml(record.ward)}</td>
+                        <td>${escapeHtml(record.itemName)}</td>
+                        <td>${record.qty}</td>
+                        <td>${escapeHtml(record.reason)}</td>
+                        <td><span class="status-pill ${escapeAttribute(record.status)}">${escapeHtml(getTrackingStatusLabel(record.status))}</span></td>
+                        <td>${escapeHtml(record.followupNote || "-")}</td>
+                        <td>${escapeHtml(record.updatedBy || "-")}</td>
+                    </tr>
+                `).join("");
+        }
+
+        function normalizeMasterItem(item) {
+            return {
+                itemName: String(pickValue(item, ["ชื่อรายการผ้า", "itemName", "clothName", "mainType"]) || "").trim(),
+                mainCategory: String(pickValue(item, ["หมวดหมู่หลัก", "category", "mainCategory", "หมวดหมู่ภาพรวม"]) || pickValue(item, ["ชื่อรายการผ้า", "itemName", "clothName"]) || "").trim(),
+                parLevel: toNumber(pickValue(item, ["ยอดมาตรฐาน (Par)", "parLevel", "par", "ยอดมาตรฐาน"]), 0)
+            };
+        }
+
+        function normalizeLog(log) {
+            const readyStock = toNumber(pickValue(log, ["ผ้าพร้อมใช้", "readyStock", "good", "ยอดดี", "totalGood"]), 0);
+            const inUse = toNumber(pickValue(log, ["กำลังใช้งาน", "inUse"]), 0);
+            const inLaundry = toNumber(pickValue(log, ["ส่งซัก", "inLaundry"]), 0);
+            const pendingTracking = toNumber(pickValue(log, ["ติดผู้ป่วยกลับบ้านรอติดตาม", "pendingTracking"]), 0);
+            const par = toNumber(pickValue(log, ["ยอดมาตรฐาน", "par", "parLevel", "ยอดมาตรฐาน (Par)"]), 0);
+            const total = toNumber(pickValue(log, ["ยอดนับได้จริง", "total", "totalCounted"]), readyStock + inUse + inLaundry + pendingTracking);
+            const diff = toNumber(pickValue(log, ["ส่วนต่าง (+/-)", "diff", "difference"]), total - par);
+            const timestamp = pickValue(log, ["Timestamp", "timestamp", "วันเวลา", "วันที่"]);
+
+            return {
+                timestamp: timestamp || "-",
+                quarter: pickValue(log, ["รอบการตรวจ", "quarter", "รอบ"]) || "-",
+                ward: pickValue(log, ["หน่วยงาน", "ward"]) || "-",
+                itemName: String(pickValue(log, ["ชื่อรายการผ้า", "itemName", "clothName", "mainType"]) || "-").trim(),
+                mainCategory: String(pickValue(log, ["หมวดหมู่ภาพรวม", "หมวดหมู่หลัก", "category", "mainCategory"]) || "-").trim(),
+                readyStock,
+                inUse,
+                inLaundry,
+                pendingTracking,
+                total,
+                par,
+                diff,
+                recorder: String(pickValue(log, ["ผู้บันทึก", "recorder", "savedBy"]) || "").trim(),
+                note: String(pickValue(log, ["หมายเหตุ", "note", "notes", "รายละเอียด", "subTypeDetails"]) || "").trim(),
+                sortValue: parseSortValue(timestamp)
+            };
+        }
+
+        function normalizeTracking(record) {
+            const timestamp = pickValue(record, ["Timestamp", "timestamp", "วันเวลา", "วันที่"]);
+            const ward = pickValue(record, ["หน่วยงาน", "ward"]);
+            const itemName = pickValue(record, ["ชื่อรายการผ้า", "itemName", "clothName"]);
+            const status = normalizeTrackingStatus(pickValue(record, ["สถานะ", "status"]));
+            const id = String(pickValue(record, ["id", "ID"]) || `${ward}-${itemName}-${timestamp}-${Math.random().toString(16).slice(2)}`);
+
+            return {
+                id,
+                domId: toDomId(id),
+                timestamp: timestamp || "-",
+                reportDate: pickValue(record, ["วันที่แจ้ง", "reportDate"]) || timestamp || "-",
+                ward: String(ward || "-").trim(),
+                itemName: String(itemName || "-").trim(),
+                qty: toNumber(pickValue(record, ["จำนวน", "qty", "quantity"]), 0),
+                reason: String(pickValue(record, ["สาเหตุ", "reason"]) || "-").trim(),
+                note: String(pickValue(record, ["หมายเหตุ", "note", "notes"]) || "").trim(),
+                reporter: String(pickValue(record, ["ผู้แจ้ง", "reporter"]) || "").trim(),
+                status,
+                followupNote: String(pickValue(record, ["ผลติดตาม", "followupNote", "result"]) || "").trim(),
+                updatedBy: String(pickValue(record, ["ผู้ดำเนินการ", "updatedBy"]) || "").trim(),
+                updatedAt: String(pickValue(record, ["อัปเดตล่าสุด", "updatedAt"]) || "").trim(),
+                sortValue: parseSortValue(timestamp || pickValue(record, ["วันที่แจ้ง", "reportDate"]))
+            };
+        }
+
+        function normalizeTrackingStatus(value) {
+            const text = String(value || "").trim().toLowerCase();
+            if (!text) return "open";
+            if (["แจ้งใหม่", "new", "open"].includes(text)) return "open";
+            if (["กำลังติดตาม", "in_progress", "progress", "tracking"].includes(text)) return "in_progress";
+            if (["คืนคลังแล้ว", "returned", "returned_to_stock"].includes(text)) return "returned";
+            if (["ติดตามไม่ได้", "lost", "unresolved"].includes(text)) return "lost";
+            if (["ยกเลิก", "cancelled", "canceled"].includes(text)) return "cancelled";
+            return text;
+        }
+
+        function getTrackingStatusLabel(status) {
+            return TRACKING_STATUS_LABELS[status] || status || "-";
+        }
+
+        function pickValue(obj, keys) {
+            for (const key of keys) {
+                if (obj && Object.prototype.hasOwnProperty.call(obj, key) && obj[key] !== null && obj[key] !== undefined && obj[key] !== "") {
+                    return obj[key];
+                }
+            }
+            return "";
+        }
+
+        function toNumber(value, fallback = 0) {
+            if (typeof value === "number" && !Number.isNaN(value)) return value;
+            if (typeof value === "string") {
+                const parsed = Number(value.replace(/,/g, "").trim());
+                return Number.isNaN(parsed) ? fallback : parsed;
+            }
+            return fallback;
+        }
+
+        function parseSortValue(value) {
+            if (!value) return 0;
+            const direct = Date.parse(value);
+            if (!Number.isNaN(direct)) return direct;
+
+            const cleaned = String(value).replace(" น.", "");
+            const match = cleaned.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+            if (!match) return 0;
+            let [, day, month, year, hour = "0", minute = "0", second = "0"] = match;
+            const y = Number(year) > 2400 ? Number(year) - 543 : Number(year);
+            return new Date(y, Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second)).getTime();
+        }
+
+        function formatDifference(value) {
+            return value > 0 ? `+${value}` : String(value);
+        }
+
+        function switchPanel(sectionId, panelId, button) {
+            document.querySelectorAll(`#${sectionId} .panel`).forEach(panel => panel.classList.remove("active"));
+            document.getElementById(panelId).classList.add("active");
+            document.querySelectorAll(`#${sectionId} .tab-btn`).forEach(btn => btn.classList.remove("active"));
+            if (button) button.classList.add("active");
+        }
+
+        function exportUnitHistory() {
+            exportCsv("cloth-unit-history.csv", getFilteredUnitLogs(), [
+                ["วันที่", row => row.timestamp],
+                ["รอบ", row => row.quarter],
+                ["หมวดหมู่หลัก", row => row.mainCategory],
+                ["ชื่อรายการผ้า", row => row.itemName],
+                ["พร้อมใช้", row => row.readyStock],
+                ["กำลังใช้งาน", row => row.inUse],
+                ["ส่งซัก", row => row.inLaundry],
+                ["ติดผู้ป่วยกลับบ้าน", row => row.pendingTracking],
+                ["รวม", row => row.total],
+                ["Par", row => row.par],
+                ["ต่าง", row => formatDifference(row.diff)],
+                ["ผู้บันทึก", row => row.recorder || "-"],
+                ["หมายเหตุ", row => row.note || "-"]
+            ]);
+        }
+
+        function exportAdminLogs() {
+            const ward = document.getElementById("adminWardFilter").value;
+            const quarter = document.getElementById("adminQuarterFilter").value;
+            const logs = allLogs.filter(log => (ward === "all" || log.ward === ward) && (quarter === "all" || log.quarter === quarter));
+            exportCsv("cloth-admin-logs.csv", logs, [
+                ["วันที่", row => row.timestamp],
+                ["รอบ", row => row.quarter],
+                ["หน่วยงาน", row => row.ward],
+                ["หมวดหมู่หลัก", row => row.mainCategory],
+                ["ชื่อรายการผ้า", row => row.itemName],
+                ["พร้อมใช้", row => row.readyStock],
+                ["กำลังใช้งาน", row => row.inUse],
+                ["ส่งซัก", row => row.inLaundry],
+                ["ติดผู้ป่วยกลับบ้าน", row => row.pendingTracking],
+                ["รวม", row => row.total],
+                ["Par", row => row.par],
+                ["ต่าง", row => formatDifference(row.diff)]
+            ]);
+        }
+
+        function exportCsv(filename, rows, columns) {
+            if (!rows.length) {
+                Swal.fire({ icon: "info", title: "ไม่มีข้อมูล" });
+                return;
+            }
+
+            let csv = `\uFEFF${columns.map(column => column[0]).join(",")}\n`;
+            rows.forEach(row => {
+                csv += `${columns.map(column => `"${String(column[1](row) ?? "").replace(/"/g, "\"\"")}"`).join(",")}\n`;
+            });
+
+            const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+        }
+
+        function showAdminLogin() {
+            Swal.fire({
+                title: "เข้าสู่ระบบ Admin",
+                html: `<input type="password" id="adminPass" class="swal2-input" placeholder="รหัสผ่าน">`,
+                showCancelButton: true,
+                confirmButtonText: "เข้าสู่ระบบ",
+                cancelButtonText: "ยกเลิก",
+                preConfirm: () => {
+                    const password = document.getElementById("adminPass").value.trim();
+                    if (password !== ADMIN_PASSWORD) {
+                        Swal.showValidationMessage("รหัสผ่านไม่ถูกต้อง");
+                        return false;
+                    }
+                    return true;
+                }
+            }).then(async result => {
+                if (!result.isConfirmed) return;
+                currentRole = "admin";
+                sessionStorage.setItem(SESSION_KEYS.role, "admin");
+                updateHeader();
+                setLoading(true, "กำลังโหลดข้อมูล");
+                await loadAdminMode();
+                setLoading(false);
+            });
+        }
+
+        function exitAdminMode() {
+            currentRole = "user";
+            sessionStorage.setItem(SESSION_KEYS.role, "user");
+            if (currentWard) {
+                window.location.href = `${window.location.pathname}?ward=${encodeURIComponent(currentWard)}`;
+            } else {
+                window.location.href = "index.html";
+            }
+        }
+
+        function logoutSystem() {
+            Swal.fire({
+                title: "ออกจากระบบ?",
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonText: "ยืนยัน",
+                cancelButtonText: "ยกเลิก"
+            }).then(result => {
+                if (!result.isConfirmed) return;
+                sessionStorage.removeItem(SESSION_KEYS.ward);
+                sessionStorage.removeItem(SESSION_KEYS.role);
+                window.location.href = "index.html";
+            });
+        }
+
+        function reloadPage() {
+            window.location.reload();
+        }
+
+        function goHome() {
+            window.location.href = "index.html";
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        function escapeAttribute(value) {
+            return escapeHtml(value).replace(/`/g, "&#96;");
+        }
+
+        function escapeJs(value) {
+            return String(value ?? "").replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+        }
+
+        function toDomId(value) {
+            return String(value ?? "")
+                .toLowerCase()
+                .replace(/[^a-z0-9_-]+/g, "-")
+                .replace(/^-+|-+$/g, "") || `row-${Math.random().toString(16).slice(2)}`;
+        }
+    </script>
+</body>
+</html>

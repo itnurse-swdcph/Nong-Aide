@@ -1,0 +1,1911 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ระบบตรวจนับครุภัณฑ์ - น้อง AIDE</title>
+    <link rel="icon" type="image/png" href="icon-192.png">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <link rel="stylesheet" href="style.css"> 
+    <style>
+        .page-title { text-align: center; color: var(--primary); margin: 10px 0 25px 0; font-size: 1.8rem; font-weight: 600; position: relative;}
+        .page-subtitle { color: var(--secondary); font-size: 1.1rem; font-weight: 400; display: block; margin-top: 5px; }
+        
+        /* สไตล์สำหรับปุ่ม i วิธีใช้งาน */
+        .help-icon { color: var(--accent); background: var(--primary); font-size: 1.2rem; cursor: pointer; margin-left: 10px; width: 35px; height: 35px; border-radius: 50%; display: inline-flex; justify-content: center; align-items: center; vertical-align: middle; transition: 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.2);}
+        .help-icon:hover { transform: scale(1.1); background: #002244; }
+        
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .stat-card { background: var(--white); padding: 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; text-align: center; border-bottom: 4px solid #ccc; transition: transform 0.3s; }
+        .stat-card:hover { transform: translateY(-5px); }
+        .stat-card i { font-size: 2rem; margin-bottom: 10px; }
+        .stat-num { font-size: 1.8rem; font-weight: 600; line-height: 1; margin-bottom: 5px; color: var(--text-main); }
+        .stat-label { font-size: 0.85rem; color: #666; }
+        
+        .card-total { border-color: var(--primary); } .card-total i { color: var(--primary); }
+        .card-normal { border-color: #28a745; } .card-normal i { color: #28a745; }
+        .card-broken { border-color: #dc3545; } .card-broken i { color: #dc3545; }
+        .card-disposed { border-color: #6c757d; } .card-disposed i { color: #6c757d; }
+
+        .action-bar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; background: var(--white); padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .search-box { flex: 1; padding: 12px 15px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Prompt'; min-width: 200px; outline: none; transition: 0.3s; }
+        .search-box:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,51,102,0.1); }
+        
+        .btn { padding: 10px 15px; border-radius: 8px; font-weight: 500; cursor: pointer; border: none; font-family: 'Prompt'; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: #002244; }
+        .btn-accent { background: var(--accent); color: var(--primary); }
+        .btn-accent:hover { background: #e6c200; }
+        .btn-outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); }
+        .btn-outline:hover { background: var(--primary); color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-sm { padding: 6px 12px; font-size: 0.85rem; }
+        
+        .tabs-container { display: flex; border-bottom: 2px solid #ddd; margin-bottom: 20px; gap: 10px; overflow-x: auto;}
+        .tab-btn { background: transparent; border: none; padding: 12px 20px; font-family: 'Prompt'; font-size: 1.05rem; font-weight: 500; color: #666; cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; transition: 0.3s; }
+        .tab-btn:hover { color: var(--primary); }
+        .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+        .section-heading { color: var(--primary); font-size: 1.2rem; font-weight: 600; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+
+        .item-card { background: var(--white); padding: 20px; border-radius: 12px; margin-bottom: 15px; border-left: 5px solid var(--primary); box-shadow: 0 3px 10px rgba(0,0,0,0.06); display: flex; flex-direction: column; gap: 15px;}
+        @media (min-width: 768px) { .item-card { flex-direction: row; justify-content: space-between; align-items: center; } }
+        .item-details { flex: 1; }
+        .item-details h4 { color: var(--primary); margin-bottom: 10px; font-size: 1.1rem; line-height: 1.4; }
+        .info-row { display: flex; flex-wrap: wrap; gap: 15px; font-size: 0.9rem; color: #555; }
+        .info-item { display: flex; align-items: baseline; gap: 5px; background: #f8f9fa; padding: 6px 12px; border-radius: 8px; border: 1px solid #eee; }
+        .info-item i { color: var(--primary); width: 15px; text-align: center;}
+        .info-item strong { color: var(--text-main); word-break: break-all; }
+        
+        .item-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .status-badge { padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 500; display: inline-flex; align-items: center; gap: 5px;}
+        .status-normal { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9;}
+        .status-broken { background: #ffebee; color: #c62828; border: 1px solid #ffcdd2;}
+        .status-borrowed { background: #fff8e1; color: #f57f17; border: 1px solid #ffecb3;}
+        .status-await-disposal { background: #fff3e0; color: #ef6c00; border: 1px solid #ffcc80;}
+        .status-disposed { background: #f5f5f5; color: #616161; border: 1px solid #e0e0e0;}
+        .list-section { margin-bottom: 24px; }
+        .list-section-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+        .list-section-title { color: var(--primary); font-size: 1.05rem; font-weight: 600; display: flex; align-items: center; gap: 8px; margin: 0; }
+        .count-pill { background: #eef4ff; color: var(--primary); border: 1px solid #c7d8f6; border-radius: 999px; padding: 5px 12px; font-size: 0.82rem; font-weight: 600; }
+        .info-note-box { background: #fff9db; border: 1px solid #ffe066; border-radius: 12px; padding: 14px 16px; margin-bottom: 18px; color: #7a5c00; font-size: 0.92rem; }
+        .empty-state-box { text-align: center; padding: 28px 20px; background: #fff; border-radius: 12px; border: 1px dashed #d8e2ec; color: #6c7a89; }
+        
+        .table-responsive { overflow-x: auto; background: var(--white); border-radius: 12px; box-shadow: 0 3px 10px rgba(0,0,0,0.06); }
+        .data-table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        .data-table th { background: var(--primary); color: white; padding: 12px 15px; text-align: left; font-weight: 500; white-space: nowrap; }
+        .data-table td { padding: 12px 15px; border-bottom: 1px solid #eee; color: #444; vertical-align: middle; }
+        .data-table tbody tr:hover { background: #f8f9fa; }
+
+        #qr-reader { width: 100%; max-width: 400px; margin: 0 auto 20px auto; display: none; border-radius: 12px; overflow: hidden; border: 2px solid var(--primary); }
+        .hidden { display: none !important; }
+        
+        .swal-form-group { text-align: left; margin-bottom: 15px; }
+        .swal-form-group label { font-weight: 500; font-size: 0.9rem; color: var(--primary); display: block; margin-bottom: 5px; }
+        .swal-input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Prompt'; font-size: 0.95rem; outline: none; }
+        .details-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; }
+        .details-table th { background: #f4f7f9; padding: 10px; border: 1px solid #eee; width: 40%; color: var(--primary); font-weight: 500; }
+        .details-table td { padding: 10px; border: 1px solid #eee; color: #444; }
+
+        /* สไตล์หน้าต่าง Pop-up คู่มือใช้งาน */
+        .help-content { text-align: left; font-size: 0.95rem; line-height: 1.6; color: #444; }
+        .help-content h4 { color: var(--primary); margin-top: 15px; margin-bottom: 10px; border-bottom: 2px solid #eee; padding-bottom: 5px; font-size: 1.1rem;}
+        .help-content ul { padding-left: 20px; margin-bottom: 10px; }
+        .help-content li { margin-bottom: 8px; }
+        /* สไตล์สำหรับ Risk Level Badge */
+        .risk-badge { padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; margin-left: 8px; vertical-align: middle; display: inline-flex; align-items: center; gap: 4px; }
+        .risk-high { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
+        .risk-medium { background: #fef3c7; color: #d97706; border: 1px solid #fcd34d; }
+        .risk-low { background: #e0f2fe; color: #0284c7; border: 1px solid #7dd3fc; }
+        /* สไตล์สำหรับโหมดแอดมิน */
+        #tab-admin.hidden-tab { display: none; }
+        /* --- สไตล์กล่องจัดการข้อมูลหลัก (Admin) --- */
+        .admin-header-box { background: #f8f9fa; border: 1px solid #e0e6ed; border-radius: 12px; padding: 20px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 15px; }
+        @media (min-width: 768px) {
+            .admin-header-box { flex-direction: row; justify-content: space-between; align-items: flex-start; }
+        }
+        .admin-title { color: var(--primary); font-size: 1.2rem; font-weight: 600; display: flex; align-items: center; gap: 10px; margin: 0; }
+        .admin-actions { display: flex; flex-direction: column; gap: 10px; min-width: 250px; }
+        .admin-actions select, .admin-actions button { width: 100%; text-align: left; justify-content: center;}
+
+        /* --- สไตล์ตาราง Admin --- */
+        .admin-table-wrapper { background: var(--white); border-radius: 12px; overflow: hidden; box-shadow: 0 3px 10px rgba(0,0,0,0.06); }
+        .admin-data-table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        .admin-data-table th { background: #003366; color: white; padding: 12px 15px; text-align: left; font-weight: 500; white-space: nowrap; }
+        .admin-data-table td { padding: 15px; border-bottom: 1px solid #eee; color: #444; vertical-align: middle; }
+        .admin-data-table tbody tr:hover { background: #f4f7f9; }
+
+        /* --- ปุ่มจัดการ (แก้ไข/ลบ) --- */
+        .btn-edit-icon { background: #ffc107; color: #000; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 0.9rem;}
+        .btn-edit-icon:hover { background: #e0a800; }
+        .btn-delete-icon { background: transparent; color: #dc3545; border: 1px solid #dc3545; padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 0.9rem; margin-left: 5px;}
+        .btn-delete-icon:hover { background: #dc3545; color: white; }
+
+        /* --- Badge ความเสี่ยง (ปรับให้มนและสีอ่อนลงเหมือนในรูป) --- */
+        .risk-badge { padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; border: none; }
+        .risk-high { background: #ffebee; color: #c62828; }
+        .risk-medium { background: #fff8e1; color: #f57f17; }
+        .risk-low { background: #e8f5e9; color: #2e7d32; }
+        /* --- สไตล์สำหรับระบบพิมพ์ QR Code --- */
+        #printArea { display: none; } /* ซ่อนบนหน้าจอปกติ */
+        
+        @media print {
+            body * { visibility: hidden; } /* ซ่อนทุกอย่างในหน้าเว็บ */
+            #printArea, #printArea * { visibility: visible; } /* แสดงเฉพาะพื้นที่ปริ้นท์ */
+            #printArea { 
+                display: grid !important; 
+                position: absolute; left: 0; top: 0; width: 100%; 
+                gap: 5mm; padding: 5mm;
+            }
+            .qr-label-container {
+                border: 1px dashed #aaa; 
+                padding: 3mm; 
+                text-align: center; 
+                display: flex; flex-direction: column; align-items: center; justify-content: center;
+                page-break-inside: avoid; /* ป้องกันการโดนตัดครึ่งเมื่อขึ้นหน้าใหม่ */
+                background: white;
+            }
+            .qr-label-container img { width: 100%; max-width: 85%; height: auto; }
+            .qr-label-title { font-size: 8pt; font-family: sans-serif; font-weight: bold; margin-top: 2px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
+            .qr-label-id { font-size: 7pt; font-family: sans-serif; color: #333; }
+            @page { margin: 0.5cm; size: A4 portrait; }
+        }
+        /* ==========================================
+           สไตล์สำหรับ Footer (ส่วนท้ายเว็บ) ล้ำๆ
+           ========================================== */
+        .modern-footer {
+            background: linear-gradient(135deg, var(--primary, #003366) 0%, #001a33 100%);
+            color: #ffffff;
+            text-align: center;
+            padding: 35px 20px 20px;
+            margin-top: 60px;
+            position: relative;
+            box-shadow: 0 -10px 25px rgba(0,51,102,0.15);
+            font-family: 'Prompt', sans-serif;
+            border-top-left-radius: 35px;
+            border-top-right-radius: 35px;
+            overflow: hidden;
+        }
+
+        /* เส้นขอบแสง Glowing Effect ด้านบน */
+        .modern-footer::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, transparent, var(--accent, #ffc107), #ff9800, transparent);
+            box-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+        }
+
+        .footer-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .footer-brand {
+            font-size: 1.4rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--accent, #ffc107);
+            letter-spacing: 0.5px;
+        }
+
+        .footer-brand img {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            border: 2px solid var(--accent, #ffc107);
+            box-shadow: 0 0 8px rgba(255, 193, 7, 0.4);
+        }
+
+        .footer-details {
+            font-size: 0.9rem;
+            color: #a9bccc;
+            line-height: 1.6;
+        }
+
+        .footer-details strong {
+            color: #ffffff;
+            font-weight: 500;
+        }
+
+        .footer-bottom {
+            margin-top: 25px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            font-size: 0.8rem;
+            color: #7a93a8;
+            width: 100%;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        @media (max-width: 600px) {
+            .footer-bottom {
+                justify-content: center;
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-left">
+            <span class="app-title" style="cursor: pointer;" onclick="window.close()"><i class="fas fa-arrow-left"></i> กลับหน้าหลัก</span>
+        </div>
+        <div class="nav-right">
+            <span class="ward-badge"><i class="fas fa-hospital-user"></i> <span id="displayWard">กำลังโหลด...</span></span>
+        </div>
+    </nav>
+
+    <div class="section-container" style="align-items: flex-start; padding-top: 20px;">
+        <div style="width: 100%; max-width: 1000px;">
+            
+            <h1 class="page-title">
+                <i class="fas fa-microscope"></i> ระบบตรวจนับครุภัณฑ์ทางการแพทย์
+                <span class="help-icon" onclick="showHelpModal()" title="คลิกดูวิธีใช้งาน"><i class="fas fa-info"></i></span>
+                
+                <div style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 10px;">
+                    <span class="page-subtitle" id="wardSubtitle" style="margin-top: 0;">หน่วยงาน: -</span>
+                    
+                    <button id="btnAdminLogin" class="btn btn-outline btn-sm" onclick="showAdminLogin()" style="color: #bbb; border-color: #eee; padding: 2px 8px; font-size: 0.75rem;">
+                        <i class="fas fa-cog"></i> สำหรับผู้ดูแลระบบ
+                    </button>
+                </div>
+            </h1>
+
+            <div class="dashboard-grid">
+                <div class="stat-card card-total">
+                    <i class="fas fa-boxes"></i>
+                    <span class="stat-num" id="stat-total">0</span>
+                    <span class="stat-label">รายการทั้งหมด</span>
+                </div>
+                <div class="stat-card card-normal">
+                    <i class="fas fa-check-circle"></i>
+                    <span class="stat-num" id="stat-normal">0</span>
+                    <span class="stat-label">ปกติ/พร้อมใช้งาน</span>
+                </div>
+                <div class="stat-card card-broken">
+                    <i class="fas fa-wrench"></i>
+                    <span class="stat-num" id="stat-broken">0</span>
+                    <span class="stat-label">ชำรุดส่งซ่อม</span>
+                </div>
+                <div class="stat-card card-disposed">
+                    <i class="fas fa-trash-alt"></i>
+                    <span class="stat-num" id="stat-disposed">0</span>
+                    <span class="stat-label">จำหน่ายแล้ว</span>
+                </div>
+            </div>
+
+            <div class="action-bar">
+                <input type="text" id="searchInput" class="search-box" placeholder="ค้นหาชื่อ, เลขครุภัณฑ์, ยี่ห้อ, ตำแหน่ง...">
+                <button class="btn btn-accent" onclick="toggleScanner()"><i class="fas fa-qrcode"></i> สแกน QR</button>
+                <button class="btn btn-success" onclick="exportToCSV()"><i class="fas fa-file-excel"></i> ส่งออกไฟล์ (Excel)</button>
+            </div>
+
+            <div id="qr-reader"></div>
+
+            <div class="tabs-container" id="mainTabsContainer">
+                <button class="tab-btn active" id="tab-inspection" onclick="switchTab('inspection')">
+                    <i class="fas fa-clipboard-check"></i> รายการที่รอตรวจนับ <span id="pendingBadge" style="background:#e74c3c; color:white; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; margin-left: 5px;">0</span>
+                </button>
+                <button class="tab-btn" id="tab-all" onclick="switchTab('all')">
+                    <i class="fas fa-list-ul"></i> รายการทั้งหมด (<span id="allCountTab">0</span>)
+                </button>
+                <button class="tab-btn" id="tab-borrowed-out" onclick="switchTab('borrowed-out')">
+                    <i class="fas fa-share-square"></i> ถูกยืมไปใช้ (<span id="borrowedOutCountTab">0</span>)
+                </button>
+                <button class="tab-btn" id="tab-repair" onclick="switchTab('repair')">
+                    <i class="fas fa-screwdriver-wrench"></i> ส่งซ่อม/รอจำหน่าย (<span id="repairCountTab">0</span>)
+                </button>
+                <button class="tab-btn hidden-tab" id="tab-admin" onclick="switchTab('admin')">
+                    <i class="fas fa-cogs"></i> โหมดผู้ดูแลระบบ
+                </button>
+            </div>
+
+            <div id="loadingState" style="text-align: center; padding: 40px; color: #666;">
+                <i class="fas fa-spinner fa-spin fa-3x"></i><br><br>กำลังดึงข้อมูลครุภัณฑ์...
+            </div>
+
+            <div id="view-inspection" class="hidden">
+                <h3 class="section-heading"><i class="far fa-calendar-alt"></i> รายการที่ต้องตรวจสอบประจำรอบเดือน <span id="currentMonthText"></span></h3>
+                <div class="info-note-box">
+                    ระบบเปิดรอบตรวจพร้อมกันตั้งแต่วันที่ 1 ของเดือน โดยอิงตามเดือนครบกำหนด ไม่อิงตามวันตรวจล่าสุดของแต่ละรายการ
+                </div>
+                <div class="list-section">
+                    <div class="list-section-header">
+                        <h4 class="list-section-title"><i class="fas fa-building"></i> รายการของหน่วยงาน</h4>
+                        <span class="count-pill" id="pendingOwnedCount">0 รายการ</span>
+                    </div>
+                    <div id="equipmentListOwned"></div>
+                </div>
+                <div class="list-section">
+                    <div class="list-section-header">
+                        <h4 class="list-section-title"><i class="fas fa-right-left"></i> รายการยืมจากหน่วยงานอื่น</h4>
+                        <span class="count-pill" id="pendingBorrowedInCount">0 รายการ</span>
+                    </div>
+                    <div id="equipmentListBorrowedIn"></div>
+                </div>
+            </div>
+
+            <div id="view-all" class="hidden">
+                <div class="list-section-header">
+                    <h4 class="list-section-title"><i class="fas fa-filter"></i> กรองรายการตามสถานะ</h4>
+                    <select id="allStatusFilter" class="swal-input" style="max-width: 260px;" onchange="handleAllStatusFilterChange()">
+                        <option value="all">ทุกสถานะ</option>
+                        <option value="ปกติ">ปกติ/พร้อมใช้งาน</option>
+                        <option value="ถูกยืม">ถูกยืมใช้งาน</option>
+                        <option value="ชำรุดส่งซ่อม">ชำรุดส่งซ่อม</option>
+                        <option value="รอจำหน่าย">รอจำหน่าย</option>
+                    </select>
+                </div>
+                <div class="list-section">
+                    <div class="list-section-header">
+                        <h4 class="list-section-title"><i class="fas fa-building"></i> รายการของหน่วยงาน</h4>
+                        <span class="count-pill" id="allOwnedCount">0 รายการ</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>RMC No</th>
+                                    <th>เลขครุภัณฑ์</th>
+                                    <th>ชื่อครุภัณฑ์ / ยี่ห้อ</th>
+                                    <th>เจ้าของ</th>
+                                    <th>ใช้งานที่</th>
+                                    <th>ความถี่</th>
+                                    <th>ตรวจล่าสุด</th>
+                                    <th>สถานะ</th>
+                                    <th>จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="allEquipmentTableBodyOwned"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="list-section">
+                    <div class="list-section-header">
+                        <h4 class="list-section-title"><i class="fas fa-right-left"></i> รายการยืมจากหน่วยงานอื่น</h4>
+                        <span class="count-pill" id="allBorrowedInCount">0 รายการ</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>RMC No</th>
+                                    <th>เลขครุภัณฑ์</th>
+                                    <th>ชื่อครุภัณฑ์ / ยี่ห้อ</th>
+                                    <th>เจ้าของ</th>
+                                    <th>ใช้งานที่</th>
+                                    <th>ความถี่</th>
+                                    <th>ตรวจล่าสุด</th>
+                                    <th>สถานะ</th>
+                                    <th>จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="allEquipmentTableBodyBorrowedIn"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-borrowed-out" class="hidden">
+                <div class="list-section-header">
+                    <h4 class="list-section-title"><i class="fas fa-share-square"></i> รายการครุภัณฑ์ที่ถูกยืมไปใช้หน่วยงานอื่น</h4>
+                    <span class="count-pill" id="borrowedOutCount">0 รายการ</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>RMC No</th>
+                                <th>เลขครุภัณฑ์</th>
+                                <th>ชื่อครุภัณฑ์ / ยี่ห้อ</th>
+                                <th>เจ้าของ</th>
+                                <th>ใช้งานที่</th>
+                                <th>ความถี่</th>
+                                <th>ตรวจล่าสุด</th>
+                                <th>สถานะ</th>
+                                <th>จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="borrowedOutTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="view-repair" class="hidden">
+                <div class="list-section">
+                    <div class="list-section-header">
+                        <h4 class="list-section-title"><i class="fas fa-screwdriver-wrench"></i> รายการครุภัณฑ์ที่ส่งซ่อม</h4>
+                        <span class="count-pill" id="repairCount">0 รายการ</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>RMC No</th>
+                                    <th>เลขครุภัณฑ์</th>
+                                    <th>ชื่อครุภัณฑ์ / ยี่ห้อ</th>
+                                    <th>เจ้าของ</th>
+                                    <th>ใช้งานที่</th>
+                                    <th>ความถี่</th>
+                                    <th>ตรวจล่าสุด</th>
+                                    <th>สถานะ</th>
+                                    <th>จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="repairTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="list-section">
+                    <div class="list-section-header">
+                        <h4 class="list-section-title"><i class="fas fa-file-circle-xmark"></i> รายการรอจำหน่าย</h4>
+                        <span class="count-pill" id="awaitDisposalCount">0 รายการ</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>RMC No</th>
+                                    <th>เลขครุภัณฑ์</th>
+                                    <th>ชื่อครุภัณฑ์ / ยี่ห้อ</th>
+                                    <th>เจ้าของ</th>
+                                    <th>ใช้งานที่</th>
+                                    <th>ความถี่</th>
+                                    <th>ตรวจล่าสุด</th>
+                                    <th>สถานะ</th>
+                                    <th>จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="awaitDisposalTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-admin" class="hidden">
+                <div class="admin-header-box" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    <h3 class="admin-title" style="margin: 0; white-space: nowrap;">
+                        <i class="fas fa-tools"></i> จัดการข้อมูลหลัก
+                    </h3>
+                    <div class="admin-actions" style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 10px; align-items: center; width: auto;">
+                        <select id="adminWardFilter" class="swal-input" style="padding: 8px 12px; font-size: 0.95rem; font-family: 'Prompt'; width: auto; margin: 0; min-width: 180px;" onchange="filterAdminByWard()">
+                            <option value="all">ดูทุกหน่วยงาน (ทั้ง รพ.)</option>
+                        </select>
+                        <button class="btn btn-warning" style="color: #000; width: auto;" onclick="openPrintQRModal()">
+                            <i class="fas fa-print"></i> พิมพ์ป้าย QR
+                        </button>
+                        <button class="btn btn-primary" style="width: auto;" onclick="openAddEquipmentModal()">
+                            <i class="fas fa-plus"></i> เพิ่มครุภัณฑ์ใหม่
+                        </button>
+                        <button class="btn btn-outline" style="background: white; width: auto;" onclick="exitAdminMode()">
+                            <i class="fas fa-sign-out-alt"></i> ออกจากโหมดแอดมิน
+                        </button>
+                    </div>
+                </div>
+                <div id="admin-charts-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px;">
+                    <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 3px 10px rgba(0,0,0,0.05); border: 1px solid #e0e6ed;">
+                        <h4 style="text-align: center; color: var(--primary); margin-top: 0; font-size: 1rem;"><i class="fas fa-chart-pie"></i> สัดส่วนสถานะครุภัณฑ์</h4>
+                        <canvas id="statusChart" style="max-height: 250px;"></canvas>
+                    </div>
+                    <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 3px 10px rgba(0,0,0,0.05); border: 1px solid #e0e6ed;">
+                        <h4 style="text-align: center; color: var(--primary); margin-top: 0; font-size: 1rem;"><i class="fas fa-tasks"></i> ความคืบหน้าการตรวจนับ (รอบเดือนนี้)</h4>
+                        <canvas id="inspectChart" style="max-height: 250px;"></canvas>
+                    </div>
+                </div>
+
+                <div class="admin-table-wrapper table-responsive">
+                    <table class="admin-data-table">
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" id="selectAllQR" onclick="toggleAllQR()"></th>
+                                <th>RMC No</th> <th>เลขครุภัณฑ์</th>
+                                <th>ชื่อครุภัณฑ์ / รุ่น</th>
+                                <th>หน่วยงาน</th>
+                                <th>ความถี่ / ตรวจล่าสุด</th>
+                                <th>สถานะ</th>
+                                <th style="text-align: center;">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminEquipmentTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <div id="printArea"></div>
+    <footer class="modern-footer">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <img src="icon-192.png" alt="AIDE Logo"> 
+                น้อง AIDE SWD
+            </div>
+            <div class="footer-details">
+                ระบบตรวจนับและบริหารจัดการครุภัณฑ์ทางการแพทย์<br>
+                <strong>โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน</strong>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <span>&copy; 2026 AIDE System. All rights reserved.| Developed By Natnarinthorn</span>
+            <span><i class="fas fa-heart" style="color: #ff4757; animation: pulse 1.5s infinite;"></i> พัฒนาเพื่อยกระดับคุณภาพการทำงาน</span>
+        </div>
+    </footer>
+    
+    <style>
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+    </style>
+
+   <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentWard = urlParams.get('ward');
+        const entryRole = urlParams.get('role');
+        const isAdminEntry = entryRole === 'admin';
+        
+        // 🔴 เชื่อมต่อ API เรียบร้อย
+        const EQUIPMENT_API = "https://script.google.com/macros/s/AKfycbyx7gZYzGOotSCBwm-vhQDT0K_2vTQEuY7JoyRHhiqzyHQHEOBxHUjc1HYCtNclBYOLCw/exec"; 
+        const WARD_API = "https://script.google.com/macros/s/AKfycbx_xuBauWvjIYplrefNTSf6J0Y9ZzAv-FQhOvPk1SYC1qOU7C3sdrU6LL4wQI3Uz9dTeg/exec";
+
+        let allEquipment = []; 
+        let filteredEquipment = []; 
+        let html5QrcodeScanner = null;
+        let currentActiveTab = 'inspection';
+        let isAdminLoggedIn = false;
+        let wardOptions = [];
+        let currentSearchTerm = '';
+        let currentAllStatusFilter = 'all';
+
+        // ตัวแปรสำหรับระบบค้นหาอัตโนมัติ
+        let typingTimer;                
+        const doneTypingInterval = 800; 
+        const INSPECTION_SKIP_STATUSES = ['ชำรุดส่งซ่อม', 'รอจำหน่าย', 'จำหน่าย', 'แทงจำหน่าย'];
+
+        function normalizeWard(value) {
+            return String(value || '').trim();
+        }
+
+        function getItemStatusText(item) {
+            return String(item['สถานะ'] || 'ปกติ').trim();
+        }
+
+        function isDisposedStatus(status) {
+            return status === 'จำหน่าย' || status === 'แทงจำหน่าย';
+        }
+
+        function getOwnerWard(item) {
+            return normalizeWard(item['หน่วยงาน']);
+        }
+
+        function getUsageWard(item) {
+            return normalizeWard(item['ใช้งานที่']) || getOwnerWard(item);
+        }
+
+        function getInspectionFrequency(item) {
+            return parseInt(item['ความถี่การตรวจนับ (เดือน)']) || parseInt(item['ความถี่การตรวจนับ']) || 1;
+        }
+
+        function shouldItemBeInspectableThisMonth(item) {
+            const status = getItemStatusText(item);
+            if (INSPECTION_SKIP_STATUSES.includes(status)) return false;
+
+            const lastInspectRaw = item['วันที่ตรวจล่าสุด'];
+            if (!lastInspectRaw) return true;
+
+            const lastInspectDate = new Date(lastInspectRaw);
+            if (isNaN(lastInspectDate)) return true;
+
+            const today = new Date();
+            const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+            const dueMonthStart = new Date(lastInspectDate.getFullYear(), lastInspectDate.getMonth() + getInspectionFrequency(item), 1);
+            return currentMonthStart >= dueMonthStart;
+        }
+
+        function prepareEquipmentItem(item) {
+            const prepared = { ...item };
+            prepared._ownerWard = getOwnerWard(prepared);
+            prepared._usageWard = getUsageWard(prepared);
+            prepared._statusText = getItemStatusText(prepared);
+            prepared._isDisposed = isDisposedStatus(prepared._statusText);
+            prepared._isRepair = prepared._statusText === 'ชำรุดส่งซ่อม';
+            prepared._isAwaitDisposal = prepared._statusText === 'รอจำหน่าย';
+            prepared._needsInspection = shouldItemBeInspectableThisMonth(prepared);
+            return prepared;
+        }
+
+        function getWardOptionsFromItems(items) {
+            return [...new Set(
+                items.flatMap(item => [item._ownerWard, item._usageWard]).filter(Boolean)
+            )].sort((a, b) => a.localeCompare(b, 'th'));
+        }
+
+        function mergeWardOptions(newWards = []) {
+            const merged = [...new Set([
+                ...wardOptions.map(normalizeWard),
+                ...newWards.map(normalizeWard)
+            ].filter(Boolean))];
+            wardOptions = merged.sort((a, b) => a.localeCompare(b, 'th'));
+        }
+
+        async function ensureWardOptionsLoaded() {
+            if (wardOptions.length > 1) return;
+            if (!WARD_API || WARD_API === "YOUR_WEB_APP_URL_FROM_GAS_HERE") return;
+
+            try {
+                const response = await fetch(WARD_API);
+                const result = await response.json();
+                if (result.status === 'success' && Array.isArray(result.data)) {
+                    mergeWardOptions(result.data);
+                }
+            } catch (error) {
+                console.error('Error fetching ward master:', error);
+            }
+        }
+
+        function matchesSearchTerm(item, searchTerm) {
+            if (!searchTerm) return true;
+            const term = searchTerm.toLowerCase();
+            return String(item['ชื่อครุภัณฑ์'] || '').toLowerCase().includes(term) ||
+                String(item['เลขครุภัณฑ์'] || '').toLowerCase().includes(term) ||
+                String(item['RMC No'] || '').toLowerCase().includes(term) ||
+                String(item['ยี่ห้อ'] || '').toLowerCase().includes(term) ||
+                String(item['ตำแหน่งย่อย (Sub-location)'] || '').toLowerCase().includes(term) ||
+                String(item._ownerWard || '').toLowerCase().includes(term) ||
+                String(item._usageWard || '').toLowerCase().includes(term);
+        }
+
+        function getCurrentWardVisibleItems(searchTerm = currentSearchTerm, statusFilter = 'all') {
+            const ward = normalizeWard(currentWard);
+            return allEquipment.filter(item =>
+                !item._isDisposed &&
+                matchesSearchTerm(item, searchTerm) &&
+                matchesStatusFilter(item, statusFilter) &&
+                (item._ownerWard === ward || item._usageWard === ward)
+            );
+        }
+
+        function getWardScopedData(searchTerm = currentSearchTerm, statusFilter = 'all') {
+            const ward = normalizeWard(currentWard);
+            const visibleItems = getCurrentWardVisibleItems(searchTerm, statusFilter);
+            const ownedCurrent = visibleItems.filter(item => item._ownerWard === ward && item._usageWard === ward);
+            const borrowedIn = visibleItems.filter(item => item._ownerWard !== ward && item._usageWard === ward);
+            const borrowedOut = visibleItems.filter(item => item._ownerWard === ward && item._usageWard && item._usageWard !== ward);
+            const repair = visibleItems.filter(item => item._usageWard === ward && item._isRepair);
+            const awaitDisposal = visibleItems.filter(item => item._usageWard === ward && item._isAwaitDisposal);
+            const pendingOwned = ownedCurrent.filter(item => item._needsInspection);
+            const pendingBorrowedIn = borrowedIn.filter(item => item._needsInspection);
+
+            return { visibleItems, ownedCurrent, borrowedIn, borrowedOut, repair, awaitDisposal, pendingOwned, pendingBorrowedIn };
+        }
+
+        function getLastInspectionText(item, emptyText = "-") {
+            if (item['วันที่ตรวจล่าสุด']) {
+                const d = new Date(item['วันที่ตรวจล่าสุด']);
+                if (!isNaN(d)) {
+                    return d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
+                }
+            }
+            return emptyText;
+        }
+
+        function getRiskHtml(item) {
+            const riskLevel = item['RISK LEVEL'] ? String(item['RISK LEVEL']).trim().toLowerCase() : '';
+            if (riskLevel === 'high') return `<span class="risk-badge risk-high"><i class="fas fa-exclamation-triangle"></i> High Risk</span>`;
+            if (riskLevel === 'medium') return `<span class="risk-badge risk-medium"><i class="fas fa-exclamation-circle"></i> Medium Risk</span>`;
+            if (riskLevel === 'low') return `<span class="risk-badge risk-low"><i class="fas fa-info-circle"></i> Low Risk</span>`;
+            return '';
+        }
+
+        function createEmptyStateHtml(title, message) {
+            return `
+                <div class="empty-state-box">
+                    <i class="fas fa-box-open fa-2x" style="margin-bottom: 12px; color: #c0cad5;"></i>
+                    <h4 style="margin-bottom: 6px; color: var(--primary);">${title}</h4>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+
+        function buildWardOptionsHtml(selectedWard = '', excludedWard = '') {
+            const normalizedSelectedWard = normalizeWard(selectedWard);
+            const normalizedExcludedWard = normalizeWard(excludedWard);
+            const options = wardOptions.map(ward => {
+                if (normalizedExcludedWard && ward === normalizedExcludedWard) return '';
+                const selectedAttr = ward === normalizedSelectedWard ? 'selected' : '';
+                return `<option value="${ward}" ${selectedAttr}>${ward}</option>`;
+            });
+            return `<option value="">-- กรุณาเลือกหน่วยงาน --</option>${options.join('')}`;
+        }
+
+        function normalizeStatusForFilter(status) {
+            const statusText = String(status || '').trim();
+            if (statusText.includes('ยืม')) return 'ถูกยืม';
+            if (statusText.includes('ชำรุด')) return 'ชำรุดส่งซ่อม';
+            if (statusText.includes('รอจำหน่าย')) return 'รอจำหน่าย';
+            if (statusText.includes('จำหน่าย')) return 'แทงจำหน่าย';
+            return 'ปกติ';
+        }
+
+        function matchesStatusFilter(item, statusFilter = 'all') {
+            if (!statusFilter || statusFilter === 'all') return true;
+            return normalizeStatusForFilter(item._statusText || item['สถานะ']) === statusFilter;
+        }
+
+        // ==========================================
+        // Initialization (ทำงานเมื่อโหลดหน้าเว็บเสร็จ)
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            setCurrentMonthHeading();
+            if (isAdminEntry) {
+                initializeAdminEntry();
+                fetchAllEquipmentForAdmin();
+            } else if (currentWard) {
+                document.getElementById('displayWard').innerText = currentWard;
+                document.getElementById('wardSubtitle').innerText = `หน่วยงาน: ${currentWard}`;
+                fetchEquipment();
+            } else {
+                document.getElementById('displayWard').innerText = 'หน้าหลัก';
+                document.getElementById('wardSubtitle').innerText = 'กรุณาเข้าสู่ระบบผ่านหน้าหลัก';
+                document.getElementById('loadingState').classList.add('hidden');
+            }
+
+            const searchInputObj = document.getElementById('searchInput');
+            if(searchInputObj) {
+                // Event 1: ดักจับการพิมพ์เพื่อกรองตาราง / ค้นหาข้ามตึก
+                searchInputObj.addEventListener('input', function(e) {
+                    clearTimeout(typingTimer);
+                    const searchTerm = e.target.value.toLowerCase().trim();
+
+                    if (isAdminLoggedIn) {
+                        filterAdminByWard(); 
+                    } else {
+                        currentSearchTerm = searchTerm;
+                        renderActiveView(); 
+
+                        if (getCurrentWardVisibleItems(searchTerm).length === 0 && searchTerm.length > 0) {
+                            typingTimer = setTimeout(() => {
+                                processSearchOrScan(searchTerm);
+                            }, doneTypingInterval);
+                        }
+                    }
+                });
+
+                // Event 2: ดักจับการกด Enter
+                searchInputObj.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        processSearchOrScan(e.target.value);
+                    }
+                });
+            }
+        }); // 🟢 สิ้นสุด DOMContentLoaded อย่างถูกต้องตรงนี้
+
+        function initializeAdminEntry() {
+            isAdminLoggedIn = true;
+            document.getElementById('displayWard').innerText = 'ADMIN MODE';
+            document.getElementById('wardSubtitle').innerHTML = '<span style="color:#d32f2f; font-weight:bold;"><i class="fas fa-user-shield"></i> ผู้ดูแลระบบ</span>';
+            document.getElementById('btnAdminLogin').style.display = 'none';
+            document.getElementById('tab-admin').classList.remove('hidden-tab');
+        }
+
+        // ==========================================
+        // ฟังก์ชันระบบทั่วไป
+        // ==========================================
+        function showHelpModal() {
+            Swal.fire({
+                title: '<i class="fas fa-book-open" style="color:var(--primary);"></i> คู่มือการใช้งานระบบ',
+                html: `
+                    <div class="help-content">
+                        <h4><i class="fas fa-search" style="color:var(--secondary);"></i> 1. การค้นหาและการสแกน QR</h4>
+                        <ul>
+                            <li>ใช้ช่องค้นหาเพื่อพิมพ์ <b>ชื่อเครื่องมือ</b>, <b>เลขครุภัณฑ์</b>, หรือ <b>ตำแหน่งย่อย</b></li>
+                            <li>หากไม่ต้องการพิมพ์ สามารถกดปุ่ม <b style="color:var(--accent); background:var(--primary); padding:2px 6px; border-radius:4px;"><i class="fas fa-qrcode"></i> สแกน QR</b> เพื่อเปิดกล้องสแกนบาร์โค้ดที่ตัวเครื่องมือ ระบบจะค้นหารายการให้ทันที</li>
+                        </ul>
+                        
+                        <h4><i class="fas fa-check-square" style="color:var(--secondary);"></i> 2. วิธีการตรวจนับครุภัณฑ์</h4>
+                        <ul>
+                            <li>ในแท็บ <b>"รายการที่รอตรวจนับ"</b> จะแสดงเฉพาะรายการที่ "ถึงรอบที่ต้องตรวจ" ในเดือนปัจจุบันเท่านั้น</li>
+                            <li>กดปุ่ม <b style="color:white; background:var(--primary); padding:2px 6px; border-radius:4px;"><i class="fas fa-check"></i> บันทึกการตรวจ</b> ที่รายการนั้นๆ</li>
+                            <li>อัปเดตสถานะให้ตรงกับความจริง: 
+                                <br>- <b>ปกติ</b>: พร้อมใช้งาน
+                                <br>- <b style="color:#dc3545;">ชำรุดส่งซ่อม</b>: สามารถแนบภาพจุดที่ชำรุดได้
+                                <br>- <b style="color:#f57f17;">ถูกยืม</b>: ต้องเลือกหน่วยงานปลายทางจากดรอปดาวน์
+                                <br>- <b style="color:#ef6c00;">รอจำหน่าย</b>: ต้องแนบใบสรุปส่งซ่อมจากศูนย์เครื่องมือแพทย์
+                                <br>- <b>แทงจำหน่าย</b>: ต้องแนบใบส่งคืนพัสดุ และรายการจะถูกลบออกจากระบบ
+                            </li>
+                            <li>เมื่อกดบันทึกสำเร็จ รายการนั้นจะ <b>หายไปจากหน้าจอ "รอตรวจ"</b> อัตโนมัติ</li>
+                        </ul>
+
+                        <h4><i class="fas fa-list-ul" style="color:var(--secondary);"></i> 3. การดูภาพรวม และ Export</h4>
+                        <ul>
+                            <li>สามารถกดเปลี่ยนไปแท็บ <b>"รายการทั้งหมด"</b> เพื่อเช็คประวัติการตรวจครั้งล่าสุดของครุภัณฑ์ทุกชิ้นในตึกได้</li>
+                            <li>กดปุ่ม <b style="color:white; background:#28a745; padding:2px 6px; border-radius:4px;"><i class="fas fa-file-excel"></i> ส่งออกไฟล์</b> เพื่อดาวน์โหลดข้อมูลที่แสดงผลอยู่เป็นไฟล์ .csv สำหรับนำไปทำรายงาน</li>
+                        </ul>
+                    </div>
+                `,
+                confirmButtonColor: '#003366',
+                confirmButtonText: 'เข้าใจแล้ว',
+                width: 600,
+                customClass: { htmlContainer: 'text-left' }
+            });
+        }
+
+        function setCurrentMonthHeading() {
+            const monthNames = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+            const d = new Date();
+            document.getElementById('currentMonthText').innerText = `${monthNames[d.getMonth()]} ${d.getFullYear() + 543}`;
+        }
+
+        async function fetchEquipment() {
+            try {
+                const response = await fetch(`${EQUIPMENT_API}?action=getItemsByWard&ward=${encodeURIComponent(currentWard)}`);
+                const textData = await response.text(); 
+                document.getElementById('loadingState').classList.add('hidden');
+                
+                try {
+                    const result = JSON.parse(textData); 
+                    if (result.status === 'success') {
+                        allEquipment = (result.data || []).map(prepareEquipmentItem);
+                        filteredEquipment = [...allEquipment];
+                        mergeWardOptions(getWardOptionsFromItems(allEquipment));
+                        updateDashboardStats(); 
+                        switchTab(currentActiveTab); 
+                        ensureWardOptionsLoaded();
+                    } else {
+                        allEquipment = [];
+                        filteredEquipment = [];
+                        wardOptions = [];
+                        updateDashboardStats();
+                        switchTab(currentActiveTab);
+                    }
+                } catch (jsonError) {
+                    document.getElementById('loadingState').innerHTML = '<div style="text-align: center; color: red;">เกิดข้อผิดพลาดจากฐานข้อมูล</div>';
+                    document.getElementById('loadingState').classList.remove('hidden');
+                }
+            } catch (error) {
+                document.getElementById('loadingState').innerHTML = '<div style="text-align: center; color: red;">ข้อผิดพลาดในการเชื่อมต่ออินเทอร์เน็ต</div>';
+                document.getElementById('loadingState').classList.remove('hidden');
+            }
+        }
+
+        function updateDashboardStats() {
+            const scoped = getWardScopedData();
+            let normalCount = 0, brokenCount = 0, disposedCount = 0;
+            scoped.visibleItems.forEach(item => {
+                const status = item._statusText;
+                if (status === 'ปกติ' || status === 'ปกติ/พร้อมใช้งาน') normalCount++;
+                else if (status === 'ชำรุดส่งซ่อม' || status === 'รอจำหน่าย') brokenCount++;
+                else if (status === 'จำหน่าย' || status === 'แทงจำหน่าย') disposedCount++;
+            });
+            document.getElementById('stat-total').innerText = scoped.visibleItems.length;
+            document.getElementById('stat-normal').innerText = normalCount;
+            document.getElementById('stat-broken').innerText = brokenCount;
+            document.getElementById('stat-disposed').innerText = disposedCount;
+        }
+
+        // 🟢 รวมฟังก์ชัน switchTab เป็นตัวเดียว
+        function switchTab(tabId) {
+            currentActiveTab = tabId;
+            document.getElementById('tab-inspection').classList.remove('active');
+            document.getElementById('tab-all').classList.remove('active');
+            document.getElementById('tab-borrowed-out').classList.remove('active');
+            document.getElementById('tab-repair').classList.remove('active');
+            if(document.getElementById('tab-admin')) document.getElementById('tab-admin').classList.remove('active');
+
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+
+            document.getElementById('view-inspection').classList.add('hidden');
+            document.getElementById('view-all').classList.add('hidden');
+            document.getElementById('view-borrowed-out').classList.add('hidden');
+            document.getElementById('view-repair').classList.add('hidden');
+            if(document.getElementById('view-admin')) document.getElementById('view-admin').classList.add('hidden');
+
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+            renderActiveView();
+        }
+
+        // 🟢 รวมฟังก์ชัน renderActiveView เป็นตัวเดียว
+        function renderActiveView() {
+            const scoped = getWardScopedData();
+            document.getElementById('pendingBadge').innerText = scoped.pendingOwned.length + scoped.pendingBorrowedIn.length;
+            document.getElementById('borrowedOutCountTab').innerText = scoped.borrowedOut.length;
+            document.getElementById('repairCountTab').innerText = scoped.repair.length + scoped.awaitDisposal.length;
+            document.getElementById('allCountTab').innerText = scoped.visibleItems.length;
+
+            if (currentActiveTab === 'inspection') {
+                renderInspectionCards(scoped.pendingOwned, scoped.pendingBorrowedIn); 
+            } else if (currentActiveTab === 'all') {
+                const filteredScoped = getWardScopedData(currentSearchTerm, currentAllStatusFilter);
+                renderAllItemsTable(filteredScoped);
+            } else if (currentActiveTab === 'borrowed-out') {
+                renderBorrowedOutTable(scoped.borrowedOut);
+            } else if (currentActiveTab === 'repair') {
+                renderRepairTables(scoped.repair, scoped.awaitDisposal);
+            } else if (currentActiveTab === 'admin') {
+                renderAdminTable(filteredEquipment);   
+                renderAdminDashboard(filteredEquipment); 
+            }
+        }
+
+        function renderInspectionCards(ownedItems, borrowedItems) {
+            document.getElementById('pendingOwnedCount').innerText = `${ownedItems.length} รายการ`;
+            document.getElementById('pendingBorrowedInCount').innerText = `${borrowedItems.length} รายการ`;
+            renderItemCardsIntoContainer(
+                'equipmentListOwned',
+                ownedItems,
+                'ไม่มีรายการของหน่วยงานที่ถึงรอบตรวจในเดือนนี้',
+                'ถ้าตรวจครบแล้ว รายการจะไม่แสดงในรอบเดือนนี้อีก'
+            );
+            renderItemCardsIntoContainer(
+                'equipmentListBorrowedIn',
+                borrowedItems,
+                'ไม่มีรายการยืมจากหน่วยงานอื่นที่ถึงรอบตรวจ',
+                'รายการที่ถูกยืมมาใช้งานจะแสดงในส่วนนี้'
+            );
+        }
+
+        function renderItemCardsIntoContainer(containerId, data, emptyTitle, emptyMessage) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+
+            if (data.length === 0) {
+                container.innerHTML = createEmptyStateHtml(emptyTitle, emptyMessage);
+                return;
+            }
+
+            data.forEach((item) => {
+                const statusClass = getStatusClass(item._statusText);
+                const statusIcon = getStatusIcon(item._statusText);
+                const safeItemJson = JSON.stringify(item).replace(/"/g, '&quot;');
+                const ownerUsageInfo = item._ownerWard === item._usageWard
+                    ? `<span class="info-item"><i class="fas fa-building"></i> หน่วยงาน: <strong>${item._usageWard || '-'}</strong></span>`
+                    : `
+                        <span class="info-item"><i class="fas fa-warehouse"></i> เจ้าของ: <strong>${item._ownerWard || '-'}</strong></span>
+                        <span class="info-item"><i class="fas fa-right-left"></i> ใช้งานที่: <strong>${item._usageWard || '-'}</strong></span>
+                    `;
+
+                const card = document.createElement('div');
+                card.className = 'item-card';
+                card.innerHTML = `
+                    <div class="item-details">
+                        <h4>${item['ชื่อครุภัณฑ์'] || 'ไม่ระบุชื่อ'} ${getRiskHtml(item)}</h4>
+                        <div class="info-row">
+                            <span class="info-item"><i class="fas fa-fingerprint"></i> RMC: <strong>${item['RMC No'] || '-'}</strong></span>
+                            <span class="info-item"><i class="fas fa-barcode"></i> ID: <strong>${item['เลขครุภัณฑ์'] || '-'}</strong></span>
+                            ${ownerUsageInfo}
+                            <span class="info-item"><i class="fas fa-map-marker-alt"></i> จุด: <strong>${item['ตำแหน่งย่อย (Sub-location)'] || '-'}</strong></span>
+                            <span class="info-item"><i class="fas fa-clock"></i> ตรวจทุก: <strong>${getInspectionFrequency(item)} เดือน</strong></span>
+                        </div>
+                    </div>
+                    <div class="item-actions">
+                        <span class="status-badge ${statusClass}">${statusIcon} ${item._statusText || 'ปกติ'}</span>
+                        <button class="btn btn-primary btn-sm" onclick="openManageModal(${safeItemJson})">
+                            <i class="fas fa-check"></i> บันทึกการตรวจ
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function renderAllItemsTable(scopedData) {
+            document.getElementById('allOwnedCount').innerText = `${scopedData.ownedCurrent.length} รายการ`;
+            document.getElementById('allBorrowedInCount').innerText = `${scopedData.borrowedIn.length} รายการ`;
+            renderTableRows('allEquipmentTableBodyOwned', scopedData.ownedCurrent, 'ไม่มีรายการของหน่วยงานตามเงื่อนไขที่เลือก');
+            renderTableRows('allEquipmentTableBodyBorrowedIn', scopedData.borrowedIn, 'ไม่มีรายการยืมจากหน่วยงานอื่นตามเงื่อนไขที่เลือก');
+        }
+
+        function renderBorrowedOutTable(data) {
+            document.getElementById('borrowedOutCount').innerText = `${data.length} รายการ`;
+            renderTableRows('borrowedOutTableBody', data, 'ไม่มีรายการที่ถูกยืมไปใช้หน่วยงานอื่น');
+        }
+
+        function renderRepairTables(repairItems, awaitDisposalItems) {
+            document.getElementById('repairCount').innerText = `${repairItems.length} รายการ`;
+            document.getElementById('awaitDisposalCount').innerText = `${awaitDisposalItems.length} รายการ`;
+            renderTableRows('repairTableBody', repairItems, 'ไม่มีรายการสถานะส่งซ่อม');
+            renderTableRows('awaitDisposalTableBody', awaitDisposalItems, 'ไม่มีรายการสถานะรอจำหน่าย');
+        }
+
+        function renderTableRows(tbodyId, data, emptyMessage) {
+            const tbody = document.getElementById(tbodyId);
+            tbody.innerHTML = '';
+
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px;">${emptyMessage}</td></tr>`;
+                return;
+            }
+
+            data.forEach((item) => {
+                const statusClass = getStatusClass(item._statusText);
+                const safeItemJson = JSON.stringify(item).replace(/"/g, '&quot;');
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="color: #666; font-size: 0.9rem;">${item['RMC No'] || '-'}</td>
+                    <td><strong>${item['เลขครุภัณฑ์'] || '-'}</strong></td>
+                    <td>
+                        ${item['ชื่อครุภัณฑ์'] || '-'}<br>
+                        <small style="color:#666;">ยี่ห้อ/รุ่น: ${item['ยี่ห้อ'] || '-'} / ${item['ชื่อรุ่น'] || '-'}</small>
+                    </td>
+                    <td>${item._ownerWard || '-'}</td>
+                    <td>${item._usageWard || '-'}</td>
+                    <td>${getInspectionFrequency(item)} เดือน</td>
+                    <td style="color:#28a745; font-size:0.9rem;">${getLastInspectionText(item, 'ยังไม่เคยตรวจ')}</td>
+                    <td><span class="status-badge ${statusClass}" style="font-size:0.75rem;">${item._statusText || 'ปกติ'}</span></td>
+                    <td>
+                        <button class="btn btn-outline btn-sm" onclick="showDetailsModal(${safeItemJson})">
+                            <i class="fas fa-search"></i> ดูข้อมูล
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function handleAllStatusFilterChange() {
+            currentAllStatusFilter = document.getElementById('allStatusFilter').value;
+            if (currentActiveTab === 'all') renderActiveView();
+        }
+
+        function getStatusClass(status) {
+            if(status === 'ชำรุดส่งซ่อม') return 'status-broken';
+            if(status === 'ถูกยืม') return 'status-borrowed';
+            if(status === 'รอจำหน่าย') return 'status-await-disposal';
+            if(status === 'จำหน่าย' || status === 'แทงจำหน่าย') return 'status-disposed';
+            return 'status-normal';
+        }
+        function getStatusIcon(status) {
+            if(status === 'ชำรุดส่งซ่อม') return '<i class="fas fa-wrench"></i>';
+            if(status === 'ถูกยืม') return '<i class="fas fa-exchange-alt"></i>';
+            if(status === 'รอจำหน่าย') return '<i class="fas fa-file-circle-xmark"></i>';
+            if(status === 'จำหน่าย' || status === 'แทงจำหน่าย') return '<i class="fas fa-trash-alt"></i>';
+            return '<i class="fas fa-check-circle"></i>';
+        }
+
+        function toggleScanner() {
+            const readerDiv = document.getElementById('qr-reader');
+            if (readerDiv.style.display === 'block') {
+                readerDiv.style.display = 'none';
+                if(html5QrcodeScanner) html5QrcodeScanner.clear();
+            } else {
+                readerDiv.style.display = 'block';
+                html5QrcodeScanner = new Html5QrcodeScanner("qr-reader", { fps: 10, qrbox: {width: 250, height: 250} }, false);
+                html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+            }
+        }
+        
+        function onScanSuccess(decodedText) {
+            if(html5QrcodeScanner) {
+                html5QrcodeScanner.clear();
+                document.getElementById('qr-reader').style.display = 'none';
+            }
+            document.getElementById('searchInput').value = decodedText;
+            processSearchOrScan(decodedText);
+        }
+        function onScanFailure(error) {}
+
+        async function processSearchOrScan(decodedText) {
+            const searchTerm = decodedText.toLowerCase().trim();
+            if(!searchTerm) return;
+
+            const localItem = allEquipment.find(item => 
+                String(item['เลขครุภัณฑ์']).toLowerCase() === searchTerm ||
+                String(item['RMC No']).toLowerCase() === searchTerm
+            );
+
+            if (localItem) {
+                openManageModal(localItem);
+                return;
+            }
+
+            Swal.fire({
+                title: 'กำลังค้นหาข้อมูลข้ามหน่วยงาน...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                const response = await fetch(`${EQUIPMENT_API}?action=getAllItems`);
+                const textData = await response.text();
+                const result = JSON.parse(textData);
+                
+                if (result.status === 'success') {
+                    const globalItem = result.data.find(item => 
+                        String(item['เลขครุภัณฑ์']).toLowerCase() === searchTerm ||
+                        String(item['RMC No']).toLowerCase() === searchTerm
+                    );
+
+                    if (globalItem) {
+                        Swal.close();
+                        const freq = globalItem['ความถี่การตรวจนับ'] || globalItem['ความถี่การตรวจนับ (เดือน)'] || '1';
+                        
+                        const proceed = await Swal.fire({
+                            title: '<span style="color:#1976d2;">พบครุภัณฑ์ของหน่วยงานอื่น</span>',
+                            icon: 'info',
+                            html: `
+                                <div style="text-align: left; background: #e3f2fd; padding: 15px; border-radius: 10px; border: 1px solid #90caf9; font-size: 0.95rem;">
+                                    <div style="margin-bottom: 8px;"><b>ชื่อ:</b> ${globalItem['ชื่อครุภัณฑ์'] || '-'}</div>
+                                    <div style="margin-bottom: 8px;"><b>ยี่ห้อ:</b> ${globalItem['ยี่ห้อ'] || '-'}</div>
+                                    <div style="margin-bottom: 8px;"><b>RMC No:</b> <span style="color:#d32f2f; font-weight:bold;">${globalItem['RMC No'] || '-'}</span></div>
+                                    <div style="margin-bottom: 8px;"><b>เลขครุภัณฑ์:</b> <span style="color:#d32f2f; font-weight:bold;">${globalItem['เลขครุภัณฑ์'] || '-'}</span></div>
+                                    <div style="margin-bottom: 8px;"><b>ความถี่ตรวจนับ:</b> ทุก ${freq} เดือน</div>
+                                    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #64b5f6;">
+                                        <i class="fas fa-hospital-user"></i> เจ้าของเดิม: <b>${globalItem['หน่วยงาน'] || '-'}</b>
+                                    </div>
+                                </div>
+                                <p style="margin-top: 15px; font-size: 0.95rem;">ต้องการดึงมาใช้งานและบันทึกการตรวจนับหรือไม่?<br><small>(ระบบจะเปลี่ยนจุดใช้งานมาที่ <b>${currentWard}</b>)</small></p>
+                            `,
+                            showCancelButton: true,
+                            confirmButtonColor: '#28a745',
+                            cancelButtonColor: '#6c757d',
+                            confirmButtonText: '<i class="fas fa-download"></i> ใช่, ดึงมาใช้งาน',
+                            cancelButtonText: 'ยกเลิก'
+                        });
+
+                        if (proceed.isConfirmed) {
+                            Swal.fire({ title: 'กำลังดึงข้อมูลเข้าหน่วยงาน...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                            
+                            const pullResponse = await fetch(EQUIPMENT_API, {
+                                method: 'POST',
+                                redirect: 'follow',
+                                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                                body: JSON.stringify({ action: 'pullEquipment', itemId: globalItem['เลขครุภัณฑ์'], newWard: currentWard })
+                            });
+                            const pullResult = await pullResponse.json();
+                            
+                            if (pullResult.status === 'success') {
+                                Swal.fire({ icon: 'success', title: 'ดึงข้อมูลสำเร็จ', text: 'เพิ่มเข้าสู่ตารางของคุณแล้ว', timer: 1500, showConfirmButton: false });
+                                
+                                await fetchEquipment();
+                                setTimeout(() => {
+                                    const newlyPulledItem = allEquipment.find(item => item['เลขครุภัณฑ์'] === globalItem['เลขครุภัณฑ์']);
+                                    if(newlyPulledItem) openManageModal(newlyPulledItem);
+                                }, 1000);
+                            }
+                        }
+                    } else {
+                        Swal.fire('ไม่พบข้อมูล', `ไม่พบรหัส "${decodedText}" ในระบบของโรงพยาบาลเลย`, 'error');
+                    }
+                }
+            } catch (error) {
+                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้', 'error');
+            }
+        }
+
+        function showDetailsModal(item) {
+            let lastInspectStr = "ยังไม่เคยตรวจ";
+            if(item['วันที่ตรวจล่าสุด']) {
+                const d = new Date(item['วันที่ตรวจล่าสุด']);
+                if(!isNaN(d)) lastInspectStr = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' }) + " เวลา " + d.toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'});
+            }
+
+            Swal.fire({
+                title: 'รายละเอียดครุภัณฑ์',
+                width: 600,
+                html: `
+                    <table class="details-table">
+                        <tbody>
+                            <tr><th><i class="fas fa-fingerprint"></i> RMC No</th><td>${item['RMC No'] || '-'}</td></tr>
+                            <tr><th><i class="fas fa-barcode"></i> เลขครุภัณฑ์</th><td>${item['เลขครุภัณฑ์'] || '-'}</td></tr>
+                            <tr><th><i class="fas fa-box"></i> ชื่อครุภัณฑ์</th><td>${item['ชื่อครุภัณฑ์'] || '-'}</td></tr>
+                            <tr><th><i class="fas fa-tag"></i> ยี่ห้อ / รุ่น</th><td>${item['ยี่ห้อ'] || '-'} / ${item['ชื่อรุ่น'] || '-'}</td></tr>
+                            <tr><th><i class="fas fa-list"></i> ประเภท</th><td>${item['ประเภทครุภัณฑ์'] || '-'}</td></tr>
+                            <tr><th><i class="fas fa-hospital"></i> ใช้งานที่</th><td>${item['ใช้งานที่'] || '-'} (เจ้าของ: ${item['หน่วยงาน']})</td></tr>
+                            <tr><th><i class="fas fa-map-pin"></i> ตำแหน่งย่อย</th><td>${item['ตำแหน่งย่อย (Sub-location)'] || '-'}</td></tr>
+                            <tr><th><i class="fas fa-history"></i> ความถี่การตรวจ</th><td>${item['ความถี่การตรวจนับ'] || item['ความถี่การตรวจนับ (เดือน)'] || '-'} เดือน/ครั้ง</td></tr>
+                            <tr><th style="color:#28a745;"><i class="fas fa-calendar-check"></i> ตรวจล่าสุด</th><td style="color:#28a745; font-weight:bold;">${lastInspectStr}</td></tr>
+                        </tbody>
+                    </table>
+                `,
+                confirmButtonColor: '#003366',
+                confirmButtonText: '<i class="fas fa-times"></i> ปิดหน้าต่าง'
+            });
+        }
+
+        async function openManageModal(item) {
+            await ensureWardOptionsLoaded();
+
+            if (!item._needsInspection) {
+                let lastInspectStr = "ยังไม่เคยตรวจ";
+                if (item['วันที่ตรวจล่าสุด']) {
+                    const d = new Date(item['วันที่ตรวจล่าสุด']);
+                    if (!isNaN(d)) {
+                        lastInspectStr = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+                    }
+                }
+
+                const proceed = await Swal.fire({
+                    title: '<span style="color:#f57f17;">ยังไม่ถึงรอบการตรวจ</span>',
+                    icon: 'warning',
+                    html: `
+                        <div style="text-align: left; background: #fff9db; padding: 15px; border-radius: 10px; border: 1px solid #ffe066;">
+                            <div style="margin-bottom: 8px;"><b>ชื่อ:</b> ${item['ชื่อครุภัณฑ์'] || '-'}</div>
+                            <div style="margin-bottom: 8px;"><b>ยี่ห้อ:</b> ${item['ยี่ห้อ'] || '-'}</div>
+                            <div style="margin-bottom: 8px;"><b>เลขครุภัณฑ์:</b> <span style="color:#d32f2f;">${item['เลขครุภัณฑ์'] || '-'}</span></div>
+                            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #fab005;">
+                                <i class="fas fa-history"></i> ตรวจล่าสุดวันที่: <b>${lastInspectStr}</b>
+                            </div>
+                        </div>
+                        <p style="margin-top: 15px; font-size: 0.95rem;">รายการนี้ยังไม่ถึงกำหนดรอบตรวจเช็ค<br><b>คุณยังต้องการบันทึกการตรวจหรือไม่?</b></p>
+                    `,
+                    showCancelButton: true,
+                    confirmButtonColor: '#003366',
+                    cancelButtonColor: '#adb5bd',
+                    confirmButtonText: 'ใช่, ต้องการบันทึก',
+                    cancelButtonText: 'ไม่ต้อง, ยกเลิก'
+                });
+
+                if (!proceed.isConfirmed) return;
+            }
+
+            Swal.fire({
+                title: 'บันทึกการตรวจนับ',
+                html: `
+                    <div style="text-align: left; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee;">
+                        <b style="color: var(--primary); font-size:1.1rem;">${item['ชื่อครุภัณฑ์']}</b><br>
+                        <small style="color:#666;"><i class="fas fa-barcode"></i> เลข: ${item['เลขครุภัณฑ์']}</small>
+                    </div>
+                    
+                    <div class="swal-form-group">
+                        <label><i class="fas fa-flag"></i> สถานะการตรวจพบ:</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 0.9rem; transition: 0.3s;">
+                                <input type="radio" name="update-status" value="ปกติ" onchange="toggleExtraInputs()" checked style="transform: scale(1.2);">
+                                <span style="color: #28a745;"><i class="fas fa-check-circle"></i> ปกติ/พร้อมใช้</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 0.9rem; transition: 0.3s;">
+                                <input type="radio" name="update-status" value="ชำรุดส่งซ่อม" onchange="toggleExtraInputs()" style="transform: scale(1.2);">
+                                <span style="color: #dc3545;"><i class="fas fa-wrench"></i> ชำรุดส่งซ่อม</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 0.9rem; transition: 0.3s;">
+                                <input type="radio" name="update-status" value="ถูกยืม" onchange="toggleExtraInputs()" style="transform: scale(1.2);">
+                                <span style="color: #f57f17;"><i class="fas fa-exchange-alt"></i> ถูกยืมใช้งาน</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 0.9rem; transition: 0.3s;">
+                                <input type="radio" name="update-status" value="รอจำหน่าย" onchange="toggleExtraInputs()" style="transform: scale(1.2);">
+                                <span style="color: #ef6c00;"><i class="fas fa-file-circle-xmark"></i> รอจำหน่าย</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 0.9rem; transition: 0.3s;">
+                                <input type="radio" name="update-status" value="แทงจำหน่าย" onchange="toggleExtraInputs()" style="transform: scale(1.2);">
+                                <span style="color: #6c757d;"><i class="fas fa-trash-alt"></i> แทงจำหน่าย</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="borrow-div" class="swal-form-group" style="display: none;">
+                        <label><i class="fas fa-hospital"></i> ยืมไปที่หน่วยงานใด:</label>
+                        <select id="update-borrow" class="swal-input">
+                            ${buildWardOptionsHtml('', currentWard)}
+                        </select>
+                    </div>
+
+                    <div id="document-div" class="swal-form-group" style="display: none;">
+                        <label id="document-label"><i class="fas fa-file-arrow-up"></i> แนบเอกสารประกอบ:</label>
+                        <input type="file" id="update-document" class="swal-input" accept="image/*,.pdf,application/pdf">
+                        <small id="document-hint" style="display:block; margin-top:6px; color:#6c757d;">รองรับไฟล์รูปภาพและ PDF</small>
+                    </div>
+
+                    <div class="swal-form-group">
+                        <label><i class="fas fa-map-marker-alt"></i> อัปเดตตำแหน่งย่อย (ถ้ามีการย้าย):</label>
+                        <input type="text" id="update-subloc" class="swal-input" value="${item['ตำแหน่งย่อย (Sub-location)'] || ''}" placeholder="เช่น เตียง 1, รถ Emergency">
+                    </div>
+
+                    <div class="swal-form-group">
+                        <label><i class="fas fa-comment-dots"></i> หมายเหตุ:</label>
+                        <textarea id="update-note" class="swal-input" rows="2" placeholder="ระบุข้อมูลเพิ่มเติม (ถ้ามี)..."></textarea>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: '<i class="fas fa-save"></i> บันทึกข้อมูล',
+                cancelButtonText: 'ยกเลิก',
+                confirmButtonColor: '#003366',
+                showLoaderOnConfirm: true,
+                preConfirm: async () => {
+                    const status = document.querySelector('input[name="update-status"]:checked').value;
+                    const borrowedWard = document.getElementById('update-borrow').value;
+                    const subLocation = document.getElementById('update-subloc').value.trim();
+                    const note = document.getElementById('update-note').value.trim();
+                    const documentInput = document.getElementById('update-document');
+                    
+                    let imageBase64 = "";
+                    let mimeType = "";
+                    let imageName = "";
+                    const requiresBorrowWard = status === 'ถูกยืม';
+                    const requiresEvidence = status === 'รอจำหน่าย' || status === 'แทงจำหน่าย';
+
+                    if (requiresBorrowWard && !borrowedWard) {
+                        Swal.showValidationMessage('กรุณาเลือกหน่วยงานที่ยืมไปใช้');
+                        return false;
+                    }
+
+                    if (requiresBorrowWard && normalizeWard(borrowedWard) === normalizeWard(currentWard)) {
+                        Swal.showValidationMessage('หน่วยงานปลายทางต้องไม่ใช่หน่วยงานเดียวกับผู้บันทึก');
+                        return false;
+                    }
+
+                    if (requiresEvidence && documentInput.files.length === 0) {
+                        Swal.showValidationMessage('กรุณาแนบเอกสารประกอบก่อนบันทึก');
+                        return false;
+                    }
+
+                    if (documentInput.files.length > 0) {
+                        const file = documentInput.files[0];
+                        mimeType = file.type;
+                        const extension = file.name && file.name.includes('.') ? file.name.split('.').pop() : 'bin';
+                        imageName = `${item['เลขครุภัณฑ์']}_${new Date().getTime()}.${extension}`;
+                        
+                        const reader = new FileReader();
+                        const promise = new Promise((resolve, reject) => {
+                            reader.onload = (e) => resolve(e.target.result.split(',')[1]);
+                            reader.onerror = reject;
+                        });
+                        reader.readAsDataURL(file);
+                        imageBase64 = await promise;
+                    }
+
+                    const payload = {
+                        action: 'updateStatus', ward: currentWard, itemId: item['เลขครุภัณฑ์'],
+                        status: status, borrowedWard: borrowedWard, subLocation: subLocation,
+                        note: note, imageBase64: imageBase64, mimeType: mimeType, imageName: imageName
+                    };
+
+                    try {
+                        const response = await fetch(EQUIPMENT_API, {
+                            method: 'POST', redirect: 'follow', headers: { "Content-Type": "text/plain;charset=utf-8" },
+                            body: JSON.stringify(payload)
+                        });
+                        const result = await response.json();
+                        if (result.status !== 'success') throw new Error(result.message);
+
+                        if (status === 'แทงจำหน่าย') {
+                            const deleteResponse = await fetch(EQUIPMENT_API, {
+                                method: 'POST', redirect: 'follow', headers: { "Content-Type": "text/plain;charset=utf-8" },
+                                body: JSON.stringify({ action: 'deleteEquipment', itemId: item['เลขครุภัณฑ์'] })
+                            });
+                            const deleteResult = await deleteResponse.json();
+                            if (deleteResult.status !== 'success') throw new Error(deleteResult.message || 'ไม่สามารถลบรายการออกจากระบบได้');
+                        }
+                        return result;
+                    } catch (error) {
+                        Swal.showValidationMessage(`การบันทึกขัดข้อง: ${error}`);
+                    }
+                },
+                allowOutsideClick: () => !Swal.isLoading()
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        icon: 'success', title: 'บันทึกสำเร็จ!', text: 'อัปเดตข้อมูลและประทับเวลาเรียบร้อยแล้ว',
+                        timer: 1500, showConfirmButton: false
+                    }).then(() => {
+                        document.getElementById('loadingState').classList.remove('hidden');
+                        fetchEquipment(); 
+                    });
+                }
+            });
+        }
+
+        function toggleExtraInputs() {
+            const statusElement = document.querySelector('input[name="update-status"]:checked');
+            if (statusElement) {
+                const status = statusElement.value;
+                document.getElementById('borrow-div').style.display = (status === 'ถูกยืม') ? 'block' : 'none';
+                const documentDiv = document.getElementById('document-div');
+                const documentLabel = document.getElementById('document-label');
+                const documentHint = document.getElementById('document-hint');
+
+                if (!documentDiv || !documentLabel || !documentHint) return;
+
+                if (status === 'ชำรุดส่งซ่อม') {
+                    documentDiv.style.display = 'block';
+                    documentLabel.innerHTML = '<i class="fas fa-camera"></i> แนบภาพจุดที่ชำรุด (ถ้ามี):';
+                    documentHint.textContent = 'สามารถแนบรูปภาพเพื่อประกอบการส่งซ่อมได้';
+                } else if (status === 'รอจำหน่าย') {
+                    documentDiv.style.display = 'block';
+                    documentLabel.innerHTML = '<i class="fas fa-file-medical"></i> แนบภาพถ่ายหรือ PDF ใบสรุปส่งซ่อมจากศูนย์เครื่องมือแพทย์:';
+                    documentHint.textContent = 'จำเป็นต้องแนบเอกสารก่อนบันทึกสถานะรอจำหน่าย';
+                } else if (status === 'แทงจำหน่าย') {
+                    documentDiv.style.display = 'block';
+                    documentLabel.innerHTML = '<i class="fas fa-file-pdf"></i> แนบภาพถ่ายหรือ PDF ใบส่งคืนพัสดุ:';
+                    documentHint.textContent = 'จำเป็นต้องแนบเอกสารก่อนแทงจำหน่าย และรายการจะถูกลบออกจากระบบ';
+                } else {
+                    documentDiv.style.display = 'none';
+                }
+            }
+        }
+
+        function exportToCSV() {
+            let dataToExport = [];
+
+            if (isAdminLoggedIn && currentActiveTab === 'admin') {
+                dataToExport = filteredEquipment;
+            } else if (currentActiveTab === 'inspection') {
+                const scoped = getWardScopedData();
+                dataToExport = [...scoped.pendingOwned, ...scoped.pendingBorrowedIn];
+            } else if (currentActiveTab === 'all') {
+                const scoped = getWardScopedData(currentSearchTerm, currentAllStatusFilter);
+                dataToExport = [...scoped.ownedCurrent, ...scoped.borrowedIn];
+            } else if (currentActiveTab === 'borrowed-out') {
+                dataToExport = getWardScopedData().borrowedOut;
+            } else if (currentActiveTab === 'repair') {
+                const scoped = getWardScopedData();
+                dataToExport = [...scoped.repair, ...scoped.awaitDisposal];
+            } else {
+                dataToExport = getWardScopedData().visibleItems;
+            }
+
+            if (dataToExport.length === 0) {
+                Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลให้ดาวน์โหลด', 'warning');
+                return;
+            }
+            
+            let csvContent = "\uFEFF"; 
+            const headers = Object.keys(dataToExport[0]).filter(k => !k.startsWith("_")); 
+            csvContent += headers.join(",") + "\n";
+            
+            dataToExport.forEach(row => {
+                let values = headers.map(header => {
+                    let val = row[header] === null || row[header] === undefined ? "" : String(row[header]);
+                    val = val.replace(/"/g, '""');
+                    return `"${val}"`;
+                });
+                csvContent += values.join(",") + "\n";
+            });
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `รายการครุภัณฑ์_${currentWard}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // ==========================================
+        // ระบบจัดการแอดมิน (Admin Mode)
+        // ==========================================
+        function showAdminLogin() {
+            Swal.fire({
+                title: 'เข้าสู่ระบบผู้ดูแล',
+                html: `
+                    <input type="text" id="adminUser" class="swal-input" placeholder="ชื่อผู้ใช้" style="margin-bottom: 10px; box-sizing: border-box;">
+                    <input type="password" id="adminPass" class="swal-input" placeholder="รหัสผ่าน" style="box-sizing: border-box;">
+                `,
+                confirmButtonText: 'เข้าสู่ระบบ',
+                confirmButtonColor: '#003366',
+                focusConfirm: false,
+                preConfirm: () => {
+                    const user = Swal.getPopup().querySelector('#adminUser').value;
+                    const pass = Swal.getPopup().querySelector('#adminPass').value;
+                    if (!user || !pass) { Swal.showValidationMessage(`กรุณากรอกข้อมูลให้ครบ`); }
+                    return { user: user, pass: pass }
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    if (result.value.user === '11450' && result.value.pass === '11450') {
+                        isAdminLoggedIn = true;
+                        document.getElementById('btnAdminLogin').style.display = 'none';
+                        document.getElementById('tab-admin').classList.remove('hidden-tab');
+                        
+                        Swal.fire({
+                            icon: 'success', title: 'เข้าสู่ระบบสำเร็จ', text: 'กำลังดึงข้อมูลภาพรวมทั้งโรงพยาบาล...',
+                            timer: 1500, showConfirmButton: false
+                        }).then(() => { fetchAllEquipmentForAdmin(); });
+                    } else {
+                        Swal.fire('ข้อผิดพลาด', 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง', 'error');
+                    }
+                }
+            });
+        }
+
+        async function fetchAllEquipmentForAdmin() {
+            document.getElementById('loadingState').classList.remove('hidden');
+            document.getElementById('view-inspection').classList.add('hidden');
+            document.getElementById('view-all').classList.add('hidden');
+            document.getElementById('view-borrowed-out').classList.add('hidden');
+            document.getElementById('view-repair').classList.add('hidden');
+            if(document.getElementById('view-admin')) document.getElementById('view-admin').classList.add('hidden');
+
+            try {
+                const response = await fetch(`${EQUIPMENT_API}?action=getAllItems`);
+                const textData = await response.text();
+                const result = JSON.parse(textData);
+                
+                if (result.status === 'success') {
+                    allEquipment = (result.data || []).map(prepareEquipmentItem); 
+                    filteredEquipment = [...allEquipment];
+                    wardOptions = getWardOptionsFromItems(allEquipment);
+
+                    const wards = getWardOptionsFromItems(allEquipment);
+                    const wardSelect = document.getElementById('adminWardFilter');
+                    wardSelect.innerHTML = '<option value="all">ดูทุกหน่วยงาน (ทั้ง รพ.)</option>';
+                    wards.forEach(w => { wardSelect.innerHTML += `<option value="${w}">${w}</option>`; });
+                    
+                    document.getElementById('wardSubtitle').innerHTML = '<span style="color:#d32f2f; font-weight:bold;"><i class="fas fa-globe"></i> ภาพรวมทั้งโรงพยาบาล (Admin)</span>';
+                    document.getElementById('allCountTab').innerText = allEquipment.length;
+                    updateDashboardStats(); 
+                    
+                    document.getElementById('loadingState').classList.add('hidden');
+                    switchTab('admin'); 
+                }
+            } catch (error) {
+                console.error("Error fetching all items:", error);
+                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถดึงข้อมูลภาพรวมได้', 'error');
+            }
+        }
+
+        function filterAdminByWard() {
+            const selectedWard = document.getElementById('adminWardFilter').value;
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            
+            filteredEquipment = allEquipment.filter(item => {
+                const matchWard = (selectedWard === 'all') || (item._ownerWard === selectedWard) || (item._usageWard === selectedWard);
+                const matchSearch = matchesSearchTerm(item, searchTerm);
+                return matchWard && matchSearch;
+            });
+            renderActiveView(); 
+        }
+
+        function exitAdminMode() {
+            Swal.fire({ 
+                icon: 'info', title: 'ออกจากโหมดผู้ดูแลระบบ', text: 'กำลังพากลับไปยังหน้าหน่วยงาน...', 
+                timer: 1500, showConfirmButton: false 
+            }).then(() => {
+                if (currentWard) {
+                    window.location.href = window.location.pathname + "?ward=" + encodeURIComponent(currentWard);
+                } else {
+                    window.location.href = 'index.html';
+                }
+            });
+        }
+
+        function renderAdminTable(data) {
+            const tbody = document.getElementById('adminEquipmentTableBody');
+            tbody.innerHTML = '';
+
+            if(data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px;">ไม่พบข้อมูล</td></tr>';
+                return;
+            }
+
+            data.forEach((item) => {
+                let statusClass = getStatusClass(item['สถานะ']);
+                const safeItemJson = JSON.stringify(item).replace(/"/g, '&quot;');
+                
+                let lastInspectStr = `<span style="color:#dc3545;">ยังไม่เคยตรวจ</span>`;
+                if(item['วันที่ตรวจล่าสุด']) {
+                    const d = new Date(item['วันที่ตรวจล่าสุด']);
+                    if(!isNaN(d)) lastInspectStr = `<span style="color:#28a745;">ล่าสุด: ${d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}</span>`;
+                }
+
+                let riskLevel = item['RISK LEVEL'] ? String(item['RISK LEVEL']).trim().toLowerCase() : '';
+                let riskHtml = '';
+                if (riskLevel === 'high') riskHtml = `<span class="risk-badge risk-high"><i class="fas fa-exclamation-triangle"></i> High</span>`;
+                else if (riskLevel === 'medium') riskHtml = `<span class="risk-badge risk-medium"><i class="fas fa-exclamation-circle"></i> Medium</span>`;
+                else if (riskLevel === 'low') riskHtml = `<span class="risk-badge risk-low"><i class="fas fa-info-circle"></i> Low</span>`;
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="text-align: center;">
+                        <input type="checkbox" class="qr-checkbox" value="${item['เลขครุภัณฑ์']}" style="transform: scale(1.3); cursor: pointer;">
+                    </td>
+                    <td style="color: #666; font-size: 0.85rem;">${item['RMC No'] || '-'}</td>
+                    <td style="font-weight: 600; color: #333; font-size: 0.95rem;">${item['เลขครุภัณฑ์'] || '-'}</td>
+                    <td>
+                        <div style="font-weight: 500; color: #444; margin-bottom: 4px;">${item['ชื่อครุภัณฑ์'] || '-'}</div>
+                        <div style="font-size: 0.8rem; color: #777;">ยี่ห้อ/รุ่น: ${item['ยี่ห้อ'] || '-'} / ${item['ชื่อรุ่น'] || '-'}</div>
+                    </td>
+                    <td style="color: #555; font-weight: 500; font-size: 0.95rem;">${item['หน่วยงาน'] || '-'}</td>
+                    <td>
+                        <div style="margin-bottom: 4px; color: #444;">${item['ความถี่การตรวจนับ'] || item['ความถี่การตรวจนับ (เดือน)'] || '1'} เดือน</div>
+                        <div style="font-size: 0.8rem;">${lastInspectStr}</div>
+                    </td>
+                    <td>
+                        <div style="margin-bottom: 6px;">${riskHtml}</div>
+                        <div><span class="status-badge ${statusClass}" style="font-size: 0.75rem; padding: 3px 10px;">${item['สถานะ'] || 'ปกติ'}</span></div>
+                    </td>
+                    <td style="white-space: nowrap; text-align: center;">
+                        <button class="btn-edit-icon" onclick="openEditEquipmentModal(${safeItemJson})" title="แก้ไขข้อมูล"><i class="fas fa-edit"></i></button>
+                        <button class="btn-delete-icon" onclick="deleteEquipment('${item['เลขครุภัณฑ์']}')" title="ลบข้อมูล"><i class="fas fa-trash-alt"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function openAddEquipmentModal() {
+            Swal.fire({
+                title: 'เพิ่มครุภัณฑ์ใหม่',
+                width: 600,
+                html: `
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left;">
+                        <div><label style="font-size:0.85rem; color:var(--primary);">RMC No:</label><input type="text" id="add-rmc" class="swal-input"></div>
+                        <div><label style="font-size:0.85rem; color:var(--primary);">เลขครุภัณฑ์ (อ้างอิง QR):</label><input type="text" id="add-id" class="swal-input"></div>
+                        <div style="grid-column: span 2;"><label style="font-size:0.85rem; color:var(--primary);">ชื่อครุภัณฑ์:</label><input type="text" id="add-name" class="swal-input"></div>
+                        <div><label style="font-size:0.85rem; color:var(--primary);">ยี่ห้อ:</label><input type="text" id="add-brand" class="swal-input"></div>
+                        <div><label style="font-size:0.85rem; color:var(--primary);">ชื่อรุ่น:</label><input type="text" id="add-model" class="swal-input"></div>
+                        <div><label style="font-size:0.85rem; color:var(--primary);">หน่วยงาน (เจ้าของ):</label><input type="text" id="add-ward" class="swal-input"></div>
+                        <div><label style="font-size:0.85rem; color:var(--primary);">ตำแหน่งย่อย:</label><input type="text" id="add-subloc" class="swal-input"></div>
+                        <div><label style="font-size:0.85rem; color:var(--primary);">ความถี่การตรวจ (เดือน):</label><input type="number" id="add-freq" class="swal-input" value="1"></div>
+                        <div><label style="font-size:0.85rem; color:var(--primary);">Risk Level:</label>
+                            <select id="add-risk" class="swal-input">
+                                <option value="Low">Low Risk</option>
+                                <option value="Medium">Medium Risk</option>
+                                <option value="High">High Risk</option>
+                            </select>
+                        </div>
+                    </div>
+                `,
+                showCancelButton: true, confirmButtonText: 'บันทึกข้อมูล', cancelButtonText: 'ยกเลิก',
+                confirmButtonColor: '#28a745', showLoaderOnConfirm: true,
+                preConfirm: async () => {
+                    const itemData = {
+                        rmcNo: document.getElementById('add-rmc').value, itemId: document.getElementById('add-id').value,
+                        name: document.getElementById('add-name').value, brand: document.getElementById('add-brand').value,
+                        model: document.getElementById('add-model').value, ownerWard: document.getElementById('add-ward').value,
+                        subLoc: document.getElementById('add-subloc').value, freq: document.getElementById('add-freq').value,
+                        riskLevel: document.getElementById('add-risk').value
+                    };
+                    if(!itemData.itemId || !itemData.name) { Swal.showValidationMessage('กรุณากรอก เลขครุภัณฑ์ และ ชื่อครุภัณฑ์'); return; }
+                    try {
+                        const response = await fetch(EQUIPMENT_API, {
+                            method: 'POST', redirect: 'follow', headers: { "Content-Type": "text/plain;charset=utf-8" },
+                            body: JSON.stringify({ action: 'addEquipment', itemData: itemData })
+                        });
+                        const result = await response.json();
+                        if (result.status !== 'success') throw new Error(result.message);
+                        return true;
+                    } catch (error) { Swal.showValidationMessage(`Error: ${error}`); }
+                }
+            }).then((result) => {
+                if (result.isConfirmed) Swal.fire('สำเร็จ', 'เพิ่มครุภัณฑ์ใหม่เรียบร้อย', 'success').then(() => fetchAllEquipmentForAdmin());
+            });
+        }
+
+        function openEditEquipmentModal(item) {
+            Swal.fire({
+                title: 'แก้ไขข้อมูลครุภัณฑ์',
+                width: 600,
+                html: `
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left;">
+                        <div><label style="font-size:0.85rem; color:var(--primary);">RMC No:</label><input type="text" id="edit-rmc" class="swal-input" value="${item['RMC No'] || ''}"></div>
+                        <div><label style="font-size:0.85rem; color:var(--primary);">เลขครุภัณฑ์:</label><input type="text" id="edit-id" class="swal-input" value="${item['เลขครุภัณฑ์'] || ''}"></div>
+                        <div style="grid-column: span 2;"><label style="font-size:0.85rem; color:var(--primary);">ชื่อครุภัณฑ์:</label><input type="text" id="edit-name" class="swal-input" value="${item['ชื่อครุภัณฑ์'] || ''}"></div>
+                        <div><label style="font-size:0.85rem; color:var(--primary);">ยี่ห้อ:</label><input type="text" id="edit-brand" class="swal-input" value="${item['ยี่ห้อ'] || ''}"></div>
+                        <div><label style="font-size:0.85rem; color:var(--primary);">ชื่อรุ่น:</label><input type="text" id="edit-model" class="swal-input" value="${item['ชื่อรุ่น'] || ''}"></div>
+                        <div><label style="font-size:0.85rem; color:var(--primary);">หน่วยงาน (เจ้าของ):</label><input type="text" id="edit-ward" class="swal-input" value="${item['หน่วยงาน'] || ''}"></div>
+                        <div><label style="font-size:0.85rem; color:var(--primary);">ตำแหน่งย่อย:</label><input type="text" id="edit-subloc" class="swal-input" value="${item['ตำแหน่งย่อย (Sub-location)'] || ''}"></div>
+                        <div><label style="font-size:0.85rem; color:var(--primary);">ความถี่ (เดือน):</label><input type="number" id="edit-freq" class="swal-input" value="${item['ความถี่การตรวจนับ'] || item['ความถี่การตรวจนับ (เดือน)'] || 1}"></div>
+                        <div><label style="font-size:0.85rem; color:var(--primary);">Risk Level:</label>
+                            <select id="edit-risk" class="swal-input">
+                                <option value="Low" ${item['RISK LEVEL']=='Low'?'selected':''}>Low Risk</option>
+                                <option value="Medium" ${item['RISK LEVEL']=='Medium'?'selected':''}>Medium Risk</option>
+                                <option value="High" ${item['RISK LEVEL']=='High'?'selected':''}>High Risk</option>
+                            </select>
+                        </div>
+                    </div>
+                `,
+                showCancelButton: true, confirmButtonText: 'อัปเดตข้อมูล', cancelButtonText: 'ยกเลิก',
+                confirmButtonColor: '#ffc107', showLoaderOnConfirm: true,
+                preConfirm: async () => {
+                    const itemData = {
+                        rmcNo: document.getElementById('edit-rmc').value, itemId: document.getElementById('edit-id').value,
+                        name: document.getElementById('edit-name').value, brand: document.getElementById('edit-brand').value,
+                        model: document.getElementById('edit-model').value, ownerWard: document.getElementById('edit-ward').value,
+                        subLoc: document.getElementById('edit-subloc').value, freq: document.getElementById('edit-freq').value,
+                        riskLevel: document.getElementById('edit-risk').value
+                    };
+                    try {
+                        const response = await fetch(EQUIPMENT_API, {
+                            method: 'POST', redirect: 'follow', headers: { "Content-Type": "text/plain;charset=utf-8" },
+                            body: JSON.stringify({ action: 'editEquipment', oldItemId: item['เลขครุภัณฑ์'], itemData: itemData })
+                        });
+                        const result = await response.json();
+                        if (result.status !== 'success') throw new Error(result.message);
+                        return true;
+                    } catch (error) { Swal.showValidationMessage(`Error: ${error}`); }
+                }
+            }).then((result) => {
+                if (result.isConfirmed) Swal.fire('สำเร็จ', 'อัปเดตข้อมูลเรียบร้อย', 'success').then(() => fetchAllEquipmentForAdmin());
+            });
+        }
+
+        function deleteEquipment(itemId) {
+            Swal.fire({
+                title: 'ยืนยันการลบ?', text: "ลบครุภัณฑ์รหัส " + itemId + " ข้อมูลจะหายไปอย่างถาวร!", icon: 'warning',
+                showCancelButton: true, confirmButtonColor: '#dc3545', confirmButtonText: 'ใช่, ลบเลย!',
+                cancelButtonText: 'ยกเลิก', showLoaderOnConfirm: true,
+                preConfirm: async () => {
+                    try {
+                        const response = await fetch(EQUIPMENT_API, {
+                            method: 'POST', redirect: 'follow', headers: { "Content-Type": "text/plain;charset=utf-8" },
+                            body: JSON.stringify({ action: 'deleteEquipment', itemId: itemId })
+                        });
+                        const result = await response.json();
+                        if (result.status !== 'success') throw new Error(result.message);
+                        return true;
+                    } catch (error) { Swal.showValidationMessage(`Error: ${error}`); }
+                }
+            }).then((result) => {
+                if (result.isConfirmed) Swal.fire('ลบสำเร็จ', 'ข้อมูลถูกลบออกจากระบบแล้ว', 'success').then(() => fetchAllEquipmentForAdmin());
+            })
+        }
+
+        // ==========================================
+        // Advanced Dashboard (Chart.js)
+        // ==========================================
+        let statusChartInstance = null;
+        let inspectChartInstance = null;
+
+        function renderAdminDashboard(data) {
+            const statusCounts = { 'ปกติ': 0, 'ชำรุดส่งซ่อม': 0, 'ถูกยืม': 0, 'รอจำหน่าย': 0, 'จำหน่าย': 0 };
+            let inspectedCount = 0;
+            let pendingCount = 0;
+
+            data.forEach(item => {
+                const s = item._statusText || item['สถานะ'] || '';
+                if(s.includes('ปกติ')) statusCounts['ปกติ']++;
+                else if(s.includes('ชำรุด')) statusCounts['ชำรุดส่งซ่อม']++;
+                else if(s.includes('ยืม')) statusCounts['ถูกยืม']++;
+                else if(s.includes('รอจำหน่าย')) statusCounts['รอจำหน่าย']++;
+                else if(s.includes('จำหน่าย')) statusCounts['จำหน่าย']++;
+
+                if(item._needsInspection) pendingCount++;
+                else inspectedCount++;
+            });
+
+            const ctxStatus = document.getElementById('statusChart').getContext('2d');
+            if(statusChartInstance) statusChartInstance.destroy(); 
+            
+            statusChartInstance = new Chart(ctxStatus, {
+                type: 'doughnut',
+                data: {
+                    labels: ['ปกติ/พร้อมใช้', 'ชำรุดส่งซ่อม', 'ถูกยืม', 'รอจำหน่าย', 'จำหน่าย'],
+                    datasets: [{
+                        data: [statusCounts['ปกติ'], statusCounts['ชำรุดส่งซ่อม'], statusCounts['ถูกยืม'], statusCounts['รอจำหน่าย'], statusCounts['จำหน่าย']],
+                        backgroundColor: ['#28a745', '#dc3545', '#ffc107', '#ef6c00', '#6c757d'],
+                        borderWidth: 1
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { font: { family: 'Prompt' } } } } }
+            });
+
+            const ctxInspect = document.getElementById('inspectChart').getContext('2d');
+            if(inspectChartInstance) inspectChartInstance.destroy();
+            
+            inspectChartInstance = new Chart(ctxInspect, {
+                type: 'pie',
+                data: {
+                    labels: ['ตรวจนับแล้ว', 'รอตรวจนับ'],
+                    datasets: [{
+                        data: [inspectedCount, pendingCount],
+                        backgroundColor: ['#003366', '#e74c3c'],
+                        borderWidth: 1
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { font: { family: 'Prompt' } } } } }
+            });
+        }
+
+        // ==========================================
+        // พิมพ์ QR Code
+        // ==========================================
+        function toggleAllQR() {
+            const selectAll = document.getElementById('selectAllQR').checked;
+            const checkboxes = document.querySelectorAll('.qr-checkbox');
+            checkboxes.forEach(cb => cb.checked = selectAll);
+        }
+
+        function openPrintQRModal() {
+            const checkboxes = document.querySelectorAll('.qr-checkbox:checked');
+            const selectedIds = Array.from(checkboxes).map(cb => cb.value);
+
+            if (selectedIds.length === 0) {
+                Swal.fire('แจ้งเตือน', 'กรุณาติ๊กเลือกรายการที่ต้องการพิมพ์ QR Code อย่างน้อย 1 รายการ', 'warning');
+                return;
+            }
+
+            Swal.fire({
+                title: 'พิมพ์ป้าย QR Code',
+                html: `
+                    <div style="text-align:left; margin-bottom:10px;">
+                        <p style="color:var(--primary); font-weight:500;">จำนวนที่เลือก: ${selectedIds.length} รายการ</p>
+                        <label style="font-size:0.9rem;">เลือกขนาดของป้าย:</label>
+                        <select id="qrSizeSelect" class="swal-input" style="margin-top:5px;">
+                            <option value="1">ขนาด 1 นิ้ว (เล็ก - แปะเครื่องมือเล็ก)</option>
+                            <option value="1.5" selected>ขนาด 1.5 นิ้ว (กลาง - มาตรฐาน)</option>
+                            <option value="2">ขนาด 2 นิ้ว (ใหญ่ - แปะเครื่องมือใหญ่/เตียง)</option>
+                        </select>
+                    </div>
+                `,
+                showCancelButton: true, confirmButtonText: '<i class="fas fa-print"></i> สร้างและพิมพ์',
+                cancelButtonText: 'ยกเลิก', confirmButtonColor: '#ffc107',
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const size = document.getElementById('qrSizeSelect').value;
+                    executePrintQR(selectedIds, size);
+                }
+            });
+        }
+
+        function executePrintQR(selectedIds, sizeInches) {
+            const printArea = document.getElementById('printArea');
+            printArea.innerHTML = ''; 
+
+            let columns, widthMM;
+            if (sizeInches === "1") { columns = "repeat(7, 1fr)"; widthMM = "25.4mm"; } 
+            else if (sizeInches === "1.5") { columns = "repeat(5, 1fr)"; widthMM = "38.1mm"; } 
+            else { columns = "repeat(4, 1fr)"; widthMM = "50.8mm"; }
+
+            printArea.style.gridTemplateColumns = columns;
+            const itemsToPrint = allEquipment.filter(item => selectedIds.includes(item['เลขครุภัณฑ์']));
+            let loadedImages = 0;
+            const totalImages = itemsToPrint.length;
+
+            itemsToPrint.forEach(item => {
+                const rmcNo = item['RMC No'] ? String(item['RMC No']).trim() : '-';
+                const itemId = item['เลขครุภัณฑ์'] ? String(item['เลขครุภัณฑ์']).trim() : '-';
+                const qrData = (rmcNo !== '-') ? rmcNo : (itemId !== '-' ? itemId : 'NO-ID');
+                const qrImgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrData)}`;
+                const brand = item['ยี่ห้อ'] || '-';
+                const freq = item['ความถี่การตรวจนับ'] || item['ความถี่การตรวจนับ (เดือน)'] || '1';
+                
+                const container = document.createElement('div');
+                container.className = 'qr-label-container';
+                container.style.width = widthMM; container.style.height = widthMM;
+                container.style.boxSizing = 'border-box'; container.style.overflow = 'hidden'; 
+
+                container.innerHTML = `
+                    <div style="font-size: 7pt; font-weight: bold; line-height: 1.2; margin-bottom: 2px; height: 2.4em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; word-break: break-word; text-align: center;">
+                        ${item['ชื่อครุภัณฑ์'] || '-'}
+                    </div>
+                    <div style="font-size: 6pt; color: #444; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">ยี่ห้อ: ${brand}</div>
+                    <img src="${qrImgSrc}" alt="QR" onload="checkImagesLoaded()" onerror="checkImagesLoaded()" style="width: 100%; max-width: 42%; height: auto; margin: 0 auto;">
+                    <div style="font-size: 5.5pt; color: #666; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">RMC: ${rmcNo}</div>
+                    <div style="font-size: 7.5pt; font-weight: bold; color: #000; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">ID: ${itemId}</div>
+                    <div style="font-size: 5.5pt; color: #555; background: #eee; padding: 1px 4px; border-radius: 4px; margin-top: 1px; display: inline-block;">ตรวจทุก ${freq} เดือน</div>
+                `;
+                printArea.appendChild(container);
+            });
+
+            window.checkImagesLoaded = function() {
+                loadedImages++;
+                if (loadedImages === totalImages) {
+                    Swal.fire({ title: 'กำลังเตรียมหน้าพิมพ์...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+                    setTimeout(() => {
+                        Swal.close(); 
+                        window.print(); 
+                        setTimeout(() => { printArea.innerHTML = ''; }, 1000);
+                    }, 800);
+                }
+            };
+        }
+    </script>
+    </script>
+</body>
+</html>

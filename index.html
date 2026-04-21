@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>น้อง AIDE SWD - รพ.สมเด็จพระยุพราชสว่างแดนดิน</title>
+    
+    <link rel="icon" type="image/png" href="icon-192.png">
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#003366">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="น้อง AIDE SWD">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="nav-left">
+            <img src="icon-192.png" alt="Hospital Logo" class="hosp-logo">
+            <div class="brand-text">
+                <span class="app-title">"น้อง AIDE"</span>
+                <span class="app-subtitle hide-on-mobile">ระบบบริหารจัดการงานพนักงานช่วยเหลือคนไข้ รพ.สมเด็จพระยุพราชสว่างแดนดิน</span>
+            </div>
+        </div>
+        
+        <div class="nav-right" id="navMenu">
+            <span id="currentWardDisplay" class="ward-badge hidden"><i class="fas fa-hospital-user"></i> <span id="wardNameText"></span></span>
+            <button id="logoutBtn" class="logout-btn hidden" onclick="logout()"><i class="fas fa-sign-out-alt"></i> เปลี่ยนหน่วยงาน</button>
+        </div>
+        
+        <div class="hamburger" onclick="toggleMenu()">
+            <i class="fas fa-bars"></i>
+        </div>
+    </nav>
+
+    <section id="loginSection" class="section-container">
+        <div class="login-card">
+            <h1 class="main-header">น้อง AIDE</h1>
+            <h2 class="sub-header">ระบบบริหารจัดการงานพนักงานช่วยเหลือคนไข้</h2>
+            <p class="hosp-name-header">โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน</p>
+            
+            <hr class="divider">
+            
+            <h3><i class="fas fa-map-marker-alt" style="color: var(--accent);"></i> เลือกหน่วยงานของคุณ</h3>
+            
+            <div class="input-group">
+                <select id="wardInput">
+                    <option value="" selected disabled>กำลังโหลดรายชื่อหน่วยงาน...</option>
+                </select>
+            </div>
+            
+            <button class="btn-primary" onclick="enterSystem()">เข้าสู่ระบบ</button>
+            <button class="btn-admin-entry" onclick="showAdminLogin()"><i class="fas fa-user-shield"></i> เข้าสู่ระบบแอดมิน</button>
+            <p class="login-hint">สำหรับผู้ดูแลระบบ ใช้ชื่อผู้ใช้และรหัสผ่านที่กำหนดไว้เพื่อเข้าสู่โหมดแอดมิน</p>
+        </div>
+    </section>
+
+    <section id="dashboardSection" class="section-container hidden">
+        <div class="dashboard-content">
+            <img src="https://img2.pic.in.th/c8c1a069-bdac-4132-9878-cd81856adf30.png" alt="น้อง AIDE Character" class="mascot floating-anim">
+            
+            <h1 class="welcome-text">
+                <span class="fade-in-text">ยินดีต้อนรับสู่แอพลิเคชัน "น้อง AIDE"</span><br>
+                <span class="sub-welcome" id="dashboardSubtitle">กรุณาเลือกระบบที่ต้องการใช้งาน</span>
+            </h1>
+
+            <div class="menu-grid">
+                <a href="#" class="menu-card" onclick="openSystem('equipment.html')">
+                    <div class="icon-circle"><i class="fas fa-stethoscope"></i></div>
+                    <h3>ตรวจนับครุภัณฑ์</h3>
+                    <p>ระบบตรวจนับครุภัณฑ์ทางการแพทย์</p>
+                </a>
+
+                <a href="#" class="menu-card" onclick="openSystem('cloth-stock.html')">
+                    <div class="icon-circle"><i class="fas fa-tshirt"></i></div>
+                    <h3>Stock เครื่องผ้า</h3>
+                    <p>ระบบตรวจนับ Stock เครื่องผ้าพร้อมแดชบอร์ดหน่วยงาน</p>
+                </a>
+
+                <a href="#" class="menu-card" onclick="openSystem('cloth-exchange.html')">
+                    <div class="icon-circle"><i class="fas fa-sync-alt"></i></div>
+                    <h3>แลกผ้าสะอาด</h3>
+                    <p>ระบบส่งแลกผ้าสะอาด</p>
+                </a>
+            </div>
+        </div>
+    </section>
+    <footer class="modern-footer">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <img src="icon-192.png" alt="AIDE Logo"> 
+                น้อง AIDE SWD
+            </div>
+            <div class="footer-details">
+                ระบบบริหารจัดการงานพนักงานช่วยเหลือคนไข้<br>
+                <strong>โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน</strong>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <span>&copy; 2026 AIDE System. All rights reserved.| Developed By Natnarinthorn</span>
+            <span><i class="fas fa-heart" style="color: #ff4757; animation: pulse 1.5s infinite;"></i> พัฒนาเพื่อยกระดับคุณภาพการทำงาน</span>
+        </div>
+    </footer>
+    
+    <style>
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+    </style>
+
+    <script src="script.js"></script>
+</body>
+</html>

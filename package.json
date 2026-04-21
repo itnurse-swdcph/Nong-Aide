@@ -1,0 +1,54 @@
+{
+  "name": "nong-aide-swd-desktop",
+  "version": "1.0.0",
+  "description": "Desktop package for Nong AIDE SWD",
+  "main": "main.js",
+  "author": "Natnarinthorn",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis",
+    "dist:portable": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^36.2.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.nongaide.swd.desktop",
+    "productName": "Nong AIDE SWD",
+    "artifactName": "${productName}-Setup-${version}.${ext}",
+    "asar": true,
+    "files": [
+      "*.html",
+      "*.css",
+      "*.js",
+      "*.json",
+      "*.png",
+      "*.ico",
+      "*.txt",
+      "ระบบแลกผ้า/**/*"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "icon": "app-icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
+}
