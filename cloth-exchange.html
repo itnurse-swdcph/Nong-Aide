@@ -1857,7 +1857,7 @@
         const EXCHANGE_API = 'https://script.google.com/macros/s/AKfycbwB42c0EM8n64wEGm76Ap5Kq-VSJKaBNfCPnBUEEN_TztQ_f5za1bOlJU_vfYo05T7nVw/exec';
         const APP_VERSION = '2026.04.22.01';
         const AUTO_REFRESH_MS = 30000;
-        const SESSION_KEYS = { ward: 'aide_ward', role: 'aide_role' };
+        const SESSION_KEYS = { ward: 'aide_ward', role: 'aide_role', versionPrompt: 'aide_exchange_version_prompt' };
         const ADMIN_PASSWORD = '11450';
         const STATUS_LABELS = {
             draft: 'ฉบับร่าง',
@@ -1892,6 +1892,10 @@
 
         const isAdminMode = () => currentRole === 'admin';
         const isLaundryWard = () => !isAdminMode() && currentWard === 'ซักฟอก';
+
+        function getVersionPromptKey(serverVersion) {
+            return `${APP_VERSION}=>${serverVersion}`;
+        }
 
         document.addEventListener('DOMContentLoaded', bootstrap);
 
@@ -2181,8 +2185,14 @@
                 const serverVersion = String(meta.version || '').trim();
                 if (!serverVersion) return;
                 lastKnownServerVersion = serverVersion;
-                if (serverVersion === APP_VERSION) return;
-                if (!forcePrompt && hasShownReloadPrompt) return;
+                const promptKey = getVersionPromptKey(serverVersion);
+                const acknowledgedPromptKey = sessionStorage.getItem(SESSION_KEYS.versionPrompt) || '';
+                if (serverVersion === APP_VERSION) {
+                    hasShownReloadPrompt = false;
+                    sessionStorage.removeItem(SESSION_KEYS.versionPrompt);
+                    return;
+                }
+                if (!forcePrompt && (hasShownReloadPrompt || acknowledgedPromptKey === promptKey)) return;
                 hasShownReloadPrompt = true;
                 Swal.fire({
                     icon: 'info',
@@ -2193,6 +2203,7 @@
                     cancelButtonText: 'ภายหลัง',
                     showCancelButton: true
                 }).then(result => {
+                    sessionStorage.setItem(SESSION_KEYS.versionPrompt, promptKey);
                     if (result.isConfirmed) {
                         reloadPage();
                     }
@@ -3081,7 +3092,9 @@
         }
 
         function reloadPage() {
-            window.location.reload();
+            const url = new URL(window.location.href);
+            url.searchParams.set('_reload', String(Date.now()));
+            window.location.replace(url.toString());
         }
 
         function logoutSystem() {
