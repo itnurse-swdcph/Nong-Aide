@@ -3208,7 +3208,7 @@
                 selectedUnitRequest = await withLoadingPopup('กำลังโหลดรายละเอียดใบเบิก...', async () => fetchRequestDetail(requestId));
                 openRecordModal(
                     `รายละเอียด ${selectedUnitRequest.header.requestNo}`,
-                    'ข้อมูลใบเบิกของหน่วยงาน แสดงในรูปแบบป๊อปอัพกลางจอ',
+                    '',
                     buildUnitDetailHtml(selectedUnitRequest)
                 );
             } catch (error) {
@@ -3434,7 +3434,7 @@
                 selectedLaundryRequest = await withLoadingPopup('กำลังโหลดรายละเอียดงานซักฟอก...', async () => fetchRequestDetail(requestId));
                 openRecordModal(
                     `งานซักฟอก ${selectedLaundryRequest.header.requestNo}`,
-                    'เปิดดูรายละเอียดและทำรายการในรูปแบบป๊อปอัพกลางจอ',
+                    '',
                     buildLaundryDetailHtml(selectedLaundryRequest)
                 );
             } catch (error) {
