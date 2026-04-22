@@ -1,0 +1,2554 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ระบบส่งแลกผ้าสะอาด</title>
+    <link rel="icon" type="image/jpeg" href="https://img2.pic.in.th/LINE_ALBUM_442025_251220_1.jpg">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        :root {
+            --navy: #153b63;
+            --navy-dark: #0d2742;
+            --bg: #f4f7fb;
+            --surface: #ffffff;
+            --border: #d9e6f2;
+            --text: #193047;
+            --muted: #667789;
+            --success: #16885b;
+            --warning: #b98016;
+            --danger: #c44f4f;
+            --ward-soft: #eef7ff;
+            --laundry-soft: #fdf3e4;
+            --shadow: 0 14px 28px rgba(21, 59, 99, 0.08);
+            --radius: 18px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Prompt', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(180deg, #eef4fb 0%, #f8fafc 100%);
+            color: var(--text);
+        }
+
+        body.guide-open {
+            overflow: hidden;
+        }
+
+        button,
+        input,
+        select,
+        textarea {
+            font: inherit;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 30;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            padding: 16px 20px;
+            color: #fff;
+            background: linear-gradient(135deg, var(--navy-dark), var(--navy));
+            box-shadow: 0 10px 26px rgba(13, 39, 66, 0.18);
+        }
+
+        .nav-title {
+            font-size: 1.18rem;
+            font-weight: 600;
+            line-height: 1.5;
+        }
+
+        .nav-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .nav-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.12);
+            font-size: 0.88rem;
+        }
+
+        .nav-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .nav-btn {
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            border-radius: 999px;
+            padding: 10px 14px;
+            cursor: pointer;
+        }
+
+        .page {
+            max-width: 1360px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .notice,
+        .loader,
+        .hero,
+        .card,
+        .metric {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+        }
+
+        .notice {
+            padding: 14px 16px;
+            margin-bottom: 16px;
+        }
+
+        .notice strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .loader {
+            padding: 48px 18px;
+            text-align: center;
+        }
+
+        .hero {
+            display: grid;
+            grid-template-columns: 1.4fr 1fr;
+            gap: 16px;
+            padding: 18px;
+            margin-bottom: 16px;
+        }
+
+        .hero h2 {
+            font-size: 1.3rem;
+            margin-bottom: 8px;
+        }
+
+        .hero p {
+            color: var(--muted);
+            line-height: 1.8;
+        }
+
+        .hero-side {
+            display: grid;
+            gap: 10px;
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .metric {
+            padding: 16px;
+        }
+
+        .metric small {
+            display: block;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        .metric strong {
+            font-size: 1.5rem;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .tabs {
+            display: inline-flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 6px;
+            border-radius: 999px;
+            background: #fff;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+        }
+
+        .tab-btn {
+            border: none;
+            border-radius: 999px;
+            padding: 10px 16px;
+            background: transparent;
+            color: var(--text);
+            cursor: pointer;
+        }
+
+        .tab-btn.active {
+            color: #fff;
+            background: var(--navy);
+        }
+
+        .panel {
+            display: none;
+        }
+
+        .panel.active {
+            display: block;
+        }
+
+        .card {
+            padding: 18px;
+            margin-bottom: 16px;
+        }
+
+        .section-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .section-head h3 {
+            font-size: 1.05rem;
+        }
+
+        .section-head p {
+            margin-top: 4px;
+            color: var(--muted);
+            line-height: 1.7;
+            font-size: 0.92rem;
+        }
+
+        .field-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 0.92rem;
+        }
+
+        .field input,
+        .field select,
+        .field textarea {
+            width: 100%;
+            padding: 12px 13px;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            color: var(--text);
+            background: #fff;
+        }
+
+        .field textarea {
+            min-height: 88px;
+            resize: vertical;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: #fff;
+        }
+
+        table {
+            width: 100%;
+            min-width: 1100px;
+            border-collapse: collapse;
+            background: #fff;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #e8eef5;
+            text-align: left;
+            vertical-align: top;
+            font-size: 0.88rem;
+        }
+
+        th {
+            background: #f3f8fd;
+        }
+
+        .ward-head {
+            background: var(--ward-soft);
+        }
+
+        .laundry-head {
+            background: var(--laundry-soft);
+        }
+
+        .ward-col {
+            background: rgba(238, 247, 255, 0.52);
+        }
+
+        .laundry-col {
+            background: rgba(253, 243, 228, 0.68);
+        }
+
+        .number-input {
+            width: 92px;
+            padding: 9px 10px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+        }
+
+        .number-input::placeholder,
+        .text-input::placeholder,
+        input::placeholder,
+        textarea::placeholder {
+            color: #9aa9b8;
+        }
+
+        .text-input {
+            width: 100%;
+            min-width: 140px;
+            padding: 9px 10px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: #eef5fd;
+            font-size: 0.78rem;
+            color: var(--navy);
+        }
+
+        .status-submitted,
+        .status-received,
+        .status-processing {
+            color: var(--warning);
+        }
+
+        .status-issued_waiting_receipt {
+            color: var(--navy);
+        }
+
+        .status-partial_issued {
+            color: var(--warning);
+        }
+
+        .status-completed {
+            color: var(--success);
+        }
+
+        .status-cancelled {
+            color: var(--danger);
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            margin-top: 14px;
+        }
+
+        .primary-btn,
+        .ghost-btn,
+        .table-btn {
+            border: none;
+            border-radius: 12px;
+            padding: 11px 15px;
+            cursor: pointer;
+        }
+
+        .primary-btn {
+            color: #fff;
+            background: var(--navy);
+        }
+
+        .ghost-btn {
+            color: var(--text);
+            background: #f1f6fb;
+            border: 1px solid var(--border);
+        }
+
+        .table-btn {
+            color: #fff;
+            background: var(--navy);
+            font-size: 0.84rem;
+            padding: 8px 11px;
+        }
+
+        .stack {
+            display: grid;
+            gap: 16px;
+        }
+
+        .empty {
+            padding: 36px 16px;
+            text-align: center;
+            color: var(--muted);
+        }
+
+        .draft-hint {
+            margin-top: 10px;
+            font-size: 0.84rem;
+            color: var(--muted);
+        }
+
+        .guide-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 120;
+            display: flex;
+            align-items: stretch;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(10, 24, 41, 0.52);
+            backdrop-filter: blur(6px);
+        }
+
+        .guide-sheet {
+            width: min(1180px, 100%);
+            height: 100%;
+            overflow-y: auto;
+            padding: 24px;
+            border-radius: 26px;
+            background: linear-gradient(180deg, #f7fbff 0%, #ffffff 18%);
+            box-shadow: 0 24px 60px rgba(13, 39, 66, 0.22);
+        }
+
+        .guide-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+
+        .guide-head h2 {
+            font-size: 1.45rem;
+            margin-bottom: 8px;
+        }
+
+        .guide-head p {
+            max-width: 760px;
+            color: var(--muted);
+            line-height: 1.8;
+        }
+
+        .guide-close {
+            border: none;
+            border-radius: 999px;
+            padding: 10px 14px;
+            color: #fff;
+            background: var(--navy);
+            cursor: pointer;
+        }
+
+        .guide-chip-row,
+        .guide-role-grid,
+        .guide-flow-grid,
+        .guide-screen-grid,
+        .guide-rule-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .guide-chip-row {
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            margin-bottom: 16px;
+        }
+
+        .guide-chip {
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            background: #fff;
+            box-shadow: var(--shadow);
+        }
+
+        .guide-chip strong,
+        .guide-role-card h3,
+        .guide-flow-card h3,
+        .guide-section h3 {
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .guide-chip span,
+        .guide-role-card p,
+        .guide-flow-card p,
+        .guide-section p,
+        .guide-rule-card p,
+        .guide-status-table td,
+        .guide-status-table th,
+        .mock-table td,
+        .mock-table th,
+        .mock-note {
+            line-height: 1.7;
+            color: var(--muted);
+        }
+
+        .guide-section {
+            margin-bottom: 22px;
+        }
+
+        .guide-role-grid {
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            margin-bottom: 18px;
+        }
+
+        .guide-role-card,
+        .guide-flow-card,
+        .guide-rule-card {
+            padding: 18px;
+            border: 1px solid var(--border);
+            border-radius: 22px;
+            background: #fff;
+            box-shadow: var(--shadow);
+        }
+
+        .guide-role-card.unit {
+            background: linear-gradient(180deg, #f5fbff 0%, #ffffff 100%);
+        }
+
+        .guide-role-card.laundry {
+            background: linear-gradient(180deg, #fff8ee 0%, #ffffff 100%);
+        }
+
+        .guide-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            margin-bottom: 10px;
+        }
+
+        .guide-badge.unit {
+            background: var(--ward-soft);
+            color: #1f5688;
+        }
+
+        .guide-badge.laundry {
+            background: var(--laundry-soft);
+            color: #8d5b0f;
+        }
+
+        .guide-steps {
+            display: grid;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .guide-step {
+            display: grid;
+            grid-template-columns: 40px 1fr;
+            gap: 12px;
+            padding: 12px 14px;
+            border-radius: 16px;
+            background: #f8fbff;
+            border: 1px solid #e1ebf5;
+        }
+
+        .guide-step strong {
+            color: var(--text);
+        }
+
+        .guide-step-no {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 14px;
+            color: #fff;
+            background: var(--navy);
+            font-weight: 600;
+        }
+
+        .guide-flow-grid {
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            margin-bottom: 18px;
+        }
+
+        .guide-flow-card {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .guide-flow-card::after {
+            content: "";
+            position: absolute;
+            inset: auto -30px -30px auto;
+            width: 100px;
+            height: 100px;
+            border-radius: 999px;
+            background: rgba(21, 59, 99, 0.06);
+        }
+
+        .guide-screen-grid {
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            margin-bottom: 18px;
+        }
+
+        .mock-browser {
+            border: 1px solid var(--border);
+            border-radius: 22px;
+            overflow: hidden;
+            background: #fff;
+            box-shadow: var(--shadow);
+        }
+
+        .mock-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 14px;
+            color: #fff;
+            background: linear-gradient(135deg, var(--navy-dark), var(--navy));
+        }
+
+        .mock-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .mock-dots span {
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.72);
+        }
+
+        .mock-body {
+            padding: 16px;
+            background: linear-gradient(180deg, #fbfdff 0%, #ffffff 100%);
+        }
+
+        .mock-tabs {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .mock-tab {
+            padding: 7px 12px;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            border: 1px solid var(--border);
+            background: #f5f9fd;
+            color: var(--text);
+        }
+
+        .mock-tab.active {
+            color: #fff;
+            background: var(--navy);
+            border-color: var(--navy);
+        }
+
+        .mock-summary {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .mock-box {
+            padding: 12px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            background: #fff;
+        }
+
+        .mock-box strong {
+            display: block;
+            margin-top: 4px;
+            color: var(--text);
+        }
+
+        .mock-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .mock-table th,
+        .mock-table td {
+            padding: 8px;
+            font-size: 0.8rem;
+            border-bottom: 1px solid #edf2f7;
+        }
+
+        .mock-table th {
+            color: var(--text);
+            background: #f5f9fd;
+        }
+
+        .mock-note {
+            margin-top: 10px;
+            font-size: 0.85rem;
+        }
+
+        .guide-status-table-wrap {
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            background: #fff;
+            box-shadow: var(--shadow);
+        }
+
+        .guide-status-table {
+            width: 100%;
+            min-width: 720px;
+            border-collapse: collapse;
+        }
+
+        .guide-status-table th,
+        .guide-status-table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid #edf2f7;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .guide-status-table th {
+            color: var(--text);
+            background: #f4f8fc;
+        }
+
+        .guide-rule-grid {
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        }
+
+        @media (max-width: 980px) {
+            .hero {
+                grid-template-columns: 1fr;
+            }
+
+            .guide-head {
+                flex-direction: column;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .navbar {
+                flex-direction: column;
+            }
+
+            .page {
+                padding: 14px;
+            }
+
+            .guide-modal {
+                padding: 12px;
+            }
+
+            .guide-sheet {
+                padding: 18px;
+                border-radius: 20px;
+            }
+
+            .mock-summary,
+            .guide-flow-grid,
+            .guide-role-grid,
+            .guide-screen-grid,
+            .guide-rule-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div>
+            <div class="nav-title" id="systemTitle">ระบบส่งแลกผ้าสะอาด</div>
+            <div class="nav-meta">
+                <span class="nav-chip"><i class="fas fa-hospital-user"></i> <span id="navWardText">หน่วยงาน: -</span></span>
+                <span class="nav-chip"><i class="fas fa-file-lines"></i> <span id="navRoleText">บทบาท: หน่วยงาน</span></span>
+            </div>
+        </div>
+        <div class="nav-actions">
+            <button class="nav-btn" onclick="openUsageGuide()"><i class="fas fa-book-open"></i> คู่มือการใช้งาน</button>
+            <button class="nav-btn" onclick="reloadPage()"><i class="fas fa-rotate-right"></i> รีเฟรช</button>
+            <button id="btnAdminLogin" class="nav-btn" onclick="showAdminLogin()"><i class="fas fa-user-shield"></i> Admin</button>
+            <button id="btnExitAdmin" class="nav-btn hidden" onclick="exitAdminMode()"><i class="fas fa-shield-halved"></i> ออกจาก Admin</button>
+            <button class="nav-btn" onclick="goHome()"><i class="fas fa-house"></i> หน้าหลัก</button>
+            <button class="nav-btn" onclick="logoutSystem()"><i class="fas fa-right-from-bracket"></i> ออกจากระบบ</button>
+        </div>
+    </nav>
+
+    <div class="page">
+        <section id="globalNotice" class="notice hidden"></section>
+        <section id="loader" class="loader">
+            <i class="fas fa-spinner fa-spin fa-3x" style="color: var(--navy); margin-bottom: 12px;"></i>
+            <div id="loaderText">กำลังโหลดข้อมูล</div>
+        </section>
+
+        <main id="app" class="hidden">
+            <section id="unitWorkspace" class="hidden">
+                <div class="hero">
+                    <div>
+                        <h2>ใบเบิก/แลกผ้าสะอาด</h2>
+                        <p>หน่วยงานกรอกยอดคงเหลือในคลัง ระบุจำนวนส่งซัก ระบบแนะนำจำนวนเบิกตาม Par และติดตามสถานะได้จนลงรับผ้า</p>
+                    </div>
+                    <div class="hero-side">
+                        <div class="metric">
+                            <small>ใบเบิกที่เปิดอยู่</small>
+                            <strong id="unitOpenMetric">0</strong>
+                        </div>
+                        <div class="metric">
+                            <small>รอรับผ้า</small>
+                            <strong id="unitAwaitMetric">0</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="toolbar">
+                    <div class="tabs">
+                        <button class="tab-btn active" onclick="switchPanel('unitWorkspace', 'unitDashboard', this)">Dashboard</button>
+                        <button id="unitCreateTabBtn" class="tab-btn" onclick="switchPanel('unitWorkspace', 'unitRequest', this)">สร้างใบเบิก</button>
+                        <button class="tab-btn" onclick="switchPanel('unitWorkspace', 'unitRequests', this)">รายการของฉัน</button>
+                    </div>
+                </div>
+
+                <section id="unitDashboard" class="panel active">
+                    <div class="metric-grid">
+                        <div class="metric"><small>รอซักฟอกรับใบ</small><strong id="dashSubmitted">0</strong></div>
+                        <div class="metric"><small>กำลังจัดผ้า</small><strong id="dashProcessing">0</strong></div>
+                        <div class="metric"><small>รอหน่วยงานรับผ้า</small><strong id="dashWaitingReceipt">0</strong></div>
+                        <div class="metric"><small>เสร็จสิ้น</small><strong id="dashCompleted">0</strong></div>
+                    </div>
+                    <div class="card">
+                        <div class="section-head">
+                            <div>
+                                <h3>สถานะล่าสุด</h3>
+                                <p>ใช้ติดตามใบเบิกของหน่วยงาน</p>
+                            </div>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>เลขที่ใบเบิก</th>
+                                        <th>วันที่</th>
+                                        <th>เวร</th>
+                                        <th>สถานะ</th>
+                                        <th>รวมขอเบิก</th>
+                                        <th>รวมคงค้าง</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="unitDashboardBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="unitRequest" class="panel">
+                    <div class="card">
+                        <div class="section-head">
+                            <div>
+                                <h3>สร้างใบเบิกใหม่</h3>
+                                <p>ระบบแนะนำจำนวนขอเบิก = Par - ผ้าคงเหลือในคลัง</p>
+                            </div>
+                        </div>
+                        <form id="exchangeRequestForm" onsubmit="submitExchangeRequest(event)">
+                            <div class="field-grid">
+                                <label class="field">
+                                    วันที่
+                                    <input type="date" id="requestDate" required>
+                                </label>
+                                <label class="field">
+                                    เวร
+                                    <select id="requestShift" required>
+                                        <option value="">เลือกเวร</option>
+                                        <option value="เช้า">เช้า</option>
+                                        <option value="บ่าย">บ่าย</option>
+                                        <option value="ดึก">ดึก</option>
+                                    </select>
+                                </label>
+                                <label class="field">
+                                    ผู้ส่งใบเบิก
+                                    <input type="text" id="requesterName" placeholder="ชื่อ-นามสกุล" required>
+                                </label>
+                            </div>
+                            <div class="table-wrap">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>รายการผ้า</th>
+                                            <th>Par</th>
+                                            <th>คงเหลือในคลัง</th>
+                                            <th>ส่งซัก</th>
+                                            <th>แนะนำ</th>
+                                            <th>ขอเบิก</th>
+                                            <th>หมายเหตุ</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="requestLineBody"></tbody>
+                                </table>
+                            </div>
+                            <div class="draft-hint"><i class="fas fa-floppy-disk"></i> ระบบบันทึก draft อัตโนมัติ ข้อมูลที่กรอกจะไม่หายระหว่างทำรายการ</div>
+                            <div class="actions">
+                                <button type="submit" class="primary-btn" id="submitRequestBtn"><i class="fas fa-floppy-disk"></i> ส่งใบเบิก</button>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+
+                <section id="unitRequests" class="panel">
+                    <div class="stack">
+                        <div class="card">
+                            <div class="section-head">
+                                <div>
+                                    <h3>รายการใบเบิกของหน่วยงาน</h3>
+                                    <p>ติดตามสถานะ พิมพ์เอกสาร และลงรับผ้า</p>
+                                </div>
+                            </div>
+                            <div class="table-wrap">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>เลขที่ใบเบิก</th>
+                                            <th>วันที่</th>
+                                            <th>เวร</th>
+                                            <th>สถานะ</th>
+                                            <th>รวมขอเบิก</th>
+                                            <th>รวมจ่าย</th>
+                                            <th>รวมคงค้าง</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="unitRequestBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div id="unitDetailCard" class="card hidden"></div>
+                    </div>
+                </section>
+            </section>
+
+            <section id="laundryWorkspace" class="hidden">
+                <div class="hero">
+                    <div>
+                        <h2>คิวงานซักฟอก</h2>
+                        <p>ลงรับใบเบิก บันทึกจำนวนผ้าที่รับ จำนวนที่จ่าย คงค้าง และพิมพ์ใบนำจ่าย</p>
+                    </div>
+                    <div class="hero-side">
+                        <div class="metric">
+                            <small>คิวใหม่</small>
+                            <strong id="laundryNewMetric">0</strong>
+                        </div>
+                        <div class="metric">
+                            <small>รอหน่วยงานรับผ้า</small>
+                            <strong id="laundryAwaitMetric">0</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="toolbar">
+                    <div class="tabs">
+                        <button class="tab-btn active" onclick="switchPanel('laundryWorkspace', 'laundryQueue', this)">คิวงาน</button>
+                        <button class="tab-btn" onclick="switchPanel('laundryWorkspace', 'laundryHistory', this)">ประวัติ</button>
+                    </div>
+                </div>
+
+                <section id="laundryQueue" class="panel active">
+                    <div class="stack">
+                        <div class="card">
+                            <div class="section-head">
+                                <div>
+                                    <h3>รายการใบเบิก</h3>
+                                    <p>เปิดดูรายละเอียดเพื่อรับใบหรือจ่ายผ้า</p>
+                                </div>
+                            </div>
+                            <div class="table-wrap">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>เลขที่ใบเบิก</th>
+                                            <th>หน่วยงาน</th>
+                                            <th>วันที่</th>
+                                            <th>เวร</th>
+                                            <th>สถานะ</th>
+                                            <th>รวมขอเบิก</th>
+                                            <th>รวมคงค้าง</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="laundryQueueBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div id="laundryDetailCard" class="card hidden"></div>
+                    </div>
+                </section>
+
+                <section id="laundryHistory" class="panel">
+                    <div class="card">
+                        <div class="section-head">
+                            <div>
+                                <h3>ประวัติทั้งหมด</h3>
+                                <p>ดูใบเบิกที่ปิดงานแล้วหรือจ่ายแล้ว</p>
+                            </div>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>เลขที่ใบเบิก</th>
+                                        <th>หน่วยงาน</th>
+                                        <th>วันที่</th>
+                                        <th>สถานะ</th>
+                                        <th>รวมจ่าย</th>
+                                        <th>รวมคงค้าง</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="laundryHistoryBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </section>
+
+            <section id="adminWorkspace" class="hidden">
+                <div class="hero">
+                    <div>
+                        <h2>ภาพรวมระดับองค์กร</h2>
+                        <p>ติดตามใบเบิกและคิวคงค้างทุกหน่วยงาน</p>
+                    </div>
+                    <div class="hero-side">
+                        <div class="metric">
+                            <small>ใบเบิกทั้งหมด</small>
+                            <strong id="adminTotalMetric">0</strong>
+                        </div>
+                        <div class="metric">
+                            <small>ค้างดำเนินการ</small>
+                            <strong id="adminOpenMetric">0</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="section-head">
+                        <div>
+                            <h3>รายการทั้งหมด</h3>
+                        </div>
+                    </div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>เลขที่ใบเบิก</th>
+                                    <th>หน่วยงาน</th>
+                                    <th>วันที่</th>
+                                    <th>เวร</th>
+                                    <th>สถานะ</th>
+                                    <th>รวมขอเบิก</th>
+                                    <th>รวมคงค้าง</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div id="adminDetailCard" class="card hidden"></div>
+            </section>
+        </main>
+    </div>
+
+    <div id="usageGuideModal" class="guide-modal hidden" onclick="handleGuideBackdrop(event)">
+        <div class="guide-sheet">
+            <div class="guide-head">
+                <div>
+                    <h2>คู่มือการใช้งานระบบส่งแลกผ้าสะอาด</h2>
+                    <p>คู่มือนี้ใช้ร่วมกันทั้งหน่วยผู้ใช้งานและงานซักฟอก เพื่อให้เข้าใจหน้าที่ของตนเอง เห็นภาพงานของอีกฝ่าย และติดตามเอกสารตั้งแต่เปิดใบเบิกจนปิดงานได้ครบทั้ง flow</p>
+                </div>
+                <button class="guide-close" type="button" onclick="closeUsageGuide()"><i class="fas fa-xmark"></i> ปิดคู่มือ</button>
+            </div>
+
+            <section class="guide-section">
+                <div class="guide-chip-row">
+                    <div class="guide-chip">
+                        <strong>ใช้คู่มือเดียวกัน</strong>
+                        <span>ทั้งหน่วยงานและซักฟอกอ่านชุดเดียวกัน เพื่อเห็นขั้นตอนของกันและกัน</span>
+                    </div>
+                    <div class="guide-chip">
+                        <strong>จุดเริ่มต้นของระบบ</strong>
+                        <span>หน่วยงานเป็นผู้เปิดใบเบิก โดยบันทึกคงเหลือ ส่งซัก ขอเบิก และหมายเหตุรายรายการ</span>
+                    </div>
+                    <div class="guide-chip">
+                        <strong>จุดปิดงานของระบบ</strong>
+                        <span>หน่วยงานลงรับผ้าในระบบ หลังจากซักฟอกบันทึกรับใบและจ่ายผ้าแล้ว</span>
+                    </div>
+                    <div class="guide-chip">
+                        <strong>ประโยชน์หลัก</strong>
+                        <span>ติดตามสถานะเอกสาร ตรวจสอบยอดค้าง และทวนข้อมูลย้อนหลังได้เป็นมาตรฐานเดียวกัน</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="guide-section">
+                <h3>ภาพรวม Flow การทำงาน</h3>
+                <p>ลำดับงานจริงในระบบจะเดินตาม 4 ช่วงหลักนี้เสมอ ไม่ว่าผู้ใช้งานจะเข้าจากฝั่งหน่วยงานหรือฝั่งซักฟอก</p>
+                <div class="guide-flow-grid">
+                    <div class="guide-flow-card">
+                        <h3>1. หน่วยงานเปิดใบเบิก</h3>
+                        <p>กรอกวันที่ เวร ผู้ส่งใบเบิก และยอดรายรายการ เช่น Stock, คงเหลือ, ส่งซัก, ขอเบิก และหมายเหตุ</p>
+                    </div>
+                    <div class="guide-flow-card">
+                        <h3>2. ซักฟอกรับใบ</h3>
+                        <p>เปิดเอกสารจากคิวงาน ลงชื่อผู้รับใบเบิก และเริ่มจัดการยอดผ้าที่เกี่ยวข้องในแต่ละรายการ</p>
+                    </div>
+                    <div class="guide-flow-card">
+                        <h3>3. ซักฟอกจ่ายผ้า</h3>
+                        <p>บันทึกรับจริง จ่ายจริง คงค้าง และหมายเหตุซักฟอก จากนั้นพิมพ์ใบนำจ่ายส่งกลับหน่วยงาน</p>
+                    </div>
+                    <div class="guide-flow-card">
+                        <h3>4. หน่วยงานลงรับผ้า</h3>
+                        <p>ตรวจรับผ้าจริง ลงชื่อผู้รับผ้า และปิดงานในระบบให้เอกสารเปลี่ยนเป็นเสร็จสิ้น</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="guide-section">
+                <h3>จำลองหน้าจอในระบบ</h3>
+                <p>ตัวอย่างด้านล่างเป็นภาพจำลองของหน้าที่ผู้ใช้จะพบจริงในระบบ เพื่อช่วยให้เห็นว่าแต่ละเมนูใช้ทำอะไร</p>
+                <div class="guide-screen-grid">
+                    <div class="mock-browser">
+                        <div class="mock-topbar">
+                            <div>
+                                <strong>มุมมองหน่วยงาน</strong>
+                                <div style="font-size:0.82rem; opacity:0.88;">Dashboard / สร้างใบเบิก / รายการของฉัน</div>
+                            </div>
+                            <div class="mock-dots"><span></span><span></span><span></span></div>
+                        </div>
+                        <div class="mock-body">
+                            <div class="mock-tabs">
+                                <span class="mock-tab">Dashboard</span>
+                                <span class="mock-tab active">สร้างใบเบิก</span>
+                                <span class="mock-tab">รายการของฉัน</span>
+                            </div>
+                            <div class="mock-summary">
+                                <div class="mock-box"><small>วันที่ / เวร</small><strong>19 เม.ย. 2569 / เช้า</strong></div>
+                                <div class="mock-box"><small>ผู้ส่งใบเบิก</small><strong>พยาบาลเวรเช้า</strong></div>
+                            </div>
+                            <table class="mock-table">
+                                <thead>
+                                    <tr>
+                                        <th>รายการ</th>
+                                        <th>Stock</th>
+                                        <th>คงเหลือ</th>
+                                        <th>ส่งซัก</th>
+                                        <th>ขอเบิก</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>ผ้าปูเตียง</td>
+                                        <td>40</td>
+                                        <td>12</td>
+                                        <td>18</td>
+                                        <td>20</td>
+                                    </tr>
+                                    <tr>
+                                        <td>ปลอกหมอน</td>
+                                        <td>30</td>
+                                        <td>10</td>
+                                        <td>12</td>
+                                        <td>15</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div class="mock-note">ผู้ใช้ตรวจยอดจริงก่อนกดส่งใบเบิก และสามารถกลับมาดูสถานะหรือพิมพ์ใบเบิกจากเมนูรายการของฉันได้</div>
+                        </div>
+                    </div>
+
+                    <div class="mock-browser">
+                        <div class="mock-topbar">
+                            <div>
+                                <strong>มุมมองงานซักฟอก</strong>
+                                <div style="font-size:0.82rem; opacity:0.88;">คิวงาน / ประวัติ / รายละเอียดการจ่าย</div>
+                            </div>
+                            <div class="mock-dots"><span></span><span></span><span></span></div>
+                        </div>
+                        <div class="mock-body">
+                            <div class="mock-tabs">
+                                <span class="mock-tab active">คิวงาน</span>
+                                <span class="mock-tab">ประวัติ</span>
+                            </div>
+                            <div class="mock-summary">
+                                <div class="mock-box"><small>คิวใหม่</small><strong>4 ใบ</strong></div>
+                                <div class="mock-box"><small>รอหน่วยงานรับ</small><strong>2 ใบ</strong></div>
+                            </div>
+                            <table class="mock-table">
+                                <thead>
+                                    <tr>
+                                        <th>รายการ</th>
+                                        <th>คงเหลือ</th>
+                                        <th>ส่งซัก</th>
+                                        <th>ขอเบิก</th>
+                                        <th>จ่ายจริง</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>ผ้าปูเตียง</td>
+                                        <td>12</td>
+                                        <td>18</td>
+                                        <td>20</td>
+                                        <td>18</td>
+                                    </tr>
+                                    <tr>
+                                        <td>ปลอกหมอน</td>
+                                        <td>10</td>
+                                        <td>12</td>
+                                        <td>15</td>
+                                        <td>15</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div class="mock-note">ซักฟอกใช้หน้ารายละเอียดในการลงรับใบ เบิกผ้าจริง คำนวณคงค้าง และพิมพ์ใบนำจ่ายกลับไปยังหน่วยงาน</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="guide-section">
+                <h3>บทบาทและหน้าที่ของแต่ละฝ่าย</h3>
+                <div class="guide-role-grid">
+                    <div class="guide-role-card unit">
+                        <span class="guide-badge unit"><i class="fas fa-hospital-user"></i> ระบบหน่วยผู้ใช้งาน</span>
+                        <h3>หน้าที่หลักของหน่วยงาน</h3>
+                        <p>เป็นผู้เริ่มต้นเอกสาร ตรวจนับยอดจริงของผ้าในคลังหน่วยงาน ระบุจำนวนส่งซักและจำนวนที่ต้องการเบิก จากนั้นติดตามสถานะและลงรับผ้าเมื่อได้รับของจริง</p>
+                        <div class="guide-steps">
+                            <div class="guide-step">
+                                <div class="guide-step-no">1</div>
+                                <div><strong>เข้าเมนู Dashboard</strong><br>ดูภาพรวมใบเบิกที่เปิดอยู่ คิวที่กำลังดำเนินการ และใบที่รอหน่วยงานรับผ้า</div>
+                            </div>
+                            <div class="guide-step">
+                                <div class="guide-step-no">2</div>
+                                <div><strong>สร้างใบเบิกใหม่</strong><br>ระบุวันที่ เวร ผู้ส่งใบเบิก แล้วกรอกข้อมูลในแต่ละรายการผ้า โดยให้ตรงกับสภาพจริงหน้างาน</div>
+                            </div>
+                            <div class="guide-step">
+                                <div class="guide-step-no">3</div>
+                                <div><strong>กรอกรายละเอียดรายรายการ</strong><br>Stock คือยอดมาตรฐานของหน่วยงาน, คงเหลือคือผ้าพร้อมใช้ที่มีอยู่จริง, ส่งซักคือจำนวนที่ส่งออกไป และขอเบิกคือจำนวนที่ต้องการให้ซักฟอกจ่ายกลับ</div>
+                            </div>
+                            <div class="guide-step">
+                                <div class="guide-step-no">4</div>
+                                <div><strong>ตรวจสอบก่อนส่งใบ</strong><br>ถ้าขอเบิกมากกว่าที่ระบบแนะนำ ควรใส่หมายเหตุให้ชัด เช่น ผ้ามีการใช้งานเพิ่ม หรือมีความจำเป็นเฉพาะรอบเวร</div>
+                            </div>
+                            <div class="guide-step">
+                                <div class="guide-step-no">5</div>
+                                <div><strong>พิมพ์ใบเบิก</strong><br>หลังส่งเอกสารแล้ว หน่วยงานพิมพ์ใบเบิกเพื่อใช้ประกอบการส่งเอกสารลงงานซักฟอก</div>
+                            </div>
+                            <div class="guide-step">
+                                <div class="guide-step-no">6</div>
+                                <div><strong>ติดตามสถานะและลงรับผ้า</strong><br>เมื่อซักฟอกจ่ายผ้าแล้ว ให้กลับมาที่เมนูรายการของฉัน เปิดเอกสารและลงชื่อผู้รับผ้าเพื่อปิดงาน</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="guide-role-card laundry">
+                        <span class="guide-badge laundry"><i class="fas fa-soap"></i> ระบบงานซักฟอก</span>
+                        <h3>หน้าที่หลักของงานซักฟอก</h3>
+                        <p>รับเอกสารจากหน่วยงาน ตรวจสอบยอดที่ขอเบิกกับยอดที่รับจริง บันทึกการจ่ายผ้า คงค้าง และหมายเหตุ เพื่อให้การส่งคืนผ้าสะอาดมีร่องรอยครบถ้วน</p>
+                        <div class="guide-steps">
+                            <div class="guide-step">
+                                <div class="guide-step-no">1</div>
+                                <div><strong>เปิดคิวงาน</strong><br>ดูใบเบิกใหม่ที่ส่งเข้าระบบทั้งหมด พร้อมสถานะ วันที่ และยอดคงค้างที่ต้องดำเนินการ</div>
+                            </div>
+                            <div class="guide-step">
+                                <div class="guide-step-no">2</div>
+                                <div><strong>ลงรับใบเบิก</strong><br>เปิดเอกสาร ระบุชื่อผู้รับใบเบิก แล้วบันทึกในระบบเพื่อเปลี่ยนสถานะเป็นงานซักฟอกรับใบแล้ว</div>
+                            </div>
+                            <div class="guide-step">
+                                <div class="guide-step-no">3</div>
+                                <div><strong>บันทึกยอดที่เกี่ยวข้อง</strong><br>ตรวจดูฝั่งหน่วยงานที่ระบุ Stock, คงเหลือ, ส่งซัก, ขอเบิก แล้วกรอกยอดรับจริง ยอดจ่ายจริง และยอดคงค้างในแต่ละรายการ</div>
+                            </div>
+                            <div class="guide-step">
+                                <div class="guide-step-no">4</div>
+                                <div><strong>ระบุหมายเหตุซักฟอก</strong><br>ใช้เมื่อมีการจ่ายไม่ครบ มีการรับจริงไม่ตรง หรือมีเหตุผลที่หน่วยงานควรรับทราบก่อนรับผ้า</div>
+                            </div>
+                            <div class="guide-step">
+                                <div class="guide-step-no">5</div>
+                                <div><strong>พิมพ์ใบนำจ่าย</strong><br>หลังบันทึกการจ่ายแล้ว ให้พิมพ์ใบนำจ่ายเพื่อใช้ประกอบการส่งผ้าสะอาดกลับไปยังหน่วยงาน</div>
+                            </div>
+                            <div class="guide-step">
+                                <div class="guide-step-no">6</div>
+                                <div><strong>ติดตามเอกสารจนหน่วยงานลงรับ</strong><br>เมื่อหน่วยงานรับผ้าและลงชื่อในระบบ เอกสารจะปิดงานและย้ายไปอยู่ในประวัติ</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="guide-section">
+                <h3>ความหมายของสถานะเอกสาร</h3>
+                <p>ทั้งสองฝ่ายควรใช้ความหมายของสถานะเดียวกัน เพื่อสื่อสารงานและติดตามค้างงานได้ตรงกัน</p>
+                <div class="guide-status-table-wrap">
+                    <table class="guide-status-table">
+                        <thead>
+                            <tr>
+                                <th>สถานะ</th>
+                                <th>ความหมาย</th>
+                                <th>ผู้รับผิดชอบหลัก</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>ส่งคำขอแล้ว</td>
+                                <td>หน่วยงานกรอกข้อมูลและส่งใบเบิกเข้าระบบเรียบร้อย รอซักฟอกเปิดรับงาน</td>
+                                <td>หน่วยงานรอ / ซักฟอกเตรียมรับใบ</td>
+                            </tr>
+                            <tr>
+                                <td>งานซักฟอกรับใบแล้ว</td>
+                                <td>ซักฟอกลงรับเอกสารและเริ่มตรวจสอบรายการในใบเบิก</td>
+                                <td>งานซักฟอก</td>
+                            </tr>
+                            <tr>
+                                <td>กำลังจัดผ้า</td>
+                                <td>ซักฟอกอยู่ระหว่างรวบรวมผ้าสะอาดและบันทึกยอดที่เกี่ยวข้อง</td>
+                                <td>งานซักฟอก</td>
+                            </tr>
+                            <tr>
+                                <td>จ่ายบางส่วน</td>
+                                <td>มีบางรายการที่จ่ายให้หน่วยงานแล้ว แต่ยังมียอดคงค้างที่ต้องตามต่อ</td>
+                                <td>งานซักฟอก</td>
+                            </tr>
+                            <tr>
+                                <td>จ่ายครบ รอหน่วยงานรับ</td>
+                                <td>ซักฟอกบันทึกการจ่ายเรียบร้อยแล้ว รอหน่วยงานเข้ามายืนยันการรับผ้า</td>
+                                <td>หน่วยงาน</td>
+                            </tr>
+                            <tr>
+                                <td>เสร็จสิ้น</td>
+                                <td>หน่วยงานรับผ้าและลงรับในระบบแล้ว เอกสารถูกปิดงาน</td>
+                                <td>ทั้งสองฝ่ายรับทราบ</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="guide-section">
+                <h3>ข้อควรปฏิบัติร่วมกัน</h3>
+                <div class="guide-rule-grid">
+                    <div class="guide-rule-card">
+                        <h3>ตรวจยอดก่อนบันทึก</h3>
+                        <p>ยอดคงเหลือและยอดส่งซักควรอ้างอิงจากสภาพจริงในช่วงเวรนั้น เพื่อลดความคลาดเคลื่อนตอนซักฟอกรับใบ</p>
+                    </div>
+                    <div class="guide-rule-card">
+                        <h3>ใช้หมายเหตุเมื่อมีข้อยกเว้น</h3>
+                        <p>หากยอดขอเบิกสูงผิดปกติ จ่ายไม่ครบ หรือรับจริงไม่ตรง ให้ใส่หมายเหตุเพื่อให้ทั้งสองฝ่ายเห็นข้อมูลเดียวกัน</p>
+                    </div>
+                    <div class="guide-rule-card">
+                        <h3>ติดตามคงค้างต่อเนื่อง</h3>
+                        <p>ใบที่อยู่ในสถานะจ่ายบางส่วนหรือรอหน่วยงานรับ ไม่ควรถูกปล่อยค้างไว้ ควรกลับมาตรวจสอบทุกวัน</p>
+                    </div>
+                    <div class="guide-rule-card">
+                        <h3>พิมพ์เอกสารถูกแบบ</h3>
+                        <p>หน่วยงานพิมพ์ใบเบิก ส่วนซักฟอกพิมพ์ใบนำจ่ายเมื่อต้องส่งผ้ากลับ เพื่อให้หลักฐานเอกสารสอดคล้องกับ flow จริง</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        const EXCHANGE_API = 'https://script.google.com/macros/s/AKfycbwB42c0EM8n64wEGm76Ap5Kq-VSJKaBNfCPnBUEEN_TztQ_f5za1bOlJU_vfYo05T7nVw/exec';
+        const SESSION_KEYS = { ward: 'aide_ward', role: 'aide_role' };
+        const ADMIN_PASSWORD = '11450';
+        const EXCHANGE_DRAFT_KEY_PREFIX = 'aide_exchange_draft_';
+        const STATUS_LABELS = {
+            draft: 'ฉบับร่าง',
+            submitted: 'ส่งคำขอแล้ว',
+            received: 'งานซักฟอกรับใบแล้ว',
+            processing: 'กำลังจัดผ้า',
+            partial_issued: 'จ่ายบางส่วน',
+            issued_waiting_receipt: 'จ่ายครบ รอหน่วยงานรับ',
+            completed: 'เสร็จสิ้น',
+            cancelled: 'ยกเลิก'
+        };
+
+        const urlParams = new URLSearchParams(window.location.search);
+        let currentWard = urlParams.get('ward') || sessionStorage.getItem(SESSION_KEYS.ward) || '';
+        let currentRole = urlParams.get('role') || sessionStorage.getItem(SESSION_KEYS.role) || 'user';
+        let masterItems = [];
+        let unitRequests = [];
+        let allRequests = [];
+        let selectedUnitRequest = null;
+        let selectedLaundryRequest = null;
+        let selectedAdminRequest = null;
+        let exchangeDraftBound = false;
+
+        const isAdminMode = () => currentRole === 'admin';
+        const isLaundryWard = () => !isAdminMode() && currentWard === 'ซักฟอก';
+
+        document.addEventListener('DOMContentLoaded', bootstrap);
+
+        async function bootstrap() {
+            if (!currentWard && !isAdminMode()) {
+                setLoading(false);
+                showNotice('ไม่พบหน่วยงาน', 'กรุณาเข้าสู่ระบบจากหน้าหลักก่อน', 'warning');
+                updateHeader();
+                return;
+            }
+
+            if (currentWard) sessionStorage.setItem(SESSION_KEYS.ward, currentWard);
+            sessionStorage.setItem(SESSION_KEYS.role, currentRole);
+            bindExchangeDraftListeners();
+            updateHeader();
+            setLoading(true, 'กำลังโหลดข้อมูล');
+
+            if (isAdminMode()) {
+                await loadAdminWorkspace();
+            } else if (isLaundryWard()) {
+                await loadLaundryWorkspace(true);
+            } else {
+                await loadUnitWorkspace();
+            }
+
+            setLoading(false);
+        }
+
+        function setLoading(isLoading, text) {
+            document.getElementById('loaderText').innerText = text || 'กำลังโหลดข้อมูล';
+            document.getElementById('loader').classList.toggle('hidden', !isLoading);
+            document.getElementById('app').classList.toggle('hidden', isLoading);
+        }
+
+        function updateHeader() {
+            let title = 'ระบบส่งแลกผ้าสะอาด';
+            let wardText = currentWard || '-';
+            let roleText = 'หน่วยงาน';
+
+            if (isAdminMode()) {
+                title = 'ระบบส่งแลกผ้าสะอาด : Admin';
+                wardText = 'ภาพรวมทั้งองค์กร';
+                roleText = 'Admin';
+            } else if (isLaundryWard()) {
+                roleText = 'ซักฟอก + หน่วยงาน';
+            }
+
+            document.title = title;
+            document.getElementById('systemTitle').innerText = title;
+            document.getElementById('navWardText').innerText = `หน่วยงาน: ${wardText}`;
+            document.getElementById('navRoleText').innerText = `บทบาท: ${roleText}`;
+            document.getElementById('btnAdminLogin').classList.toggle('hidden', isAdminMode());
+            document.getElementById('btnExitAdmin').classList.toggle('hidden', !isAdminMode());
+        }
+
+        function showNotice(title, detail, type = 'info') {
+            const el = document.getElementById('globalNotice');
+            el.className = 'notice';
+            el.innerHTML = `<strong>${escapeHtml(title)}</strong><span>${escapeHtml(detail)}</span>`;
+            el.classList.remove('hidden');
+            if (type === 'warning') el.style.borderLeft = '4px solid var(--warning)';
+            else if (type === 'danger') el.style.borderLeft = '4px solid var(--danger)';
+            else el.style.borderLeft = '4px solid var(--navy)';
+        }
+
+        function hideNotice() {
+            document.getElementById('globalNotice').classList.add('hidden');
+        }
+
+        async function loadUnitWorkspace() {
+            hideNotice();
+            showSection('unitWorkspace');
+            const [masterResult, requestResult] = await Promise.allSettled([
+                fetchExchangeMaster(),
+                fetchWardRequests()
+            ]);
+
+            if (masterResult.status === 'rejected') {
+                showNotice('โหลด master ไม่สำเร็จ', masterResult.reason?.message || 'ไม่สามารถเชื่อมต่อ API ได้', 'danger');
+            }
+            if (requestResult.status === 'rejected') {
+                showNotice('โหลดรายการใบเบิกไม่สำเร็จ', requestResult.reason?.message || 'ไม่สามารถเชื่อมต่อ API ได้', 'warning');
+            }
+
+            document.getElementById('requestDate').value = new Date().toISOString().slice(0, 10);
+            renderUnitWorkspace();
+        }
+
+        async function loadLaundryWorkspace(includeUnit) {
+            hideNotice();
+            showSection(includeUnit ? ['unitWorkspace', 'laundryWorkspace'] : 'laundryWorkspace');
+            const tasks = includeUnit
+                ? [fetchExchangeMaster(), fetchWardRequests(), fetchAllRequests()]
+                : [fetchAllRequests()];
+
+            const results = await Promise.allSettled(tasks);
+            if (results.some(result => result.status === 'rejected')) {
+                showNotice('โหลดข้อมูลไม่ครบ', 'บางส่วนของระบบเชื่อมต่อ API ไม่สำเร็จ', 'warning');
+            }
+
+            if (includeUnit) {
+                document.getElementById('requestDate').value = new Date().toISOString().slice(0, 10);
+                renderUnitWorkspace();
+            }
+            renderLaundryWorkspace();
+        }
+
+        async function loadAdminWorkspace() {
+            hideNotice();
+            showSection('adminWorkspace');
+            const result = await Promise.allSettled([fetchAllRequests()]);
+            if (result[0].status === 'rejected') {
+                showNotice('โหลดข้อมูลไม่สำเร็จ', result[0].reason?.message || 'ไม่สามารถเชื่อมต่อ API ได้', 'danger');
+            }
+            renderAdminWorkspace();
+        }
+
+        function showSection(ids) {
+            ['unitWorkspace', 'laundryWorkspace', 'adminWorkspace'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+
+            const list = Array.isArray(ids) ? ids : [ids];
+            list.forEach(id => document.getElementById(id).classList.remove('hidden'));
+        }
+
+        async function fetchExchangeMaster() {
+            ensureExchangeApiReady();
+            const response = await fetch(`${EXCHANGE_API}?action=getExchangeMaster&ward=${encodeURIComponent(currentWard)}`);
+            const result = await response.json();
+            if (result.status !== 'success') throw new Error(result.message || 'โหลด master ไม่สำเร็จ');
+            masterItems = Array.isArray(result.data) ? result.data : [];
+        }
+
+        async function fetchWardRequests() {
+            ensureExchangeApiReady();
+            const response = await fetch(`${EXCHANGE_API}?action=getWardExchangeRequests&ward=${encodeURIComponent(currentWard)}`);
+            const result = await response.json();
+            if (result.status !== 'success') throw new Error(result.message || 'โหลดรายการไม่สำเร็จ');
+            unitRequests = Array.isArray(result.data) ? result.data : [];
+        }
+
+        async function fetchAllRequests() {
+            ensureExchangeApiReady();
+            const response = await fetch(`${EXCHANGE_API}?action=getLaundryExchangeRequests`);
+            const result = await response.json();
+            if (result.status !== 'success') throw new Error(result.message || 'โหลดรายการไม่สำเร็จ');
+            allRequests = Array.isArray(result.data) ? result.data : [];
+        }
+
+        async function fetchRequestDetail(requestId) {
+            ensureExchangeApiReady();
+            const response = await fetch(`${EXCHANGE_API}?action=getExchangeRequestDetail&requestId=${encodeURIComponent(requestId)}`);
+            const result = await response.json();
+            if (result.status !== 'success') throw new Error(result.message || 'โหลดรายละเอียดไม่สำเร็จ');
+            return result.data;
+        }
+
+        function renderUnitWorkspace() {
+            const createTabBtn = document.getElementById('unitCreateTabBtn');
+            const requestPanel = document.getElementById('unitRequest');
+            const hideCreate = isLaundryWard();
+
+            createTabBtn.classList.toggle('hidden', hideCreate);
+            requestPanel.classList.toggle('hidden', hideCreate);
+
+            if (hideCreate && requestPanel.classList.contains('active')) {
+                requestPanel.classList.remove('active');
+                document.getElementById('unitDashboard').classList.add('active');
+                const tabs = document.querySelectorAll('#unitWorkspace .tab-btn');
+                tabs.forEach(btn => btn.classList.remove('active'));
+                if (tabs[0]) tabs[0].classList.add('active');
+            }
+
+            document.getElementById('unitOpenMetric').innerText = unitRequests.filter(req => ['submitted', 'received', 'processing', 'partial_issued'].includes(req.status)).length.toLocaleString();
+            document.getElementById('unitAwaitMetric').innerText = unitRequests.filter(req => req.status === 'issued_waiting_receipt').length.toLocaleString();
+            document.getElementById('dashSubmitted').innerText = unitRequests.filter(req => req.status === 'submitted').length.toLocaleString();
+            document.getElementById('dashProcessing').innerText = unitRequests.filter(req => ['received', 'processing', 'partial_issued'].includes(req.status)).length.toLocaleString();
+            document.getElementById('dashWaitingReceipt').innerText = unitRequests.filter(req => req.status === 'issued_waiting_receipt').length.toLocaleString();
+            document.getElementById('dashCompleted').innerText = unitRequests.filter(req => req.status === 'completed').length.toLocaleString();
+            renderRequestFormRows();
+            restoreExchangeDraftToForm();
+            renderUnitRequestTables();
+        }
+
+        function renderRequestFormRows() {
+            const tbody = document.getElementById('requestLineBody');
+            if (masterItems.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;">ไม่พบรายการ master ของหน่วยงานนี้</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = masterItems.map((item, index) => `
+                <tr>
+                    <td>${escapeHtml(item.itemName)}</td>
+                    <td>${item.parLevel}</td>
+                    <td><input class="number-input" type="number" min="0" id="stockBalance-${index}" placeholder="คงเหลือ" oninput="recalculateLine(${index})"></td>
+                    <td><input class="number-input" type="number" min="0" id="sentLaundry-${index}" placeholder="ส่งซัก"></td>
+                    <td><input class="number-input" type="number" value="${item.parLevel}" id="suggestedQty-${index}" readonly></td>
+                    <td><input class="number-input" type="number" min="0" id="requestedQty-${index}" placeholder="ขอเบิก"></td>
+                    <td><input class="text-input" type="text" id="wardNote-${index}" placeholder="หมายเหตุ"></td>
+                </tr>
+            `).join('');
+        }
+
+        function recalculateLine(index) {
+            const par = Number(masterItems[index].parLevel || 0);
+            const stock = Number(document.getElementById(`stockBalance-${index}`).value || 0);
+            const suggested = Math.max(par - stock, 0);
+            document.getElementById(`suggestedQty-${index}`).value = suggested;
+            saveExchangeDraftFromForm();
+        }
+
+        async function submitExchangeRequest(event) {
+            event.preventDefault();
+            ensureExchangeApiReady();
+
+            const requesterName = document.getElementById('requesterName').value.trim();
+            const requestDate = document.getElementById('requestDate').value;
+            const shift = document.getElementById('requestShift').value;
+            if (!requesterName || !requestDate || !shift) {
+                Swal.fire({ icon: 'warning', title: 'กรอกข้อมูลให้ครบ' });
+                return;
+            }
+
+            const lines = masterItems.map((item, index) => {
+                const stockBalance = Number(document.getElementById(`stockBalance-${index}`).value || 0);
+                const sentLaundryQty = Number(document.getElementById(`sentLaundry-${index}`).value || 0);
+                const suggestedQty = Math.max(Number(item.parLevel || 0) - stockBalance, 0);
+                const requestedQty = Number(document.getElementById(`requestedQty-${index}`).value || 0);
+                const wardNote = document.getElementById(`wardNote-${index}`).value.trim();
+                return {
+                    itemName: item.itemName,
+                    mainCategory: item.mainCategory,
+                    parLevel: item.parLevel,
+                    stockBalance,
+                    sentLaundryQty,
+                    suggestedQty,
+                    requestedQty,
+                    wardNote
+                };
+            });
+
+            if (!lines.some(line => line.requestedQty > 0)) {
+                Swal.fire({ icon: 'warning', title: 'ยังไม่มีรายการที่ขอเบิก' });
+                return;
+            }
+
+            const overs = lines.filter(line => line.requestedQty > line.suggestedQty && !line.wardNote);
+            if (overs.length > 0) {
+                Swal.fire({ icon: 'warning', title: 'รายการที่ขอเกินจำนวนแนะนำต้องมีหมายเหตุ' });
+                return;
+            }
+
+            const btn = document.getElementById('submitRequestBtn');
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> กำลังส่ง`;
+
+            try {
+                const response = await fetch(EXCHANGE_API, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: 'submitExchangeRequest',
+                        ward: currentWard,
+                        requestDate,
+                        shift,
+                        requesterName,
+                        lines
+                    })
+                });
+                const result = await response.json();
+                if (!response.ok || result.status !== 'success') {
+                    throw new Error(result.message || 'สร้างใบเบิกไม่สำเร็จ');
+                }
+
+                clearExchangeDraft();
+                await fetchWardRequests();
+                renderUnitWorkspace();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'สร้างใบเบิกแล้ว',
+                    text: `เลขที่ใบเบิก ${result.data.requestNo}`
+                });
+                document.getElementById('exchangeRequestForm').reset();
+                document.getElementById('requestDate').value = new Date().toISOString().slice(0, 10);
+                renderRequestFormRows();
+                switchPanel('unitWorkspace', 'unitRequests');
+                await openUnitRequest(result.data.requestId);
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'ส่งใบเบิกไม่สำเร็จ', text: error.message || 'เกิดข้อผิดพลาด' });
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fas fa-floppy-disk"></i> ส่งใบเบิก`;
+            }
+        }
+
+        function renderUnitRequestTables() {
+            const dashboardBody = document.getElementById('unitDashboardBody');
+            const requestBody = document.getElementById('unitRequestBody');
+            const rows = unitRequests.slice().sort((a, b) => sortByDate(b.updatedAt || b.requestDate, a.updatedAt || a.requestDate));
+
+            if (rows.length === 0) {
+                const emptyRow = `<tr><td colspan="8" style="text-align:center;">ยังไม่มีรายการ</td></tr>`;
+                dashboardBody.innerHTML = emptyRow;
+                requestBody.innerHTML = emptyRow;
+                return;
+            }
+
+            dashboardBody.innerHTML = rows.slice(0, 5).map(row => `
+                <tr>
+                    <td>${escapeHtml(row.requestNo)}</td>
+                    <td>${escapeHtml(formatThaiDate(row.requestDate))}</td>
+                    <td>${escapeHtml(row.shift)}</td>
+                    <td>${renderStatus(row.status)}</td>
+                    <td>${row.totalRequested}</td>
+                    <td>${row.totalOutstanding}</td>
+                    <td><button class="table-btn" onclick="openUnitRequest('${escapeJs(row.requestId)}')">ดู</button></td>
+                </tr>
+            `).join('');
+
+            requestBody.innerHTML = rows.map(row => `
+                <tr>
+                    <td>${escapeHtml(row.requestNo)}</td>
+                    <td>${escapeHtml(formatThaiDate(row.requestDate))}</td>
+                    <td>${escapeHtml(row.shift)}</td>
+                    <td>${renderStatus(row.status)}</td>
+                    <td>${row.totalRequested}</td>
+                    <td>${row.totalIssued}</td>
+                    <td>${row.totalOutstanding}</td>
+                    <td>
+                        <button class="table-btn" onclick="openUnitRequest('${escapeJs(row.requestId)}')">ดู</button>
+                        <button class="table-btn" onclick="loadAndPrintRequest('${escapeJs(row.requestId)}', 'request')">พิมพ์ใบเบิก</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function openUnitRequest(requestId) {
+            try {
+                selectedUnitRequest = await fetchRequestDetail(requestId);
+                renderUnitDetailCard();
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'โหลดรายละเอียดไม่สำเร็จ', text: error.message || 'เกิดข้อผิดพลาด' });
+            }
+        }
+
+        function renderUnitDetailCard() {
+            const card = document.getElementById('unitDetailCard');
+            const detail = selectedUnitRequest;
+            if (!detail) {
+                card.classList.add('hidden');
+                return;
+            }
+
+            const canConfirm = ['partial_issued', 'issued_waiting_receipt'].includes(detail.header.status);
+            card.classList.remove('hidden');
+            card.innerHTML = `
+                <div class="section-head">
+                    <div>
+                        <h3>รายละเอียดใบเบิก ${escapeHtml(detail.header.requestNo)}</h3>
+                        <p>${escapeHtml(detail.header.ward)} | ${escapeHtml(formatThaiDate(detail.header.requestDate))} | ${renderStatus(detail.header.status)}</p>
+                    </div>
+                    <div class="actions" style="margin-top:0;">
+                        <button class="ghost-btn" type="button" onclick="printRequestDocument(selectedUnitRequest, 'request')">พิมพ์ใบเบิก</button>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>รายการผ้า</th>
+                                <th>Par</th>
+                                <th>คงเหลือ</th>
+                                <th>ส่งซัก</th>
+                                <th>แนะนำ</th>
+                                <th>ขอเบิก</th>
+                                <th>รับจริง</th>
+                                <th>จ่าย</th>
+                                <th>คงค้าง</th>
+                                <th>หมายเหตุ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${detail.lines.map(line => `
+                                <tr>
+                                    <td>${escapeHtml(line.itemName)}</td>
+                                    <td>${line.parLevel}</td>
+                                    <td>${line.stockBalance}</td>
+                                    <td>${line.sentLaundryQty}</td>
+                                    <td>${line.suggestedQty}</td>
+                                    <td>${line.requestedQty}</td>
+                                    <td>${line.laundryReceivedQty || '-'}</td>
+                                    <td>${line.issuedQty || '-'}</td>
+                                    <td>${line.outstandingQty || 0}</td>
+                                    <td>${escapeHtml(line.laundryNote || line.wardNote || '-')}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                ${canConfirm ? `
+                    <div class="field-grid" style="margin-top:14px;">
+                        <label class="field">
+                            ผู้รับผ้า
+                            <input type="text" id="wardReceiverName" placeholder="ชื่อ-นามสกุล">
+                        </label>
+                        <label class="field">
+                            หมายเหตุ
+                            <textarea id="wardReceiptNote" placeholder="หมายเหตุการรับผ้า"></textarea>
+                        </label>
+                    </div>
+                    <div class="actions">
+                        <button class="primary-btn" type="button" onclick="confirmWardReceipt()">ลงรับผ้า</button>
+                    </div>
+                ` : ''}
+            `;
+        }
+
+        async function confirmWardReceipt() {
+            if (!selectedUnitRequest) return;
+            const receiverName = document.getElementById('wardReceiverName').value.trim();
+            const note = document.getElementById('wardReceiptNote').value.trim();
+            if (!receiverName) {
+                Swal.fire({ icon: 'warning', title: 'กรุณาระบุผู้รับผ้า' });
+                return;
+            }
+
+            try {
+                const response = await fetch(EXCHANGE_API, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: 'confirmExchangeReceipt',
+                        requestId: selectedUnitRequest.header.requestId,
+                        receiverName,
+                        note
+                    })
+                });
+                const result = await response.json();
+                if (!response.ok || result.status !== 'success') throw new Error(result.message || 'ลงรับผ้าไม่สำเร็จ');
+                await fetchWardRequests();
+                if (isLaundryWard()) await fetchAllRequests();
+                renderUnitWorkspace();
+                if (isLaundryWard()) renderLaundryWorkspace();
+                await openUnitRequest(selectedUnitRequest.header.requestId);
+                Swal.fire({ icon: 'success', title: 'ลงรับผ้าแล้ว' });
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'ลงรับผ้าไม่สำเร็จ', text: error.message || 'เกิดข้อผิดพลาด' });
+            }
+        }
+
+        function renderLaundryWorkspace() {
+            document.getElementById('laundryNewMetric').innerText = allRequests.filter(row => ['submitted', 'received', 'processing'].includes(row.status)).length.toLocaleString();
+            document.getElementById('laundryAwaitMetric').innerText = allRequests.filter(row => ['partial_issued', 'issued_waiting_receipt'].includes(row.status)).length.toLocaleString();
+            const queueRows = allRequests.filter(row => !['completed', 'cancelled'].includes(row.status)).sort((a, b) => sortByDate(b.updatedAt || b.requestDate, a.updatedAt || a.requestDate));
+            const historyRows = allRequests.filter(row => ['completed', 'cancelled'].includes(row.status)).sort((a, b) => sortByDate(b.updatedAt || b.requestDate, a.updatedAt || a.requestDate));
+
+            document.getElementById('laundryQueueBody').innerHTML = queueRows.length === 0
+                ? `<tr><td colspan="8" style="text-align:center;">ไม่มีรายการ</td></tr>`
+                : queueRows.map(row => `
+                    <tr>
+                        <td>${escapeHtml(row.requestNo)}</td>
+                        <td>${escapeHtml(row.ward)}</td>
+                        <td>${escapeHtml(formatThaiDate(row.requestDate))}</td>
+                        <td>${escapeHtml(row.shift)}</td>
+                        <td>${renderStatus(row.status)}</td>
+                        <td>${row.totalRequested}</td>
+                        <td>${row.totalOutstanding}</td>
+                        <td><button class="table-btn" onclick="openLaundryRequest('${escapeJs(row.requestId)}')">เปิด</button></td>
+                    </tr>
+                `).join('');
+
+            document.getElementById('laundryHistoryBody').innerHTML = historyRows.length === 0
+                ? `<tr><td colspan="7" style="text-align:center;">ไม่มีรายการ</td></tr>`
+                : historyRows.map(row => `
+                    <tr>
+                        <td>${escapeHtml(row.requestNo)}</td>
+                        <td>${escapeHtml(row.ward)}</td>
+                        <td>${escapeHtml(formatThaiDate(row.requestDate))}</td>
+                        <td>${renderStatus(row.status)}</td>
+                        <td>${row.totalIssued}</td>
+                        <td>${row.totalOutstanding}</td>
+                        <td><button class="table-btn" onclick="openLaundryRequest('${escapeJs(row.requestId)}')">ดู</button></td>
+                    </tr>
+                `).join('');
+        }
+
+        async function openLaundryRequest(requestId) {
+            try {
+                selectedLaundryRequest = await fetchRequestDetail(requestId);
+                renderLaundryDetailCard();
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'โหลดรายละเอียดไม่สำเร็จ', text: error.message || 'เกิดข้อผิดพลาด' });
+            }
+        }
+
+        function renderLaundryDetailCard() {
+            const card = document.getElementById('laundryDetailCard');
+            const detail = selectedLaundryRequest;
+            if (!detail) {
+                card.classList.add('hidden');
+                return;
+            }
+
+            const visibleLines = getExchangeDisplayLines(detail.lines);
+
+            card.classList.remove('hidden');
+            card.innerHTML = `
+                <div class="section-head">
+                    <div>
+                        <h3>จัดการใบเบิก ${escapeHtml(detail.header.requestNo)}</h3>
+                        <p>${escapeHtml(detail.header.ward)} | ${escapeHtml(formatThaiDate(detail.header.requestDate))} | ${renderStatus(detail.header.status)}</p>
+                    </div>
+                    <div class="actions" style="margin-top:0;">
+                        <button class="ghost-btn" type="button" onclick="printRequestDocument(selectedLaundryRequest, 'request')">พิมพ์ใบเบิก</button>
+                        <button class="ghost-btn" type="button" onclick="printRequestDocument(selectedLaundryRequest, 'issue')">พิมพ์ใบนำจ่าย</button>
+                    </div>
+                </div>
+                <div class="field-grid">
+                    <label class="field">
+                        ผู้รับใบเบิก
+                        <input type="text" id="laundryReceiverName" value="${escapeHtml(detail.header.laundryReceiverName || '')}">
+                    </label>
+                    <label class="field">
+                        ผู้จ่ายผ้า
+                        <input type="text" id="laundryIssuerName" value="${escapeHtml(detail.header.laundryIssuerName || '')}">
+                    </label>
+                    <label class="field">
+                        หมายเหตุซักฟอก
+                        <textarea id="laundryHeaderNote" placeholder="หมายเหตุรวม"></textarea>
+                    </label>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>รายการผ้า</th>
+                                <th class="ward-head">จำนวนคงคลัง</th>
+                                <th class="ward-head">คงเหลือ</th>
+                                <th class="ward-head">ส่งซัก</th>
+                                <th class="ward-head">ขอเบิก</th>
+                                <th class="laundry-head">รับจริง</th>
+                                <th class="laundry-head">จ่าย</th>
+                                <th class="laundry-head">คงค้าง</th>
+                                <th class="laundry-head">หมายเหตุซักฟอก</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${visibleLines.length === 0 ? `
+                                <tr>
+                                    <td colspan="9" style="text-align:center;">ไม่มีรายการที่ต้องเบิกหรือส่งซัก</td>
+                                </tr>
+                            ` : visibleLines.map(line => `
+                                <tr>
+                                    <td>${escapeHtml(line.itemName)}</td>
+                                    <td class="ward-col">${line.parLevel}</td>
+                                    <td class="ward-col">${line.stockBalance}</td>
+                                    <td class="ward-col">${line.sentLaundryQty}</td>
+                                    <td class="ward-col">${line.requestedQty}</td>
+                                    <td class="laundry-col"><input class="number-input" type="number" min="0" value="${line.laundryReceivedQty > 0 ? line.laundryReceivedQty : ''}" placeholder="รับจริง" id="laundryReceived-${line._index}" oninput="recalculateLaundryOutstanding(${line._index}, ${line.requestedQty})"></td>
+                                    <td class="laundry-col"><input class="number-input" type="number" min="0" value="${line.issuedQty > 0 ? line.issuedQty : ''}" placeholder="จ่าย" id="laundryIssued-${line._index}" oninput="recalculateLaundryOutstanding(${line._index}, ${line.requestedQty})"></td>
+                                    <td class="laundry-col"><input class="number-input" type="number" value="${line.outstandingQty || 0}" id="laundryOutstanding-${line._index}" readonly></td>
+                                    <td class="laundry-col"><input class="text-input" type="text" value="${escapeHtml(line.laundryNote || '')}" id="laundryNote-${line._index}" placeholder="หมายเหตุซักฟอก"></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="actions">
+                    <button class="ghost-btn" type="button" onclick="receiveRequestAtLaundry()">ลงรับใบเบิก</button>
+                    <button class="primary-btn" type="button" onclick="issueRequestAtLaundry()">บันทึกการจ่ายผ้า</button>
+                </div>
+            `;
+        }
+
+        function recalculateLaundryOutstanding(index, requestedQty) {
+            const issued = Number(document.getElementById(`laundryIssued-${index}`).value || 0);
+            document.getElementById(`laundryOutstanding-${index}`).value = Math.max(requestedQty - issued, 0);
+        }
+
+        async function receiveRequestAtLaundry() {
+            if (!selectedLaundryRequest) return;
+            const receiverName = document.getElementById('laundryReceiverName').value.trim();
+            const note = document.getElementById('laundryHeaderNote').value.trim();
+            if (!receiverName) {
+                Swal.fire({ icon: 'warning', title: 'กรุณาระบุผู้รับใบเบิก' });
+                return;
+            }
+
+            try {
+                const response = await fetch(EXCHANGE_API, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: 'receiveExchangeRequest',
+                        requestId: selectedLaundryRequest.header.requestId,
+                        receiverName,
+                        note
+                    })
+                });
+                const result = await response.json();
+                if (!response.ok || result.status !== 'success') throw new Error(result.message || 'ลงรับใบไม่สำเร็จ');
+                await fetchAllRequests();
+                renderLaundryWorkspace();
+                if (isLaundryWard()) await fetchWardRequests();
+                if (isLaundryWard()) renderUnitWorkspace();
+                await openLaundryRequest(selectedLaundryRequest.header.requestId);
+                Swal.fire({ icon: 'success', title: 'ลงรับใบเบิกแล้ว' });
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'ลงรับใบไม่สำเร็จ', text: error.message || 'เกิดข้อผิดพลาด' });
+            }
+        }
+
+        async function issueRequestAtLaundry() {
+            if (!selectedLaundryRequest) return;
+            const issuerName = document.getElementById('laundryIssuerName').value.trim();
+            const note = document.getElementById('laundryHeaderNote').value.trim();
+            if (!issuerName) {
+                Swal.fire({ icon: 'warning', title: 'กรุณาระบุผู้จ่ายผ้า' });
+                return;
+            }
+
+            const lines = selectedLaundryRequest.lines.map((line, index) => {
+                const receivedInput = document.getElementById(`laundryReceived-${index}`);
+                const issuedInput = document.getElementById(`laundryIssued-${index}`);
+                const noteInput = document.getElementById(`laundryNote-${index}`);
+                return {
+                    lineNo: line.lineNo,
+                    requestedQty: line.requestedQty,
+                    receivedQty: Number(receivedInput ? receivedInput.value : (line.laundryReceivedQty || 0)),
+                    issuedQty: Number(issuedInput ? issuedInput.value : (line.issuedQty || 0)),
+                    laundryNote: noteInput ? noteInput.value.trim() : (line.laundryNote || '')
+                };
+            });
+
+            const invalid = lines.some(line => line.issuedQty > line.requestedQty && !line.laundryNote);
+            if (invalid) {
+                Swal.fire({ icon: 'warning', title: 'ถ้าจ่ายเกินยอดที่ขอ ต้องมีหมายเหตุ' });
+                return;
+            }
+
+            try {
+                const response = await fetch(EXCHANGE_API, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: 'issueExchangeRequest',
+                        requestId: selectedLaundryRequest.header.requestId,
+                        issuerName,
+                        note,
+                        lines
+                    })
+                });
+                const result = await response.json();
+                if (!response.ok || result.status !== 'success') throw new Error(result.message || 'บันทึกการจ่ายไม่สำเร็จ');
+                await fetchAllRequests();
+                renderLaundryWorkspace();
+                if (isLaundryWard()) await fetchWardRequests();
+                if (isLaundryWard()) renderUnitWorkspace();
+                await openLaundryRequest(selectedLaundryRequest.header.requestId);
+                Swal.fire({ icon: 'success', title: 'บันทึกการจ่ายแล้ว' });
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'บันทึกการจ่ายไม่สำเร็จ', text: error.message || 'เกิดข้อผิดพลาด' });
+            }
+        }
+
+        function renderAdminWorkspace() {
+            document.getElementById('adminTotalMetric').innerText = allRequests.length.toLocaleString();
+            document.getElementById('adminOpenMetric').innerText = allRequests.filter(row => !['completed', 'cancelled'].includes(row.status)).length.toLocaleString();
+            const tbody = document.getElementById('adminBody');
+            const rows = allRequests.slice().sort((a, b) => sortByDate(b.updatedAt || b.requestDate, a.updatedAt || a.requestDate));
+            tbody.innerHTML = rows.length === 0
+                ? `<tr><td colspan="8" style="text-align:center;">ไม่มีรายการ</td></tr>`
+                : rows.map(row => `
+                    <tr>
+                        <td>${escapeHtml(row.requestNo)}</td>
+                        <td>${escapeHtml(row.ward)}</td>
+                        <td>${escapeHtml(formatThaiDate(row.requestDate))}</td>
+                        <td>${escapeHtml(row.shift)}</td>
+                        <td>${renderStatus(row.status)}</td>
+                        <td>${row.totalRequested}</td>
+                        <td>${row.totalOutstanding}</td>
+                        <td><button class="table-btn" onclick="openAdminRequest('${escapeJs(row.requestId)}')">ดู</button></td>
+                    </tr>
+                `).join('');
+        }
+
+        async function openAdminRequest(requestId) {
+            try {
+                selectedAdminRequest = await fetchRequestDetail(requestId);
+                const card = document.getElementById('adminDetailCard');
+                card.classList.remove('hidden');
+                card.innerHTML = `
+                    <div class="section-head">
+                        <div>
+                            <h3>${escapeHtml(selectedAdminRequest.header.requestNo)}</h3>
+                            <p>${escapeHtml(selectedAdminRequest.header.ward)} | ${escapeHtml(formatThaiDate(selectedAdminRequest.header.requestDate))} | ${renderStatus(selectedAdminRequest.header.status)}</p>
+                        </div>
+                        <div class="actions" style="margin-top:0;">
+                            <button class="ghost-btn" type="button" onclick="printRequestDocument(selectedAdminRequest, 'request')">พิมพ์ใบเบิก</button>
+                            <button class="ghost-btn" type="button" onclick="printRequestDocument(selectedAdminRequest, 'issue')">พิมพ์ใบนำจ่าย</button>
+                        </div>
+                    </div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>รายการผ้า</th>
+                                    <th>Par</th>
+                                    <th>คงเหลือ</th>
+                                    <th>ส่งซัก</th>
+                                    <th>ขอเบิก</th>
+                                    <th>รับจริง</th>
+                                    <th>จ่าย</th>
+                                    <th>คงค้าง</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${selectedAdminRequest.lines.map(line => `
+                                    <tr>
+                                        <td>${escapeHtml(line.itemName)}</td>
+                                        <td>${line.parLevel}</td>
+                                        <td>${line.stockBalance}</td>
+                                        <td>${line.sentLaundryQty}</td>
+                                        <td>${line.requestedQty}</td>
+                                        <td>${line.laundryReceivedQty || '-'}</td>
+                                        <td>${line.issuedQty || '-'}</td>
+                                        <td>${line.outstandingQty || 0}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'โหลดรายละเอียดไม่สำเร็จ', text: error.message || 'เกิดข้อผิดพลาด' });
+            }
+        }
+
+        function renderStatus(status) {
+            const label = STATUS_LABELS[status] || status || '-';
+            return `<span class="status-pill status-${escapeAttribute(status || '')}">${escapeHtml(label)}</span>`;
+        }
+
+        function getExchangeDraftKey() {
+            return `${EXCHANGE_DRAFT_KEY_PREFIX}${currentWard || 'unknown'}`;
+        }
+
+        function getExchangeDraft() {
+            try {
+                return JSON.parse(sessionStorage.getItem(getExchangeDraftKey()) || 'null');
+            } catch (_) {
+                return null;
+            }
+        }
+
+        function clearExchangeDraft() {
+            sessionStorage.removeItem(getExchangeDraftKey());
+        }
+
+        function bindExchangeDraftListeners() {
+            if (exchangeDraftBound) return;
+            const form = document.getElementById('exchangeRequestForm');
+            if (!form) return;
+            const persistDraft = () => saveExchangeDraftFromForm();
+            form.addEventListener('input', persistDraft);
+            form.addEventListener('change', persistDraft);
+            exchangeDraftBound = true;
+        }
+
+        function saveExchangeDraftFromForm() {
+            const form = document.getElementById('exchangeRequestForm');
+            if (!form || !currentWard || masterItems.length === 0) return;
+
+            const draft = {
+                requestDate: document.getElementById('requestDate')?.value || '',
+                requestShift: document.getElementById('requestShift')?.value || '',
+                requesterName: document.getElementById('requesterName')?.value || '',
+                lines: masterItems.map((item, index) => ({
+                    itemName: item.itemName,
+                    stockBalance: document.getElementById(`stockBalance-${index}`)?.value || '',
+                    sentLaundryQty: document.getElementById(`sentLaundry-${index}`)?.value || '',
+                    requestedQty: document.getElementById(`requestedQty-${index}`)?.value || '',
+                    wardNote: document.getElementById(`wardNote-${index}`)?.value || ''
+                }))
+            };
+
+            const hasContent = draft.requestShift || draft.requesterName || draft.lines.some(line =>
+                line.stockBalance || line.sentLaundryQty || line.requestedQty || line.wardNote
+            );
+
+            if (!hasContent) {
+                clearExchangeDraft();
+                return;
+            }
+
+            sessionStorage.setItem(getExchangeDraftKey(), JSON.stringify(draft));
+        }
+
+        function restoreExchangeDraftToForm() {
+            const form = document.getElementById('exchangeRequestForm');
+            if (!form) return;
+
+            const draft = getExchangeDraft();
+            const requestDateInput = document.getElementById('requestDate');
+            if (!draft) {
+                if (requestDateInput && !requestDateInput.value) {
+                    requestDateInput.value = new Date().toISOString().slice(0, 10);
+                }
+                return;
+            }
+
+            if (requestDateInput) {
+                requestDateInput.value = draft.requestDate || new Date().toISOString().slice(0, 10);
+            }
+            const requestShiftInput = document.getElementById('requestShift');
+            if (requestShiftInput) requestShiftInput.value = draft.requestShift || '';
+            const requesterNameInput = document.getElementById('requesterName');
+            if (requesterNameInput) requesterNameInput.value = draft.requesterName || '';
+
+            const lineMap = new Map((draft.lines || []).map(line => [line.itemName, line]));
+            masterItems.forEach((item, index) => {
+                const savedLine = lineMap.get(item.itemName);
+                if (!savedLine) {
+                    recalculateLine(index);
+                    return;
+                }
+                const stockInput = document.getElementById(`stockBalance-${index}`);
+                const sentInput = document.getElementById(`sentLaundry-${index}`);
+                const requestInput = document.getElementById(`requestedQty-${index}`);
+                const noteInput = document.getElementById(`wardNote-${index}`);
+                if (stockInput) stockInput.value = savedLine.stockBalance || '';
+                if (sentInput) sentInput.value = savedLine.sentLaundryQty || '';
+                if (requestInput) requestInput.value = savedLine.requestedQty || '';
+                if (noteInput) noteInput.value = savedLine.wardNote || '';
+                recalculateLine(index);
+            });
+        }
+
+        function openUsageGuide() {
+            document.getElementById('usageGuideModal').classList.remove('hidden');
+            document.body.classList.add('guide-open');
+        }
+
+        function closeUsageGuide() {
+            document.getElementById('usageGuideModal').classList.add('hidden');
+            document.body.classList.remove('guide-open');
+        }
+
+        function handleGuideBackdrop(event) {
+            if (event.target.id === 'usageGuideModal') {
+                closeUsageGuide();
+            }
+        }
+
+        function sortByDate(a, b) {
+            return parseDateValue(a) - parseDateValue(b);
+        }
+
+        function parseDateValue(value) {
+            if (!value) return 0;
+            const direct = Date.parse(value);
+            if (!Number.isNaN(direct)) return direct;
+            const text = String(value).replace(' น.', '');
+            const match = text.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+            if (!match) return 0;
+            let year = Number(match[3]);
+            if (year > 2400) year -= 543;
+            return new Date(year, Number(match[2]) - 1, Number(match[1]), Number(match[4] || 0), Number(match[5] || 0), Number(match[6] || 0)).getTime();
+        }
+
+        async function loadAndPrintRequest(requestId, mode) {
+            try {
+                const detail = await fetchRequestDetail(requestId);
+                printRequestDocument(detail, mode);
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'โหลดเอกสารไม่สำเร็จ', text: error.message || 'เกิดข้อผิดพลาด' });
+            }
+        }
+
+        function printRequestDocument(detail, mode) {
+            const isIssue = mode === 'issue';
+            const title = isIssue ? 'ใบนำจ่ายผ้าสะอาด' : 'ใบเบิก/แลกผ้าสะอาด';
+            const printableLines = detail.lines.filter(line => Number(line.requestedQty || 0) > 0 || Number(line.sentLaundryQty || 0) > 0);
+            const signBlock = isIssue
+                ? `
+                    <div style="display:flex; justify-content:space-between; gap:24px; margin-top:32px;">
+                        <div style="width:32%; text-align:center;">ผู้รับใบเบิก<br><br>........................................<br>${escapeHtml(detail.header.laundryReceiverName || '')}</div>
+                        <div style="width:32%; text-align:center;">ผู้จ่ายผ้า<br><br>........................................<br>${escapeHtml(detail.header.laundryIssuerName || '')}</div>
+                        <div style="width:32%; text-align:center;">ผู้รับผ้า<br><br>........................................<br>${escapeHtml(detail.header.wardReceiverName || '')}</div>
+                    </div>
+                `
+                : `
+                    <div style="display:flex; justify-content:flex-end; margin-top:32px;">
+                        <div style="width:32%; text-align:center;">ผู้ส่งใบเบิก<br><br>........................................<br>${escapeHtml(detail.header.requesterName || '')}</div>
+                    </div>
+                `;
+
+            const html = `
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>${title}</title>
+                    <style>
+                        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700&display=swap');
+                        body { font-family: 'Sarabun', sans-serif; padding: 24px; color: #172b4d; }
+                        .hospital { text-align: center; font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+                        .title { text-align: center; font-size: 20px; font-weight: 700; margin: 0 0 12px 0; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 18px; }
+                        th, td { border: 1px solid #cbd6e2; padding: 8px; font-size: 12px; }
+                        th { background: #edf4fb; }
+                        .head { display:flex; justify-content:space-between; gap:24px; }
+                        .head div { font-size:13px; line-height:1.8; }
+                    </style>
+                </head>
+                <body>
+                    <div class="hospital">โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน</div>
+                    <div class="title">${title}</div>
+                    <div class="head">
+                        <div>
+                            เลขที่ใบเบิก: ${escapeHtml(detail.header.requestNo)}<br>
+                            หน่วยงาน: ${escapeHtml(detail.header.ward)}<br>
+                            วันที่: ${escapeHtml(formatThaiDate(detail.header.requestDate))}<br>
+                            เวร: ${escapeHtml(detail.header.shift)}
+                        </div>
+                        <div>
+                            สถานะ: ${escapeHtml(STATUS_LABELS[detail.header.status] || detail.header.status)}<br>
+                            ส่งใบเมื่อ: ${escapeHtml(formatThaiDateTime(detail.header.submittedAt || '-'))}<br>
+                            รับใบเมื่อ: ${escapeHtml(formatThaiDateTime(detail.header.laundryReceivedAt || '-'))}<br>
+                            จ่ายเมื่อ: ${escapeHtml(formatThaiDateTime(detail.header.laundryIssuedAt || '-'))}
+                        </div>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th rowspan="2">รายการผ้า</th>
+                                <th colspan="5">ส่วนของหน่วยผู้ใช้</th>
+                                <th colspan="4">ส่วนของงานซักฟอก</th>
+                            </tr>
+                            <tr>
+                                <th>Stock</th>
+                                <th>คงเหลือ</th>
+                                <th>ส่งซัก</th>
+                                <th>ขอเบิก</th>
+                                <th>หมายเหตุ</th>
+                                <th>รับจริง</th>
+                                <th>จ่าย</th>
+                                <th>คงค้าง</th>
+                                <th>หมายเหตุ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${(printableLines.length ? printableLines : []).map(line => `
+                                <tr>
+                                    <td>${escapeHtml(line.itemName)}</td>
+                                    <td>${line.parLevel}</td>
+                                    <td>${line.stockBalance}</td>
+                                    <td>${line.sentLaundryQty}</td>
+                                    <td>${line.requestedQty}</td>
+                                    <td>${escapeHtml(line.wardNote || '-')}</td>
+                                    <td>${line.laundryReceivedQty || '-'}</td>
+                                    <td>${line.issuedQty || '-'}</td>
+                                    <td>${line.outstandingQty || 0}</td>
+                                    <td>${escapeHtml(line.laundryNote || '-')}</td>
+                                </tr>
+                            `).join('') || `<tr><td colspan="10" style="text-align:center;">ไม่มีรายการที่ขอเบิก</td></tr>`}
+                        </tbody>
+                    </table>
+                    ${signBlock}
+                    <script>window.print();<\/script>
+                </body>
+                </html>
+            `;
+
+            const printWindow = window.open('', '_blank');
+            printWindow.document.open();
+            printWindow.document.write(html);
+            printWindow.document.close();
+        }
+
+        function ensureExchangeApiReady() {
+            if (!EXCHANGE_API || EXCHANGE_API === 'YOUR_CLOTH_EXCHANGE_WEBAPP_URL') {
+                throw new Error('กรุณาตั้งค่า EXCHANGE_API ในไฟล์ cloth-exchange.html');
+            }
+        }
+
+        function switchPanel(sectionId, panelId, button) {
+            document.querySelectorAll(`#${sectionId} .panel`).forEach(panel => panel.classList.remove('active'));
+            document.getElementById(panelId).classList.add('active');
+            if (button) {
+                document.querySelectorAll(`#${sectionId} .tab-btn`).forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+            }
+        }
+
+        function showAdminLogin() {
+            Swal.fire({
+                title: 'เข้าสู่ระบบ Admin',
+                html: `<input type="password" id="adminPass" class="swal2-input" placeholder="รหัสผ่าน">`,
+                showCancelButton: true,
+                confirmButtonText: 'เข้าสู่ระบบ',
+                cancelButtonText: 'ยกเลิก',
+                preConfirm: () => {
+                    const password = document.getElementById('adminPass').value.trim();
+                    if (password !== ADMIN_PASSWORD) {
+                        Swal.showValidationMessage('รหัสผ่านไม่ถูกต้อง');
+                        return false;
+                    }
+                    return true;
+                }
+            }).then(async result => {
+                if (!result.isConfirmed) return;
+                currentRole = 'admin';
+                sessionStorage.setItem(SESSION_KEYS.role, 'admin');
+                updateHeader();
+                setLoading(true, 'กำลังโหลดข้อมูล');
+                await loadAdminWorkspace();
+                setLoading(false);
+            });
+        }
+
+        function exitAdminMode() {
+            currentRole = 'user';
+            sessionStorage.setItem(SESSION_KEYS.role, 'user');
+            if (currentWard) {
+                window.location.href = `${window.location.pathname}?ward=${encodeURIComponent(currentWard)}`;
+            } else {
+                window.location.href = 'index.html';
+            }
+        }
+
+        function goHome() {
+            window.location.href = 'index.html';
+        }
+
+        function reloadPage() {
+            window.location.reload();
+        }
+
+        function logoutSystem() {
+            Swal.fire({
+                title: 'ออกจากระบบ?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'ยืนยัน',
+                cancelButtonText: 'ยกเลิก'
+            }).then(result => {
+                if (!result.isConfirmed) return;
+                sessionStorage.removeItem(SESSION_KEYS.ward);
+                sessionStorage.removeItem(SESSION_KEYS.role);
+                window.location.href = 'index.html';
+            });
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function escapeAttribute(value) {
+            return escapeHtml(value).replace(/`/g, '&#96;');
+        }
+
+        function escapeJs(value) {
+            return String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        }
+
+        function formatThaiDate(value) {
+            const date = parseToDate(value);
+            if (!date) return value || '-';
+            return new Intl.DateTimeFormat('th-TH', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            }).format(date);
+        }
+
+        function formatThaiDateTime(value) {
+            const date = parseToDate(value);
+            if (!date) return value || '-';
+            return new Intl.DateTimeFormat('th-TH', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            }).format(date);
+        }
+
+        function parseToDate(value) {
+            if (!value || value === '-') return null;
+            if (value instanceof Date) return value;
+            const direct = new Date(value);
+            if (!Number.isNaN(direct.getTime())) return direct;
+            const text = String(value).replace(' น.', '').trim();
+            const isoLike = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (isoLike) {
+                return new Date(Number(isoLike[1]), Number(isoLike[2]) - 1, Number(isoLike[3]));
+            }
+            const thaiLike = text.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+            if (!thaiLike) return null;
+            let year = Number(thaiLike[3]);
+            if (year > 2400) year -= 543;
+            return new Date(
+                year,
+                Number(thaiLike[2]) - 1,
+                Number(thaiLike[1]),
+                Number(thaiLike[4] || 0),
+                Number(thaiLike[5] || 0),
+                Number(thaiLike[6] || 0)
+            );
+        }
+
+        function getExchangeDisplayLines(lines) {
+            return (Array.isArray(lines) ? lines : [])
+                .map((line, index) => ({ ...line, _index: index }))
+                .filter(line => Number(line.requestedQty || 0) > 0 || Number(line.sentLaundryQty || 0) > 0);
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !document.getElementById('usageGuideModal').classList.contains('hidden')) {
+                closeUsageGuide();
+            }
+        });
+    </script>
+</body>
+</html>
