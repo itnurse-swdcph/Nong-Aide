@@ -592,6 +592,12 @@
             color: var(--muted);
         }
 
+        .draft-hint {
+            margin-top: 10px;
+            font-size: 0.84rem;
+            color: var(--muted);
+        }
+
         .guide-modal {
             position: fixed;
             inset: 0;
@@ -1256,6 +1262,7 @@
                                     <tbody id="requestLineBody"></tbody>
                                 </table>
                             </div>
+                            <div class="draft-hint"><i class="fas fa-floppy-disk"></i> ระบบบันทึก draft อัตโนมัติ ข้อมูลที่กรอกจะไม่หายระหว่างทำรายการ</div>
                             <div class="actions">
                                 <button type="submit" class="primary-btn" id="submitRequestBtn"><i class="fas fa-floppy-disk"></i> ส่งใบเบิก</button>
                             </div>
@@ -1859,6 +1866,7 @@
         const AUTO_REFRESH_MS = 30000;
         const SESSION_KEYS = { ward: 'aide_ward', role: 'aide_role', versionPrompt: 'aide_exchange_version_prompt' };
         const ADMIN_PASSWORD = '11450';
+        const EXCHANGE_DRAFT_KEY_PREFIX = 'aide_exchange_draft_';
         const STATUS_LABELS = {
             draft: 'ฉบับร่าง',
             submitted: 'ส่งคำขอแล้ว',
@@ -1885,6 +1893,7 @@
         let hasShownReloadPrompt = false;
         let autoRefreshHandle = null;
         let autoRefreshBusy = false;
+        let exchangeDraftBound = false;
         let notificationSequence = 0;
         let notificationItems = [];
         const snapshotByScope = { unit: new Map(), laundry: new Map(), admin: new Map() };
@@ -1909,6 +1918,7 @@
 
             if (currentWard) sessionStorage.setItem(SESSION_KEYS.ward, currentWard);
             sessionStorage.setItem(SESSION_KEYS.role, currentRole);
+            bindExchangeDraftListeners();
             updateHeader();
             setLoading(true, 'กำลังโหลดข้อมูล');
 
@@ -2322,6 +2332,7 @@
             document.getElementById('dashWaitingReceipt').innerText = unitRequests.filter(req => req.status === 'issued_waiting_receipt').length.toLocaleString();
             document.getElementById('dashCompleted').innerText = unitRequests.filter(req => req.status === 'completed').length.toLocaleString();
             renderRequestFormRows();
+            restoreExchangeDraftToForm();
             renderUnitRequestTables();
         }
 
@@ -2350,6 +2361,7 @@
             const stock = Number(document.getElementById(`stockBalance-${index}`).value || 0);
             const suggested = Math.max(par - stock, 0);
             document.getElementById(`suggestedQty-${index}`).value = suggested;
+            saveExchangeDraftFromForm();
         }
 
         async function submitExchangeRequest(event) {
@@ -2415,6 +2427,7 @@
                     throw new Error(result.message || 'สร้างใบเบิกไม่สำเร็จ');
                 }
 
+                clearExchangeDraft();
                 await fetchWardRequests();
                 syncNotifications('unit', unitRequests);
                 renderUnitWorkspace();
@@ -2893,6 +2906,101 @@
         function renderStatus(status) {
             const label = STATUS_LABELS[status] || status || '-';
             return `<span class="status-pill status-${escapeAttribute(status || '')}">${escapeHtml(label)}</span>`;
+        }
+
+        function getExchangeDraftKey() {
+            return `${EXCHANGE_DRAFT_KEY_PREFIX}${currentWard || 'unknown'}`;
+        }
+
+        function getExchangeDraft() {
+            try {
+                return JSON.parse(sessionStorage.getItem(getExchangeDraftKey()) || 'null');
+            } catch (_) {
+                return null;
+            }
+        }
+
+        function clearExchangeDraft() {
+            sessionStorage.removeItem(getExchangeDraftKey());
+        }
+
+        function bindExchangeDraftListeners() {
+            if (exchangeDraftBound) return;
+            const form = document.getElementById('exchangeRequestForm');
+            if (!form) return;
+            const persistDraft = () => saveExchangeDraftFromForm();
+            form.addEventListener('input', persistDraft);
+            form.addEventListener('change', persistDraft);
+            exchangeDraftBound = true;
+        }
+
+        function saveExchangeDraftFromForm() {
+            const form = document.getElementById('exchangeRequestForm');
+            if (!form || !currentWard || masterItems.length === 0) return;
+
+            const draft = {
+                requestDate: document.getElementById('requestDate')?.value || '',
+                requestShift: document.getElementById('requestShift')?.value || '',
+                requesterName: document.getElementById('requesterName')?.value || '',
+                lines: masterItems.map((item, index) => ({
+                    itemName: item.itemName,
+                    stockBalance: document.getElementById(`stockBalance-${index}`)?.value || '',
+                    sentLaundryQty: document.getElementById(`sentLaundry-${index}`)?.value || '',
+                    requestedQty: document.getElementById(`requestedQty-${index}`)?.value || '',
+                    wardNote: document.getElementById(`wardNote-${index}`)?.value || ''
+                }))
+            };
+
+            const hasContent = draft.requestShift || draft.requesterName || draft.lines.some(line =>
+                line.stockBalance || line.sentLaundryQty || line.requestedQty || line.wardNote
+            );
+
+            if (!hasContent) {
+                clearExchangeDraft();
+                return;
+            }
+
+            sessionStorage.setItem(getExchangeDraftKey(), JSON.stringify(draft));
+        }
+
+        function restoreExchangeDraftToForm() {
+            const form = document.getElementById('exchangeRequestForm');
+            if (!form) return;
+
+            const draft = getExchangeDraft();
+            const requestDateInput = document.getElementById('requestDate');
+            if (!draft) {
+                if (requestDateInput && !requestDateInput.value) {
+                    requestDateInput.value = new Date().toISOString().slice(0, 10);
+                }
+                return;
+            }
+
+            if (requestDateInput) {
+                requestDateInput.value = draft.requestDate || new Date().toISOString().slice(0, 10);
+            }
+
+            const requestShiftInput = document.getElementById('requestShift');
+            if (requestShiftInput) requestShiftInput.value = draft.requestShift || '';
+
+            const requesterNameInput = document.getElementById('requesterName');
+            if (requesterNameInput) requesterNameInput.value = draft.requesterName || '';
+
+            const lineMap = new Map((draft.lines || []).map(line => [line.itemName, line]));
+            masterItems.forEach((item, index) => {
+                const savedLine = lineMap.get(item.itemName);
+                const stockInput = document.getElementById(`stockBalance-${index}`);
+                const sentInput = document.getElementById(`sentLaundry-${index}`);
+                const requestInput = document.getElementById(`requestedQty-${index}`);
+                const noteInput = document.getElementById(`wardNote-${index}`);
+
+                if (stockInput) stockInput.value = savedLine?.stockBalance || '';
+                if (sentInput) sentInput.value = savedLine?.sentLaundryQty || '';
+                if (requestInput) requestInput.value = savedLine?.requestedQty || '';
+                if (noteInput) noteInput.value = savedLine?.wardNote || '';
+
+                recalculateLine(index);
+            });
         }
 
         function openUsageGuide() {
