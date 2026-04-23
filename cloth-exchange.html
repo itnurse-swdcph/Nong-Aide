@@ -1195,8 +1195,8 @@
                     <div class="card">
                         <div class="section-head">
                             <div>
-                                <h3>สถานะล่าสุด</h3>
-                                <p>ใช้ติดตามใบเบิกของหน่วยงาน</p>
+                                <h3>รายการรอลงรับผ้า</h3>
+                                <p>ซักฟอกจ่ายผ้าแล้ว รอหน่วยงานตรวจสอบและลงรับผ้า</p>
                             </div>
                         </div>
                         <div class="table-wrap">
@@ -1208,11 +1208,38 @@
                                         <th>เวร</th>
                                         <th>สถานะ</th>
                                         <th>รวมขอเบิก</th>
+                                        <th>รวมจ่าย</th>
                                         <th>รวมคงค้าง</th>
                                         <th></th>
                                     </tr>
                                 </thead>
-                                <tbody id="unitDashboardBody"></tbody>
+                                <tbody id="unitDashboardAwaitBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="section-head">
+                            <div>
+                                <h3>รายการที่เสร็จสิ้นล่าสุด</h3>
+                                <p>ใบเบิกที่หน่วยงานลงรับผ้าเรียบร้อยแล้ว (แสดง 5 รายการล่าสุด)</p>
+                            </div>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>เลขที่ใบเบิก</th>
+                                        <th>วันที่</th>
+                                        <th>เวร</th>
+                                        <th>สถานะ</th>
+                                        <th>รวมขอเบิก</th>
+                                        <th>รวมจ่าย</th>
+                                        <th>รวมคงค้าง</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="unitDashboardCompletedBody"></tbody>
                             </table>
                         </div>
                     </div>
@@ -2464,41 +2491,73 @@
         }
 
         function renderUnitRequestTables() {
-            const dashboardBody = document.getElementById('unitDashboardBody');
+            const awaitBody = document.getElementById('unitDashboardAwaitBody');
+            const completedBody = document.getElementById('unitDashboardCompletedBody');
             const requestBody = document.getElementById('unitRequestBody');
             const rows = unitRequests.slice().sort((a, b) => sortByDate(b.updatedAt || b.requestDate, a.updatedAt || a.requestDate));
 
+            // กรณีไม่มีรายการใดๆ เลย
             if (rows.length === 0) {
                 const emptyRow = `<tr><td colspan="8" style="text-align:center;">ยังไม่มีรายการ</td></tr>`;
-                dashboardBody.innerHTML = emptyRow;
-                requestBody.innerHTML = emptyRow;
+                if (awaitBody) awaitBody.innerHTML = emptyRow;
+                if (completedBody) completedBody.innerHTML = emptyRow;
+                if (requestBody) requestBody.innerHTML = emptyRow;
                 return;
             }
 
-            dashboardBody.innerHTML = rows.slice(0, 5).map(row => `
-                <tr>
-                    <td>${escapeHtml(row.requestNo)}</td>
-                    <td>${escapeHtml(formatThaiDate(row.requestDate))}</td>
-                    <td>${escapeHtml(row.shift)}</td>
-                    <td>${renderStatus(row.status)}</td>
-                    <td>${row.totalRequested}</td>
-                    <td>${row.totalOutstanding}</td>
-                    <td>${buildUnitActionButtons(row)}</td>
-                </tr>
-            `).join('');
+            // 1. ตารางรายการรอลงรับผ้า (สถานะ partial_issued หรือ issued_waiting_receipt)
+            const awaitRows = rows.filter(row => ['partial_issued', 'issued_waiting_receipt'].includes(row.status));
+            if (awaitBody) {
+                awaitBody.innerHTML = awaitRows.length === 0 
+                    ? `<tr><td colspan="8" style="text-align:center;">ไม่มีรายการรอรับผ้า</td></tr>`
+                    : awaitRows.map(row => `
+                        <tr>
+                            <td>${escapeHtml(row.requestNo)}</td>
+                            <td>${escapeHtml(formatThaiDate(row.requestDate))}</td>
+                            <td>${escapeHtml(row.shift)}</td>
+                            <td>${renderStatus(row.status)}</td>
+                            <td>${row.totalRequested}</td>
+                            <td>${row.totalIssued}</td>
+                            <td>${row.totalOutstanding}</td>
+                            <td>${buildUnitActionButtons(row)}</td>
+                        </tr>
+                    `).join('');
+            }
 
-            requestBody.innerHTML = rows.map(row => `
-                <tr>
-                    <td>${escapeHtml(row.requestNo)}</td>
-                    <td>${escapeHtml(formatThaiDate(row.requestDate))}</td>
-                    <td>${escapeHtml(row.shift)}</td>
-                    <td>${renderStatus(row.status)}</td>
-                    <td>${row.totalRequested}</td>
-                    <td>${row.totalIssued}</td>
-                    <td>${row.totalOutstanding}</td>
-                    <td>${buildUnitActionButtons(row)}</td>
-                </tr>
-            `).join('');
+            // 2. ตารางรายการที่เสร็จสิ้นล่าสุด (สถานะ completed) ดึงมาแค่ 5 รายการล่าสุดเพื่อไม่ให้หน้ายาวเกินไป
+            const completedRows = rows.filter(row => row.status === 'completed').slice(0, 5);
+            if (completedBody) {
+                completedBody.innerHTML = completedRows.length === 0
+                    ? `<tr><td colspan="8" style="text-align:center;">ไม่มีรายการที่เสร็จสิ้น</td></tr>`
+                    : completedRows.map(row => `
+                        <tr>
+                            <td>${escapeHtml(row.requestNo)}</td>
+                            <td>${escapeHtml(formatThaiDate(row.requestDate))}</td>
+                            <td>${escapeHtml(row.shift)}</td>
+                            <td>${renderStatus(row.status)}</td>
+                            <td>${row.totalRequested}</td>
+                            <td>${row.totalIssued}</td>
+                            <td>${row.totalOutstanding}</td>
+                            <td>${buildUnitActionButtons(row)}</td>
+                        </tr>
+                    `).join('');
+            }
+
+            // 3. ตารางรวมทั้งหมด (ในแท็บรายการของฉัน)
+            if (requestBody) {
+                requestBody.innerHTML = rows.map(row => `
+                    <tr>
+                        <td>${escapeHtml(row.requestNo)}</td>
+                        <td>${escapeHtml(formatThaiDate(row.requestDate))}</td>
+                        <td>${escapeHtml(row.shift)}</td>
+                        <td>${renderStatus(row.status)}</td>
+                        <td>${row.totalRequested}</td>
+                        <td>${row.totalIssued}</td>
+                        <td>${row.totalOutstanding}</td>
+                        <td>${buildUnitActionButtons(row)}</td>
+                    </tr>
+                `).join('');
+            }
         }
 
         async function openUnitRequest(requestId) {
