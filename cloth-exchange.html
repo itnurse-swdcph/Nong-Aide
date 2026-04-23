@@ -1177,12 +1177,14 @@
                     </div>
                 </div>
 
-                <div class="toolbar">
-                    <div class="tabs">
-                        <button class="tab-btn active" onclick="switchPanel('unitWorkspace', 'unitDashboard', this)">Dashboard</button>
-                        <button id="unitCreateTabBtn" class="tab-btn" onclick="switchPanel('unitWorkspace', 'unitRequest', this)">สร้างใบเบิก</button>
-                        <button class="tab-btn" onclick="switchPanel('unitWorkspace', 'unitRequests', this)">รายการของฉัน</button>
-                    </div>
+                <div class="toolbar"> 
+                    <div class="tabs"> 
+                        <button class="tab-btn active" onclick="switchPanel('unitWorkspace', 'unitDashboard', this)">Dashboard</button> 
+                        <button id="unitCreateTabBtn" class="tab-btn" onclick="switchPanel('unitWorkspace', 'unitRequest', this)">สร้างใบเบิก</button> 
+                        <button class="tab-btn" onclick="switchPanel('unitWorkspace', 'unitRequests', this)">รายการของฉัน</button> 
+                        
+                        <button class="tab-btn" onclick="openStockRequestModal()"><i class="fas fa-cubes"></i> ขอเพิ่ม STOCK</button>
+                    </div> 
                 </div>
 
                 <section id="unitDashboard" class="panel active">
@@ -1471,6 +1473,33 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="card" style="margin-top: 20px;">
+                            <div class="section-head">
+                                <div>
+                                    <h3>รายการขอเพิ่ม / ปรับลด STOCK</h3>
+                                    <p>รายการที่หน่วยงานขอปรับปรุง Stock</p>
+                                </div>
+                            </div>
+                            <div class="table-wrap">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>วันที่ส่งคำขอ</th>
+                                            <th>หน่วยงาน</th>
+                                            <th>รายการผ้า</th>
+                                            <th>ประเภท</th>
+                                            <th>จำนวนที่ขอ</th>
+                                            <th>เหตุผล</th>
+                                            <th>สถานะ</th>
+                                            <th>การจัดการ</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="stockRequestTableBody">
+                                        <tr><td colspan="8" style="text-align:center;">ไม่มีรายการคำขอ</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
 
                         <div class="card">
                             <div class="section-head">
@@ -1576,37 +1605,56 @@
         </main>
     </div>
 
-    <div id="stockRequestModal" class="modal hidden">
-        <div class="modal-content" style="max-width: 500px;">
-            <div class="modal-header">
-                <h3><i class="fa-solid fa-boxes-stacked"></i> ขอเพิ่มรายการ/จำนวน Stock ผ้า</h3>
-                <button class="icon-btn" onclick="document.getElementById('stockRequestModal').classList.add('hidden')"><i class="fa-solid fa-times"></i></button>
+    <div id="stockRequestModal" class="record-modal hidden">
+        <div class="record-sheet" style="max-width: 900px; width: 95%;">
+            <div class="record-head">
+                <div>
+                    <h3><i class="fa-solid fa-boxes-stacked"></i> จัดการรายการ Stock ของหน่วยงาน</h3>
+                    <p>เลือกรายการที่มีอยู่เพื่อปรับจำนวน หรือเพิ่มรายการใหม่จากระบบ</p>
+                </div>
+                <button class="guide-close" type="button" onclick="closeStockRequestModal()"><i class="fa-solid fa-times"></i></button>
             </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>ค้นหารายการผ้า (พิมพ์เพื่อค้นหา หรือพิมพ์รายการใหม่)</label>
-                    <input type="text" id="srItemName" list="globalClothList" placeholder="เช่น ผ้าปูเตียงผู้ใหญ่" required>
-                    <datalist id="globalClothList"></datalist>
+            <div class="record-body">
+                <div class="field-grid" style="grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; background: var(--bg); padding: 15px; border-radius: 8px;">
+                    <div class="field">
+                        <label style="font-weight: 600;">1. เลือกจากรายการของหน่วยงาน (เพื่อปรับยอด)</label>
+                        <select id="srWardItems" onchange="handleAddFromWard(this.value)">
+                            <option value="">-- เลือกรายการผ้าของท่าน --</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label style="font-weight: 600;">2. เพิ่มรายการอื่นๆ (ที่มีในระบบ)</label>
+                        <div style="display: flex; gap: 5px;">
+                            <input type="text" id="srSystemItemSearch" list="allSystemClothList" placeholder="ค้นหาชื่อรายการผ้า...">
+                            <button class="btn btn-primary" onclick="handleAddFromSystem()" style="white-space: nowrap; padding: 0 15px;">เพิ่ม</button>
+                        </div>
+                        <datalist id="allSystemClothList"></datalist>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>หมวดหมู่ (สำหรับรายการใหม่)</label>
-                    <input type="text" id="srCategory" placeholder="เช่น ผ้าผู้ป่วยทั่วไป">
+    
+                <div class="table-wrap" style="max-height: 400px; overflow-y: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: var(--navy); color: white; text-align: left;">
+                                <th style="padding: 10px;">ชื่อรายการผ้า</th>
+                                <th style="padding: 10px;">หมวดหมู่หลัก</th>
+                                <th style="padding: 10px; text-align: center;">Stock ปัจจุบัน</th>
+                                <th style="padding: 10px; text-align: center; width: 150px;">จำนวนที่ขอปรับ</th>
+                                <th style="padding: 10px; text-align: center;">ลบ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stockRequestTableBody">
+                            </tbody>
+                    </table>
                 </div>
-                <div class="form-group">
-                    <label>จำนวน Par (ยอดคงคลังเป้าหมาย) ที่ต้องการ</label>
-                    <input type="number" id="srRequestedPar" min="1" required>
+    
+                <div class="modal-form-actions" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                    <button class="ghost-btn" type="button" onclick="closeStockRequestModal()">ยกเลิก</button>
+                    <button class="primary-btn" type="button" onclick="submitBulkStockRequest()">ส่งคำขอทั้งหมด</button>
                 </div>
-                <div class="form-group">
-                    <label>เหตุผลในการขอเพิ่ม</label>
-                    <textarea id="srReason" rows="2" placeholder="เช่น เพิ่มเตียงผู้ป่วย, เบิกรายการใหม่" required></textarea>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-primary" onclick="submitStockRequest()">ส่งคำขอให้ซักฟอกอนุมัติ</button>
             </div>
         </div>
     </div>
-
     <div id="usageGuideModal" class="guide-modal hidden" onclick="handleGuideBackdrop(event)">
         <div class="guide-sheet">
             <div class="guide-head">
@@ -4609,137 +4657,163 @@
                 closeUsageGuide();
             }
         });
-        // ==========================================
-        // JS: ระบบขอเพิ่ม Stock
-        // ==========================================
-        
-        // ฟังก์ชันเปิด Modal ขอเพิ่ม Stock (ให้สร้างปุ่มในหน้าหน่วยงานแล้วเรียกฟังก์ชันนี้)
+                
+        let selectedStockItems = []; // ตัวแปรเก็บรายการที่เลือกในตาราง
+
+        // 1. ฟังก์ชันเปิด Modal และโหลดข้อมูล
         function openStockRequestModal() {
-            // โหลดรายการผ้าทั้งหมดจาก Master มาใส่ใน Datalist เพื่อให้ค้นหาได้
-            const dataList = document.getElementById('globalClothList');
-            dataList.innerHTML = '';
+            selectedStockItems = [];
+            renderStockRequestTable();
             
-            // ดึงชื่อผ้าที่ไม่ซ้ำกันจาก globalClothMaster
-            const uniqueItems = [...new Set(globalClothMaster.map(item => item.clothItem))];
-            uniqueItems.forEach(item => {
-                const option = document.createElement('option');
-                option.value = item;
-                dataList.appendChild(option);
+            // โหลดรายการของหน่วยงานตนเอง (จาก globalClothMaster ที่มีอยู่แล้ว)
+            const wardSelect = document.getElementById('srWardItems');
+            wardSelect.innerHTML = '<option value="">-- เลือกรายการผ้าของท่าน --</option>';
+            
+            globalClothMaster.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item.clothItem;
+                opt.textContent = `${item.clothItem} (ปัจจุบัน: ${item.parLevel})`;
+                wardSelect.appendChild(opt);
             });
         
-            document.getElementById('srItemName').value = '';
-            document.getElementById('srCategory').value = '';
-            document.getElementById('srRequestedPar').value = '';
-            document.getElementById('srReason').value = '';
-            
+            // โหลดรายการทั้งหมดในระบบ (คอลัมน์ B) เพื่อใช้ค้นหา
+            const dataList = document.getElementById('allSystemClothList');
+            dataList.innerHTML = '';
+            // สมมติว่าเรามีข้อมูล Master ทั้งหมดเก็บไว้ (ถ้าไม่มีต้องดึงจาก Server)
+            // ในที่นี้จะดึงจากรายการที่มีในระบบที่เคยโหลดมา หรือกรองจาก Master รวม
+            const uniqueItems = [...new Set(globalClothMaster.map(item => item.clothItem))];
+            uniqueItems.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                dataList.appendChild(opt);
+            });
+        
             document.getElementById('stockRequestModal').classList.remove('hidden');
         }
         
-        // ฟังก์ชันส่งคำขอ
-        async function submitStockRequest() {
-            const itemName = document.getElementById('srItemName').value.trim();
-            const category = document.getElementById('srCategory').value.trim();
-            const requestedPar = document.getElementById('srRequestedPar').value;
-            const reason = document.getElementById('srReason').value.trim();
+        // 2. ฟังก์ชันเพิ่มรายการจากของหน่วยงาน
+        function handleAddFromWard(itemName) {
+            if (!itemName) return;
+            const item = globalClothMaster.find(i => i.clothItem === itemName);
+            if (item) {
+                addItemToTable(item.clothItem, item.mainCategory, item.parLevel);
+            }
+            document.getElementById('srWardItems').value = ''; // reset select
+        }
         
-            if (!itemName || !requestedPar || !reason) {
-                Swal.fire({ icon: 'warning', title: 'ข้อมูลไม่ครบ', text: 'กรุณากรอกรายการผ้า จำนวน Par และเหตุผลให้ครบถ้วน' });
+        // 3. ฟังก์ชันเพิ่มรายการจากระบบทั้งหมด
+        function handleAddFromSystem() {
+            const itemName = document.getElementById('srSystemItemSearch').value.trim();
+            if (!itemName) return;
+        
+            // ค้นหาข้อมูลหมวดหมู่จากข้อมูลที่มี
+            const itemInfo = globalClothMaster.find(i => i.clothItem === itemName);
+            const category = itemInfo ? itemInfo.mainCategory : 'ไม่ระบุ';
+            
+            addItemToTable(itemName, category, 0); // รายการใหม่จากระบบให้ Stock ปัจจุบันเป็น 0
+            document.getElementById('srSystemItemSearch').value = '';
+        }
+        
+        // 4. ฟังก์ชันจัดการข้อมูลในตาราง
+        function addItemToTable(name, category, currentPar) {
+            // ป้องกันการเพิ่มรายการซ้ำในตาราง
+            if (selectedStockItems.some(i => i.name === name)) {
+                Swal.fire({ icon: 'warning', title: 'รายการนี้อยู่ในตารางแล้ว' });
                 return;
             }
+        
+            selectedStockItems.push({
+                name: name,
+                category: category,
+                currentPar: currentPar,
+                requestedPar: currentPar
+            });
+            renderStockRequestTable();
+        }
+        
+        function removeStockItem(index) {
+            selectedStockItems.splice(index, 1);
+            renderStockRequestTable();
+        }
+        
+        function updateRequestedQty(index, value) {
+            selectedStockItems[index].requestedPar = parseInt(value) || 0;
+        }
+        
+        // 5. ฟังก์ชันวาดตาราง
+        function renderStockRequestTable() {
+            const tbody = document.getElementById('stockRequestTableBody');
+            if (selectedStockItems.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--muted);">ยังไม่มีรายการที่เลือก</td></tr>';
+                return;
+            }
+        
+            tbody.innerHTML = selectedStockItems.map((item, index) => `
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 10px;">${item.name}</td>
+                    <td style="padding: 10px;"><small class="badge badge-gray">${item.category}</small></td>
+                    <td style="padding: 10px; text-align: center;">${item.currentPar}</td>
+                    <td style="padding: 10px; text-align: center;">
+                        <input type="number" value="${item.requestedPar}" min="0" 
+                            onchange="updateRequestedQty(${index}, this.value)"
+                            style="width: 80px; padding: 5px; text-align: center; border: 1px solid var(--border); border-radius: 4px;">
+                    </td>
+                    <td style="padding: 10px; text-align: center;">
+                        <button onclick="removeStockItem(${index})" style="color: var(--danger); background: none; border: none; cursor: pointer;">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        // 6. ฟังก์ชันส่งข้อมูลไปยัง Server
+        async function submitBulkStockRequest() {
+            if (selectedStockItems.length === 0) {
+                Swal.fire({ icon: 'warning', title: 'กรุณาเลือกอย่างน้อย 1 รายการ' });
+                return;
+            }
+        
+            const { value: reason } = await Swal.fire({
+                title: 'ระบุเหตุผลการขอปรับปรุง',
+                input: 'textarea',
+                inputPlaceholder: 'เช่น เพิ่มเตียงรับผู้ป่วย, ทดแทนผ้าเดิมที่ชำรุด...',
+                showCancelButton: true,
+                confirmButtonText: 'ยืนยันการส่งคำขอ'
+            });
+        
+            if (!reason) return;
         
             Swal.fire({ title: 'กำลังส่งคำขอ...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
         
             try {
-                const response = await new Promise((resolve, reject) => {
-                    google.script.run
-                        .withSuccessHandler(resolve)
-                        .withFailureHandler(reject)
-                        .submitStockRequest({
-                            ward: currentUser.ward,
-                            itemName: itemName,
-                            category: category,
-                            requestedPar: requestedPar,
-                            reason: reason
-                        });
+                // ส่งรายการทั้งหมดในครั้งเดียว
+                const promises = selectedStockItems.map(item => {
+                    return new Promise((resolve, reject) => {
+                        google.script.run
+                            .withSuccessHandler(resolve)
+                            .withFailureHandler(reject)
+                            .submitStockRequest({
+                                ward: currentUser.ward,
+                                itemName: item.name,
+                                category: item.category,
+                                requestedPar: item.requestedPar,
+                                reason: reason
+                            });
+                    });
                 });
         
-                if (response.status === 'success') {
-                    document.getElementById('stockRequestModal').classList.add('hidden');
-                    Swal.fire({ icon: 'success', title: 'ส่งคำขอแล้ว', text: response.message });
-                } else {
-                    throw new Error(response.message);
-                }
-            } catch (error) {
-                Swal.fire({ icon: 'error', title: 'ส่งคำขอไม่สำเร็จ', text: error.message });
-            }
-        }
-        
-        // ฟังก์ชันดึงและแสดงคำขอสำหรับซักฟอก (เรียกใช้ฟังก์ชันนี้ควบคู่กับ renderLaundryWorkspace)
-        async function fetchAndRenderStockRequestsForLaundry() {
-            try {
-                const response = await new Promise((resolve) => {
-                    google.script.run.withSuccessHandler(resolve).getStockRequests(null);
-                });
-        
-                const tbody = document.getElementById('laundryStockRequestsBody');
-                if (!tbody) return;
-        
-                if (response.status === 'success' && response.data.length > 0) {
-                    tbody.innerHTML = response.data.map(req => `
-                        <tr>
-                            <td><strong>${req.ward}</strong><br><small>${req.date}</small></td>
-                            <td>${req.itemName}<br><small class="badge badge-gray">${req.category}</small></td>
-                            <td style="font-weight:bold; color:var(--primary);">${req.requestedPar}</td>
-                            <td>${req.reason}</td>
-                            <td>
-                                <button class="btn btn-sm" style="background:var(--success); color:white;" onclick="processStockRequest('${req.reqId}', 'approve')"><i class="fa-solid fa-check"></i> อนุมัติ</button>
-                                <button class="btn btn-sm btn-outline" style="color:var(--danger); border-color:var(--danger);" onclick="processStockRequest('${req.reqId}', 'reject')"><i class="fa-solid fa-times"></i></button>
-                            </td>
-                        </tr>
-                    `).join('');
-                } else {
-                    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 20px;">ไม่มีคำขอปรับปรุง Stock ใหม่</td></tr>`;
-                }
-            } catch (error) {
-                console.error("Error fetching stock requests:", error);
-            }
-        }
-        
-        // ฟังก์ชันสำหรับซักฟอกกดอนุมัติ/ปฏิเสธ
-        async function processStockRequest(reqId, action) {
-            const actionText = action === 'approve' ? 'อนุมัติ' : 'ปฏิเสธ';
-            
-            const result = await Swal.fire({
-                title: `ยืนยันการ${actionText}?`,
-                text: action === 'approve' ? "ระบบจะทำการอัปเดตข้อมูล Par Level เข้าสู่ฐานข้อมูล Master ทันที" : "คำขอนี้จะถูกยกเลิก",
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: `ใช่, ${actionText}`,
-                cancelButtonText: 'ยกเลิก'
-            });
-        
-            if (!result.isConfirmed) return;
-        
-            Swal.fire({ title: `กำลังบันทึกการ${actionText}...`, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-        
-            try {
-                const response = await new Promise((resolve, reject) => {
-                    google.script.run
-                        .withSuccessHandler(resolve)
-                        .withFailureHandler(reject)
-                        .processStockRequest(reqId, action, currentUser.name); // ส่งชื่อ Admin เข้าไปเก็บประวัติ
-                });
-        
-                if (response.status === 'success') {
-                    Swal.fire({ icon: 'success', title: 'สำเร็จ', text: response.message });
-                    fetchAndRenderStockRequestsForLaundry(); // รีโหลดตารางคำขอ
-                    fetchGlobalClothMaster(); // รีโหลด Master ทันทีเพื่อให้ซักฟอกเห็นข้อมูลใหม่
-                } else {
-                    throw new Error(response.message);
-                }
+                await Promise.all(promises);
+                
+                Swal.fire({ icon: 'success', title: 'ส่งคำขอเรียบร้อยแล้ว', text: 'รอเจ้าหน้าที่ซักฟอกตรวจสอบและอนุมัติ' });
+                closeStockRequestModal();
             } catch (error) {
                 Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: error.message });
             }
+        }
+        
+        function closeStockRequestModal() {
+            document.getElementById('stockRequestModal').classList.add('hidden');
         }
     </script>
 </body>
