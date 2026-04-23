@@ -1291,6 +1291,9 @@
                                     <tbody id="requestLineBody"></tbody>
                                 </table>
                             </div>
+                            <div class="actions" style="justify-content:flex-start; margin-top: 12px;">
+                                <button type="button" class="ghost-btn" onclick="addExtraRequestItem()"><i class="fas fa-plus"></i> เพิ่มรายการอื่นๆ</button>
+                            </div>
                             <div class="draft-hint"><i class="fas fa-floppy-disk"></i> ระบบบันทึก draft อัตโนมัติ ข้อมูลที่กรอกจะไม่หายระหว่างทำรายการ</div>
                             <div class="actions">
                                 <button type="submit" class="primary-btn" id="submitRequestBtn"><i class="fas fa-floppy-disk"></i> ส่งใบเบิก</button>
@@ -1988,6 +1991,7 @@
         let currentWard = urlParams.get('ward') || sessionStorage.getItem(SESSION_KEYS.ward) || '';
         let currentRole = urlParams.get('role') || sessionStorage.getItem(SESSION_KEYS.role) || 'user';
         let masterItems = [];
+        let extraRequestItems = [];
         let globalClothItems = [];
         let stockRequests = [];
         let unitRequests = [];
@@ -2463,12 +2467,12 @@
 
         function renderRequestFormRows() {
             const tbody = document.getElementById('requestLineBody');
-            if (masterItems.length === 0) {
+            if (masterItems.length === 0 && extraRequestItems.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;">ไม่พบรายการ master ของหน่วยงานนี้</td></tr>`;
                 return;
             }
 
-            tbody.innerHTML = masterItems.map((item, index) => `
+            const masterRows = masterItems.map((item, index) => `
                 <tr>
                     <td>${escapeHtml(item.itemName)}</td>
                     <td>${item.parLevel}</td>
@@ -2478,7 +2482,79 @@
                     <td><input class="number-input" type="number" min="0" id="requestedQty-${index}" placeholder="ขอเบิก"></td>
                     <td><input class="text-input" type="text" id="wardNote-${index}" placeholder="หมายเหตุ"></td>
                 </tr>
-            `).join('');
+            `);
+
+            const extraRows = extraRequestItems.map((item, index) => `
+                <tr class="extra-request-row">
+                    <td><input class="text-input" type="text" id="extraItemName-${index}" value="${escapeAttribute(item.itemName || '')}" placeholder="ชื่อรายการผ้า" oninput="updateExtraRequestItemField(${index}, 'itemName', this.value)"></td>
+                    <td style="text-align:center;">-</td>
+                    <td style="text-align:center;">-</td>
+                    <td><input class="number-input" type="number" min="0" id="extraSentLaundry-${index}" value="${escapeAttribute(item.sentLaundryQty || '')}" placeholder="ส่งซัก" oninput="updateExtraRequestItemField(${index}, 'sentLaundryQty', this.value)"></td>
+                    <td style="text-align:center;">-</td>
+                    <td><input class="number-input" type="number" min="0" id="extraRequestedQty-${index}" value="${escapeAttribute(item.requestedQty || '')}" placeholder="ขอเบิก" oninput="updateExtraRequestItemField(${index}, 'requestedQty', this.value)"></td>
+                    <td>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <input class="text-input" type="text" id="extraWardNote-${index}" value="${escapeAttribute(item.wardNote || '')}" placeholder="หมายเหตุ" oninput="updateExtraRequestItemField(${index}, 'wardNote', this.value)">
+                            <button class="table-btn secondary" type="button" onclick="removeExtraRequestItem(${index})">ลบ</button>
+                        </div>
+                    </td>
+                </tr>
+            `);
+
+            tbody.innerHTML = [...masterRows, ...extraRows].join('');
+        }
+
+        function buildExtraRequestRowId() {
+            return `extra-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        }
+
+        function addExtraRequestItem() {
+            const draft = buildExchangeDraftFromForm();
+            const newItem = {
+                rowId: buildExtraRequestRowId(),
+                itemName: '',
+                sentLaundryQty: '',
+                requestedQty: '',
+                wardNote: ''
+            };
+            extraRequestItems.push(newItem);
+            if (draft) {
+                draft.extraLines = [...(draft.extraLines || []), { ...newItem }];
+            }
+            renderRequestFormRows();
+            if (draft) applyExchangeDraftToForm(draft);
+            const input = document.getElementById(`extraItemName-${extraRequestItems.length - 1}`);
+            if (input) input.focus();
+            saveExchangeDraftFromForm();
+        }
+
+        function removeExtraRequestItem(index) {
+            const draft = buildExchangeDraftFromForm();
+            extraRequestItems.splice(index, 1);
+            if (draft?.extraLines) {
+                draft.extraLines.splice(index, 1);
+            }
+            renderRequestFormRows();
+            if (draft) {
+                applyExchangeDraftToForm(draft);
+            }
+            saveExchangeDraftFromForm();
+        }
+
+        function updateExtraRequestItemField(index, field, value) {
+            if (!extraRequestItems[index]) return;
+            extraRequestItems[index][field] = value;
+            saveExchangeDraftFromForm();
+        }
+
+        function getExtraRequestLinesFromForm() {
+            return extraRequestItems.map((item, index) => ({
+                rowId: item.rowId || buildExtraRequestRowId(),
+                itemName: document.getElementById(`extraItemName-${index}`)?.value.trim() || item.itemName || '',
+                sentLaundryQty: document.getElementById(`extraSentLaundry-${index}`)?.value || item.sentLaundryQty || '',
+                requestedQty: document.getElementById(`extraRequestedQty-${index}`)?.value || item.requestedQty || '',
+                wardNote: document.getElementById(`extraWardNote-${index}`)?.value || item.wardNote || ''
+            }));
         }
 
         function recalculateLine(index) {
@@ -3091,11 +3167,11 @@
             exchangeDraftBound = true;
         }
 
-        function saveExchangeDraftFromForm() {
+        function buildExchangeDraftFromForm() {
             const form = document.getElementById('exchangeRequestForm');
-            if (!form || !currentWard || masterItems.length === 0) return;
+            if (!form || !currentWard) return null;
 
-            const draft = {
+            return {
                 requestDate: document.getElementById('requestDate')?.value || '',
                 requestShift: document.getElementById('requestShift')?.value || '',
                 requesterName: document.getElementById('requesterName')?.value || '',
@@ -3105,12 +3181,19 @@
                     sentLaundryQty: document.getElementById(`sentLaundry-${index}`)?.value || '',
                     requestedQty: document.getElementById(`requestedQty-${index}`)?.value || '',
                     wardNote: document.getElementById(`wardNote-${index}`)?.value || ''
-                }))
+                })),
+                extraLines: getExtraRequestLinesFromForm()
             };
+        }
 
-            const hasContent = draft.requestShift || draft.requesterName || draft.lines.some(line =>
-                line.stockBalance || line.sentLaundryQty || line.requestedQty || line.wardNote
-            );
+        function saveExchangeDraftFromForm() {
+            const draft = buildExchangeDraftFromForm();
+            if (!draft) return;
+
+            const hasContent = draft.requestShift
+                || draft.requesterName
+                || draft.lines.some(line => line.stockBalance || line.sentLaundryQty || line.requestedQty || line.wardNote)
+                || (draft.extraLines || []).some(line => line.itemName || line.sentLaundryQty || line.requestedQty || line.wardNote);
 
             if (!hasContent) {
                 clearExchangeDraft();
@@ -3127,11 +3210,24 @@
             const draft = getExchangeDraft();
             const requestDateInput = document.getElementById('requestDate');
             if (!draft) {
+                if (extraRequestItems.length > 0) {
+                    extraRequestItems = [];
+                    renderRequestFormRows();
+                }
                 if (requestDateInput && !requestDateInput.value) {
                     requestDateInput.value = new Date().toISOString().slice(0, 10);
                 }
                 return;
             }
+
+            extraRequestItems = (draft.extraLines || []).map((line, index) => ({
+                rowId: line.rowId || `extra-restored-${index}`,
+                itemName: line.itemName || '',
+                sentLaundryQty: line.sentLaundryQty || '',
+                requestedQty: line.requestedQty || '',
+                wardNote: line.wardNote || ''
+            }));
+            renderRequestFormRows();
 
             if (requestDateInput) {
                 requestDateInput.value = draft.requestDate || new Date().toISOString().slice(0, 10);
@@ -3158,6 +3254,24 @@
 
                 recalculateLine(index);
             });
+
+            extraRequestItems.forEach((item, index) => {
+                const itemInput = document.getElementById(`extraItemName-${index}`);
+                const sentInput = document.getElementById(`extraSentLaundry-${index}`);
+                const requestInput = document.getElementById(`extraRequestedQty-${index}`);
+                const noteInput = document.getElementById(`extraWardNote-${index}`);
+
+                if (itemInput) itemInput.value = item.itemName || '';
+                if (sentInput) sentInput.value = item.sentLaundryQty || '';
+                if (requestInput) requestInput.value = item.requestedQty || '';
+                if (noteInput) noteInput.value = item.wardNote || '';
+            });
+        }
+
+        function applyExchangeDraftToForm(draft) {
+            if (!draft) return;
+            sessionStorage.setItem(getExchangeDraftKey(), JSON.stringify(draft));
+            restoreExchangeDraftToForm();
         }
 
         function openUsageGuide() {
@@ -3476,19 +3590,8 @@
             }
         }
 
-        async function submitExchangeRequest(event) {
-            event.preventDefault();
-            ensureExchangeApiReady();
-
-            const requesterName = document.getElementById('requesterName').value.trim();
-            const requestDate = document.getElementById('requestDate').value;
-            const shift = document.getElementById('requestShift').value;
-            if (!requesterName || !requestDate || !shift) {
-                Swal.fire({ icon: 'warning', title: 'กรอกข้อมูลให้ครบ' });
-                return;
-            }
-
-            const lines = masterItems.map((item, index) => {
+        function collectExchangeRequestLines() {
+            const masterLines = masterItems.map((item, index) => {
                 const stockBalance = Number(document.getElementById(`stockBalance-${index}`).value || 0);
                 const sentLaundryQty = Number(document.getElementById(`sentLaundry-${index}`).value || 0);
                 const suggestedQty = Math.max(Number(item.parLevel || 0) - stockBalance, 0);
@@ -3502,16 +3605,58 @@
                     sentLaundryQty,
                     suggestedQty,
                     requestedQty,
-                    wardNote
+                    wardNote,
+                    isExtra: false
                 };
             });
+
+            const extraLines = extraRequestItems.map((item, index) => {
+                const itemName = document.getElementById(`extraItemName-${index}`)?.value.trim() || '';
+                const sentLaundryQty = Number(document.getElementById(`extraSentLaundry-${index}`)?.value || 0);
+                const requestedQty = Number(document.getElementById(`extraRequestedQty-${index}`)?.value || 0);
+                const wardNote = document.getElementById(`extraWardNote-${index}`)?.value.trim() || '';
+                return {
+                    itemName,
+                    mainCategory: itemName,
+                    parLevel: 0,
+                    stockBalance: 0,
+                    sentLaundryQty,
+                    suggestedQty: 0,
+                    requestedQty,
+                    wardNote,
+                    isExtra: true
+                };
+            });
+
+            return [...masterLines, ...extraLines];
+        }
+
+        async function submitExchangeRequest(event) {
+            event.preventDefault();
+            ensureExchangeApiReady();
+
+            const requesterName = document.getElementById('requesterName').value.trim();
+            const requestDate = document.getElementById('requestDate').value;
+            const shift = document.getElementById('requestShift').value;
+            if (!requesterName || !requestDate || !shift) {
+                Swal.fire({ icon: 'warning', title: 'กรอกข้อมูลให้ครบ' });
+                return;
+            }
+
+            const lines = collectExchangeRequestLines();
 
             if (!lines.some(line => line.requestedQty > 0)) {
                 Swal.fire({ icon: 'warning', title: 'ยังไม่มีรายการที่ขอเบิก' });
                 return;
             }
 
-            const overs = lines.filter(line => line.requestedQty > line.suggestedQty && !line.wardNote);
+            const invalidExtra = lines.find(line => line.isExtra && (line.sentLaundryQty > 0 || line.requestedQty > 0 || line.wardNote) && !line.itemName);
+            if (invalidExtra) {
+                Swal.fire({ icon: 'warning', title: 'กรุณาระบุชื่อรายการผ้าสำหรับรายการอื่นๆ' });
+                return;
+            }
+
+            const overs = lines.filter(line => !line.isExtra && line.requestedQty > line.suggestedQty && !line.wardNote);
             if (overs.length > 0) {
                 Swal.fire({ icon: 'warning', title: 'รายการที่ขอเกินจำนวนแนะนำต้องมีหมายเหตุ' });
                 return;
@@ -3528,7 +3673,7 @@
                             requestDate,
                             shift,
                             requesterName,
-                            lines
+                            lines: lines.map(({ isExtra, ...line }) => line)
                         })
                     });
                     const payload = await response.json();
@@ -3538,6 +3683,8 @@
                     return payload;
                 });
 
+                clearExchangeDraft();
+                extraRequestItems = [];
                 await fetchWardRequests();
                 syncNotifications('unit', unitRequests);
                 renderUnitWorkspace();
