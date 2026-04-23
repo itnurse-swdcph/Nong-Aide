@@ -3315,7 +3315,11 @@
             }
         }
 
-        function printRequestDocument(detail, mode) {
+        function printRequestDocument(detail, mode, targetWindow) {
+            if (!detail || !detail.header || !Array.isArray(detail.lines)) {
+                throw new Error('ข้อมูลเอกสารไม่ครบถ้วน');
+            }
+
             const isIssue = mode === 'issue';
             const title = isIssue ? 'ใบนำจ่ายผ้าสะอาด' : 'ใบเบิก/แลกผ้าสะอาด';
             const printableLines = detail.lines.filter(line => Number(line.requestedQty || 0) > 0 || Number(line.sentLaundryQty || 0) > 0);
@@ -3404,12 +3408,22 @@
                         </tbody>
                     </table>
                     ${signBlock}
-                    <script>window.print();<\/script>
+                    <script>
+                        window.onload = function () {
+                            setTimeout(function () {
+                                window.focus();
+                                window.print();
+                            }, 150);
+                        };
+                    <\/script>
                 </body>
                 </html>
             `;
 
-            const printWindow = window.open('', '_blank');
+            const printWindow = targetWindow || window.open('', '_blank');
+            if (!printWindow) {
+                throw new Error('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ กรุณาอนุญาต pop-up สำหรับหน้านี้');
+            }
             printWindow.document.open();
             printWindow.document.write(html);
             printWindow.document.close();
@@ -3581,11 +3595,39 @@
             return `<span class="status-pill status-${escapeAttribute(status || '')}">${escapeHtml(label)}</span>`;
         }
 
+        function openPrintPreviewWindow() {
+            const printWindow = window.open('', '_blank');
+            if (!printWindow) {
+                throw new Error('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ กรุณาอนุญาต pop-up สำหรับหน้านี้');
+            }
+
+            printWindow.document.open();
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>กำลังเตรียมเอกสาร...</title>
+                    <style>
+                        body { font-family: 'Sarabun', sans-serif; padding: 32px; color: #172b4d; }
+                    </style>
+                </head>
+                <body>กำลังเตรียมเอกสารสำหรับพิมพ์...</body>
+                </html>
+            `);
+            printWindow.document.close();
+            return printWindow;
+        }
+
         async function loadAndPrintRequest(requestId, mode) {
+            let printWindow = null;
             try {
+                printWindow = openPrintPreviewWindow();
                 const detail = await withLoadingPopup('กำลังเตรียมเอกสาร...', async () => fetchRequestDetail(requestId));
-                printRequestDocument(detail, mode);
+                printRequestDocument(detail, mode, printWindow);
             } catch (error) {
+                if (printWindow && !printWindow.closed) {
+                    printWindow.close();
+                }
                 Swal.fire({ icon: 'error', title: 'โหลดเอกสารไม่สำเร็จ', text: error.message || 'เกิดข้อผิดพลาด' });
             }
         }
@@ -3705,8 +3747,16 @@
 
         async function printSelectedRequest(detail, mode) {
             if (!detail) return;
-            await withLoadingPopup('กำลังเตรียมเอกสาร...', async () => detail);
-            printRequestDocument(detail, mode);
+            let printWindow = null;
+            try {
+                printWindow = openPrintPreviewWindow();
+                printRequestDocument(detail, mode, printWindow);
+            } catch (error) {
+                if (printWindow && !printWindow.closed) {
+                    printWindow.close();
+                }
+                Swal.fire({ icon: 'error', title: 'สร้างเอกสารไม่สำเร็จ', text: error.message || 'เกิดข้อผิดพลาด' });
+            }
         }
 
         function getFilteredLaundryRequests() {
