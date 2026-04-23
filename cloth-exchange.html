@@ -4665,23 +4665,22 @@
             selectedStockItems = [];
             renderStockRequestTable();
             
-            // โหลดรายการของหน่วยงานตนเอง (จาก globalClothMaster ที่มีอยู่แล้ว)
+            // โหลดรายการของหน่วยงานตนเอง (จาก masterItems ที่มีอยู่แล้ว)
             const wardSelect = document.getElementById('srWardItems');
             wardSelect.innerHTML = '<option value="">-- เลือกรายการผ้าของท่าน --</option>';
             
-            globalClothMaster.forEach(item => {
+            masterItems.forEach(item => {
                 const opt = document.createElement('option');
-                opt.value = item.clothItem;
-                opt.textContent = `${item.clothItem} (ปัจจุบัน: ${item.parLevel})`;
+                opt.value = item.itemName;
+                opt.textContent = `${item.itemName} (ปัจจุบัน: ${item.parLevel})`;
                 wardSelect.appendChild(opt);
             });
         
-            // โหลดรายการทั้งหมดในระบบ (คอลัมน์ B) เพื่อใช้ค้นหา
+            // โหลดรายการทั้งหมดในระบบ เพื่อใช้ค้นหา
             const dataList = document.getElementById('allSystemClothList');
             dataList.innerHTML = '';
-            // สมมติว่าเรามีข้อมูล Master ทั้งหมดเก็บไว้ (ถ้าไม่มีต้องดึงจาก Server)
-            // ในที่นี้จะดึงจากรายการที่มีในระบบที่เคยโหลดมา หรือกรองจาก Master รวม
-            const uniqueItems = [...new Set(globalClothMaster.map(item => item.clothItem))];
+        
+            const uniqueItems = [...new Set(masterItems.map(item => item.itemName))];
             uniqueItems.forEach(name => {
                 const opt = document.createElement('option');
                 opt.value = name;
@@ -4694,9 +4693,9 @@
         // 2. ฟังก์ชันเพิ่มรายการจากของหน่วยงาน
         function handleAddFromWard(itemName) {
             if (!itemName) return;
-            const item = globalClothMaster.find(i => i.clothItem === itemName);
+            const item = masterItems.find(i => i.itemName === itemName);
             if (item) {
-                addItemToTable(item.clothItem, item.mainCategory, item.parLevel);
+                addItemToTable(item.itemName, item.mainCategory, item.parLevel);
             }
             document.getElementById('srWardItems').value = ''; // reset select
         }
@@ -4707,7 +4706,7 @@
             if (!itemName) return;
         
             // ค้นหาข้อมูลหมวดหมู่จากข้อมูลที่มี
-            const itemInfo = globalClothMaster.find(i => i.clothItem === itemName);
+            const itemInfo = masterItems.find(i => i.itemName === itemName);
             const category = itemInfo ? itemInfo.mainCategory : 'ไม่ระบุ';
             
             addItemToTable(itemName, category, 0); // รายการใหม่จากระบบให้ Stock ปัจจุบันเป็น 0
@@ -4787,24 +4786,30 @@
             Swal.fire({ title: 'กำลังส่งคำขอ...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
         
             try {
-                // ส่งรายการทั้งหมดในครั้งเดียว
+                // วนลูปส่งข้อมูลทีละรายการผ่าน fetch API
                 const promises = selectedStockItems.map(item => {
-                    return new Promise((resolve, reject) => {
-                        google.script.run
-                            .withSuccessHandler(resolve)
-                            .withFailureHandler(reject)
-                            .submitStockRequest({
-                                ward: currentUser.ward,
-                                itemName: item.name,
-                                category: item.category,
-                                requestedPar: item.requestedPar,
-                                reason: reason
-                            });
-                    });
+                    return fetch(EXCHANGE_API, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({
+                            action: 'submitStockRequest',
+                            ward: currentWard,
+                            itemName: item.name,
+                            category: item.category,
+                            requestedPar: item.requestedPar,
+                            reason: reason
+                        })
+                    }).then(res => res.json());
                 });
         
-                await Promise.all(promises);
+                const results = await Promise.all(promises);
                 
+                // เช็คว่ามี error กลับมาหรือไม่
+                const hasError = results.some(r => r.status !== 'success');
+                if (hasError) {
+                    throw new Error('บางรายการส่งไม่สำเร็จ กรุณาลองใหม่');
+                }
+
                 Swal.fire({ icon: 'success', title: 'ส่งคำขอเรียบร้อยแล้ว', text: 'รอเจ้าหน้าที่ซักฟอกตรวจสอบและอนุมัติ' });
                 closeStockRequestModal();
             } catch (error) {
