@@ -1488,7 +1488,7 @@
                                             <th>หน่วยงาน</th>
                                             <th>รายการผ้า</th>
                                             <th>ประเภท</th>
-                                            <th>จำนวนที่ขอ</th>
+                                            <th>เดิม -> ใหม่</th>
                                             <th>เหตุผล</th>
                                             <th>สถานะ</th>
                                             <th>การจัดการ</th>
@@ -1643,7 +1643,7 @@
                                 <th style="padding: 10px; text-align: center;">ลบ</th>
                             </tr>
                         </thead>
-                        <tbody id="stockRequestTableBody">
+                        <tbody id="stockRequestModalBody">
                             </tbody>
                     </table>
                 </div>
@@ -1988,6 +1988,8 @@
         let currentWard = urlParams.get('ward') || sessionStorage.getItem(SESSION_KEYS.ward) || '';
         let currentRole = urlParams.get('role') || sessionStorage.getItem(SESSION_KEYS.role) || 'user';
         let masterItems = [];
+        let globalClothItems = [];
+        let stockRequests = [];
         let unitRequests = [];
         let allRequests = [];
         let selectedUnitRequest = null;
@@ -2215,7 +2217,7 @@
                     syncNotifications('admin', allRequests);
                     renderAdminWorkspace();
                 } else if (isLaundryWard()) {
-                    await fetchAllRequests();
+                    await Promise.all([fetchAllRequests(), fetchStockRequests()]);
                     syncNotifications('laundry', allRequests);
                     renderLaundryWorkspace();
                 } else {
@@ -2352,7 +2354,7 @@
         async function loadLaundryWorkspace() {
             hideNotice();
             showSection('laundryWorkspace');
-            const tasks = [fetchAllRequests()];
+            const tasks = [fetchAllRequests(), fetchStockRequests()];
 
             const results = await Promise.allSettled(tasks);
             if (results.some(result => result.status === 'rejected')) {
@@ -2391,12 +2393,29 @@
             masterItems = Array.isArray(result.data) ? result.data : [];
         }
 
+        async function fetchGlobalClothMaster() {
+            ensureExchangeApiReady();
+            const response = await fetch(`${EXCHANGE_API}?action=getGlobalClothMaster`);
+            const result = await response.json();
+            if (result.status !== 'success') throw new Error(result.message || 'โหลดรายการผ้าทั้งระบบไม่สำเร็จ');
+            globalClothItems = Array.isArray(result.data) ? result.data : [];
+        }
+
         async function fetchWardRequests() {
             ensureExchangeApiReady();
             const response = await fetch(`${EXCHANGE_API}?action=getWardExchangeRequests&ward=${encodeURIComponent(currentWard)}`);
             const result = await response.json();
             if (result.status !== 'success') throw new Error(result.message || 'โหลดรายการไม่สำเร็จ');
             unitRequests = Array.isArray(result.data) ? result.data : [];
+        }
+
+        async function fetchStockRequests(ward = '') {
+            ensureExchangeApiReady();
+            const query = ward ? `&ward=${encodeURIComponent(ward)}` : '';
+            const response = await fetch(`${EXCHANGE_API}?action=getStockRequests${query}`);
+            const result = await response.json();
+            if (result.status !== 'success') throw new Error(result.message || 'โหลดคำขอปรับปรุง STOCK ไม่สำเร็จ');
+            stockRequests = Array.isArray(result.data) ? result.data : [];
         }
 
         async function fetchAllRequests() {
@@ -3641,6 +3660,7 @@
             renderLaundryRows(waitReceiveRows, 'laundryPendingReceiveBody', 'receive');
             renderLaundryRows(waitIssueRows, 'laundryPendingIssueBody', 'issue');
             renderLaundryRows(waitReceiptRows, 'laundryPendingReceiptBody', 'receipt');
+            renderLaundryStockRequestRows();
 
             document.getElementById('laundryHistoryBody').innerHTML = historyRows.length === 0
                 ? `<tr><td colspan="6" style="text-align:center;">ไม่พบรายการ</td></tr>`
@@ -3654,6 +3674,78 @@
                         <td><button class="table-btn" onclick="openLaundryRequest('${escapeJs(row.requestId)}')">เปิดดู</button></td>
                     </tr>
                 `).join('');
+        }
+
+        function renderLaundryStockRequestRows() {
+            const tbody = document.getElementById('stockRequestTableBody');
+            if (!tbody) return;
+
+            const pendingRequests = Array.isArray(stockRequests)
+                ? stockRequests.filter(row => row.status === 'pending')
+                : [];
+
+            if (!pendingRequests.length) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">ไม่พบรายการคำขอ</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = pendingRequests.map(row => `
+                <tr>
+                    <td>${escapeHtml(formatThaiDateTime(row.requestedAt || row.updatedAt || '-'))}</td>
+                    <td>${escapeHtml(row.ward || '-')}</td>
+                    <td>${escapeHtml(row.itemName || '-')}</td>
+                    <td>${escapeHtml(row.mainCategory || '-')}</td>
+                    <td>${row.currentPar ?? 0} -> ${row.requestedPar ?? 0}</td>
+                    <td>${escapeHtml(row.reason || '-')}</td>
+                    <td><span class="badge badge-warning">รออนุมัติ</span></td>
+                    <td>
+                        <div class="inline-actions">
+                            <button class="table-btn" type="button" onclick="processLaundryStockRequest('${escapeJs(row.requestId)}', 'approve')">อนุมัติ</button>
+                            <button class="table-btn secondary" type="button" onclick="processLaundryStockRequest('${escapeJs(row.requestId)}', 'reject')">ไม่อนุมัติ</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function processLaundryStockRequest(requestId, action) {
+            const actionLabel = action === 'approve' ? 'อนุมัติ' : 'ไม่อนุมัติ';
+            const result = await Swal.fire({
+                title: `${actionLabel}คำขอปรับ STOCK`,
+                input: 'text',
+                inputLabel: 'ผู้ดำเนินการ',
+                inputValue: 'เจ้าหน้าที่ซักฟอก',
+                inputPlaceholder: 'ชื่อผู้อนุมัติ/ผู้ปฏิเสธ',
+                showCancelButton: true,
+                confirmButtonText: actionLabel,
+                cancelButtonText: 'ยกเลิก',
+                inputValidator: value => value ? '' : 'กรุณาระบุผู้ดำเนินการ'
+            });
+
+            if (!result.isConfirmed) return;
+
+            try {
+                await withLoadingPopup('กำลังบันทึกผลคำขอปรับ STOCK...', async () => {
+                    const response = await fetch(EXCHANGE_API, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({
+                            action: 'processStockRequest',
+                            requestId,
+                            decision: action,
+                            adminName: result.value.trim()
+                        })
+                    });
+                    const payload = await response.json();
+                    if (!response.ok || payload.status !== 'success') throw new Error(payload.message || 'บันทึกคำขอไม่สำเร็จ');
+                });
+
+                await Promise.all([fetchAllRequests(), fetchStockRequests()]);
+                renderLaundryWorkspace();
+                Swal.fire({ icon: 'success', title: `${actionLabel}คำขอเรียบร้อยแล้ว` });
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: `${actionLabel}คำขอไม่สำเร็จ`, text: error.message || 'เกิดข้อผิดพลาด' });
+            }
         }
 
         function applyLaundryFilters() {
@@ -3673,7 +3765,7 @@
         async function refreshLaundryWorkspace() {
             try {
                 await withLoadingPopup('กำลังรีโหลดข้อมูลซักฟอก...', async () => {
-                    await fetchAllRequests();
+                    await Promise.all([fetchAllRequests(), fetchStockRequests()]);
                 });
                 syncNotifications('laundry', allRequests);
                 renderLaundryWorkspace();
@@ -4575,8 +4667,8 @@
                     if (!response.ok || result.status !== 'success') throw new Error(result.message || 'ลงรับใบไม่สำเร็จ');
                 });
 
-                await fetchAllRequests();
-                syncNotifications('laundry', allRequests);
+                await Promise.all([fetchAllRequests(), fetchStockRequests()]);
+                    syncNotifications('laundry', allRequests);
                 renderLaundryWorkspace();
                 await openLaundryRequest(selectedLaundryRequest.header.requestId);
                 Swal.fire({ icon: 'success', title: 'ลงรับใบเบิกแล้ว' });
@@ -4628,8 +4720,8 @@
                     if (!response.ok || result.status !== 'success') throw new Error(result.message || 'บันทึกการจ่ายไม่สำเร็จ');
                 });
 
-                await fetchAllRequests();
-                syncNotifications('laundry', allRequests);
+                await Promise.all([fetchAllRequests(), fetchStockRequests()]);
+                    syncNotifications('laundry', allRequests);
                 renderLaundryWorkspace();
                 await openLaundryRequest(selectedLaundryRequest.header.requestId);
                 Swal.fire({ icon: 'success', title: 'บันทึกการจ่ายผ้าแล้ว' });
@@ -4658,104 +4750,127 @@
             }
         });
                 
-        let selectedStockItems = []; // ตัวแปรเก็บรายการที่เลือกในตาราง
+                let selectedStockItems = [];
 
-        // 1. ฟังก์ชันเปิด Modal และโหลดข้อมูล
-        function openStockRequestModal() {
-            selectedStockItems = [];
-            renderStockRequestTable();
-            
-            // โหลดรายการของหน่วยงานตนเอง (จาก masterItems ที่มีอยู่แล้ว)
-            const wardSelect = document.getElementById('srWardItems');
-            wardSelect.innerHTML = '<option value="">-- เลือกรายการผ้าของท่าน --</option>';
-            
-            masterItems.forEach(item => {
-                const opt = document.createElement('option');
-                opt.value = item.itemName;
-                opt.textContent = `${item.itemName} (ปัจจุบัน: ${item.parLevel})`;
-                wardSelect.appendChild(opt);
-            });
-        
-            // โหลดรายการทั้งหมดในระบบ เพื่อใช้ค้นหา
-            const dataList = document.getElementById('allSystemClothList');
-            dataList.innerHTML = '';
-        
-            const uniqueItems = [...new Set(masterItems.map(item => item.itemName))];
-            uniqueItems.forEach(name => {
-                const opt = document.createElement('option');
-                opt.value = name;
-                dataList.appendChild(opt);
-            });
-        
-            document.getElementById('stockRequestModal').classList.remove('hidden');
+        function buildStockItemKey(name) {
+            return String(name || '').trim().toLowerCase();
         }
-        
-        // 2. ฟังก์ชันเพิ่มรายการจากของหน่วยงาน
+
+        async function openStockRequestModal() {
+            try {
+                await withLoadingPopup('กำลังโหลดรายการผ้า...', async () => {
+                    await Promise.all([fetchExchangeMaster(), fetchGlobalClothMaster()]);
+                });
+
+                selectedStockItems = [];
+                renderStockRequestTable();
+
+                const wardSelect = document.getElementById('srWardItems');
+                wardSelect.innerHTML = '<option value="">-- เลือกรายการผ้าของหน่วยงาน --</option>';
+                masterItems.forEach(item => {
+                    const opt = document.createElement('option');
+                    opt.value = item.itemName;
+                    opt.textContent = `${item.itemName} (${item.mainCategory || '-'}) | STOCK ปัจจุบัน: ${item.parLevel || 0}`;
+                    wardSelect.appendChild(opt);
+                });
+
+                const dataList = document.getElementById('allSystemClothList');
+                dataList.innerHTML = '';
+                const wardKeys = new Set(masterItems.map(item => buildStockItemKey(item.itemName)));
+                globalClothItems
+                    .filter(item => !wardKeys.has(buildStockItemKey(item.itemName)))
+                    .forEach(item => {
+                        const opt = document.createElement('option');
+                        opt.value = item.itemName;
+                        dataList.appendChild(opt);
+                    });
+
+                document.getElementById('stockRequestModal').classList.remove('hidden');
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'โหลดรายการผ้าไม่สำเร็จ', text: error.message || 'เกิดข้อผิดพลาด' });
+            }
+        }
+
         function handleAddFromWard(itemName) {
             if (!itemName) return;
-            const item = masterItems.find(i => i.itemName === itemName);
+            const item = masterItems.find(i => buildStockItemKey(i.itemName) === buildStockItemKey(itemName));
             if (item) {
-                addItemToTable(item.itemName, item.mainCategory, item.parLevel);
+                addItemToTable({
+                    itemName: item.itemName,
+                    mainCategory: item.mainCategory,
+                    currentPar: Number(item.parLevel || 0),
+                    requestedPar: Number(item.parLevel || 0),
+                    requestType: 'update'
+                });
             }
-            document.getElementById('srWardItems').value = ''; // reset select
+            document.getElementById('srWardItems').value = '';
         }
-        
-        // 3. ฟังก์ชันเพิ่มรายการจากระบบทั้งหมด
+
         function handleAddFromSystem() {
-            const itemName = document.getElementById('srSystemItemSearch').value.trim();
+            const searchInput = document.getElementById('srSystemItemSearch');
+            const itemName = searchInput.value.trim();
             if (!itemName) return;
-        
-            // ค้นหาข้อมูลหมวดหมู่จากข้อมูลที่มี
-            const itemInfo = masterItems.find(i => i.itemName === itemName);
-            const category = itemInfo ? itemInfo.mainCategory : 'ไม่ระบุ';
-            
-            addItemToTable(itemName, category, 0); // รายการใหม่จากระบบให้ Stock ปัจจุบันเป็น 0
-            document.getElementById('srSystemItemSearch').value = '';
+
+            const item = globalClothItems.find(i => buildStockItemKey(i.itemName) === buildStockItemKey(itemName));
+            if (!item) {
+                Swal.fire({ icon: 'warning', title: 'ไม่พบรายการผ้าในฐานข้อมูลกลาง' });
+                return;
+            }
+
+            addItemToTable({
+                itemName: item.itemName,
+                mainCategory: item.mainCategory,
+                currentPar: 0,
+                requestedPar: 0,
+                requestType: 'new'
+            });
+            searchInput.value = '';
         }
-        
-        // 4. ฟังก์ชันจัดการข้อมูลในตาราง
-        function addItemToTable(name, category, currentPar) {
-            // ป้องกันการเพิ่มรายการซ้ำในตาราง
-            if (selectedStockItems.some(i => i.name === name)) {
+
+        function addItemToTable(item) {
+            const key = buildStockItemKey(item.itemName);
+            if (selectedStockItems.some(entry => buildStockItemKey(entry.itemName) === key)) {
                 Swal.fire({ icon: 'warning', title: 'รายการนี้อยู่ในตารางแล้ว' });
                 return;
             }
-        
+
             selectedStockItems.push({
-                name: name,
-                category: category,
-                currentPar: currentPar,
-                requestedPar: currentPar
+                itemName: item.itemName,
+                mainCategory: item.mainCategory || item.itemName,
+                currentPar: Number(item.currentPar || 0),
+                requestedPar: Number(item.requestedPar || 0),
+                requestType: item.requestType || (Number(item.currentPar || 0) > 0 ? 'update' : 'new')
             });
             renderStockRequestTable();
         }
-        
+
         function removeStockItem(index) {
             selectedStockItems.splice(index, 1);
             renderStockRequestTable();
         }
-        
+
         function updateRequestedQty(index, value) {
-            selectedStockItems[index].requestedPar = parseInt(value) || 0;
+            selectedStockItems[index].requestedPar = Math.max(Number(value || 0), 0);
         }
-        
-        // 5. ฟังก์ชันวาดตาราง
+
         function renderStockRequestTable() {
-            const tbody = document.getElementById('stockRequestTableBody');
+            const tbody = document.getElementById('stockRequestModalBody');
+            if (!tbody) return;
+
             if (selectedStockItems.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--muted);">ยังไม่มีรายการที่เลือก</td></tr>';
                 return;
             }
-        
+
             tbody.innerHTML = selectedStockItems.map((item, index) => `
                 <tr style="border-bottom: 1px solid var(--border);">
-                    <td style="padding: 10px;">${item.name}</td>
-                    <td style="padding: 10px;"><small class="badge badge-gray">${item.category}</small></td>
+                    <td style="padding: 10px;">${escapeHtml(item.itemName)}</td>
+                    <td style="padding: 10px;"><small class="badge badge-gray">${escapeHtml(item.mainCategory || '-')}</small></td>
                     <td style="padding: 10px; text-align: center;">${item.currentPar}</td>
                     <td style="padding: 10px; text-align: center;">
-                        <input type="number" value="${item.requestedPar}" min="0" 
+                        <input type="number" value="${item.requestedPar}" min="0"
                             onchange="updateRequestedQty(${index}, this.value)"
-                            style="width: 80px; padding: 5px; text-align: center; border: 1px solid var(--border); border-radius: 4px;">
+                            style="width: 100px; padding: 5px; text-align: center; border: 1px solid var(--border); border-radius: 4px;">
                     </td>
                     <td style="padding: 10px; text-align: center;">
                         <button onclick="removeStockItem(${index})" style="color: var(--danger); background: none; border: none; cursor: pointer;">
@@ -4765,61 +4880,72 @@
                 </tr>
             `).join('');
         }
-        
-        // 6. ฟังก์ชันส่งข้อมูลไปยัง Server
+
         async function submitBulkStockRequest() {
             if (selectedStockItems.length === 0) {
                 Swal.fire({ icon: 'warning', title: 'กรุณาเลือกอย่างน้อย 1 รายการ' });
                 return;
             }
-        
+
+            const itemsToSubmit = selectedStockItems.filter(item => item.requestType === 'new'
+                ? item.requestedPar > 0
+                : item.requestedPar !== item.currentPar);
+
+            if (!itemsToSubmit.length) {
+                Swal.fire({ icon: 'warning', title: 'ยังไม่มีรายการที่เปลี่ยนแปลงจาก STOCK ปัจจุบัน' });
+                return;
+            }
+
             const { value: reason } = await Swal.fire({
                 title: 'ระบุเหตุผลการขอปรับปรุง',
                 input: 'textarea',
-                inputPlaceholder: 'เช่น เพิ่มเตียงรับผู้ป่วย, ทดแทนผ้าเดิมที่ชำรุด...',
+                inputPlaceholder: 'เช่น เพิ่มเตียงรับผู้ป่วย, เพิ่มรอบใช้งาน, เพิ่มรายการผ้าใหม่ของหน่วยงาน',
                 showCancelButton: true,
                 confirmButtonText: 'ยืนยันการส่งคำขอ'
             });
-        
+
             if (!reason) return;
-        
-            Swal.fire({ title: 'กำลังส่งคำขอ...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-        
+
             try {
-                // วนลูปส่งข้อมูลทีละรายการผ่าน fetch API
-                const promises = selectedStockItems.map(item => {
-                    return fetch(EXCHANGE_API, {
+                await withLoadingPopup('กำลังส่งคำขอ...', async () => {
+                    const response = await fetch(EXCHANGE_API, {
                         method: 'POST',
                         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                         body: JSON.stringify({
                             action: 'submitStockRequest',
                             ward: currentWard,
-                            itemName: item.name,
-                            category: item.category,
-                            requestedPar: item.requestedPar,
-                            reason: reason
+                            reason,
+                            items: itemsToSubmit.map(item => ({
+                                itemName: item.itemName,
+                                mainCategory: item.mainCategory,
+                                currentPar: item.currentPar,
+                                requestedPar: item.requestedPar,
+                                requestType: item.requestType
+                            }))
                         })
-                    }).then(res => res.json());
+                    });
+                    const payload = await response.json();
+                    if (!response.ok || payload.status !== 'success') throw new Error(payload.message || 'ส่งคำขอไม่สำเร็จ');
                 });
-        
-                const results = await Promise.all(promises);
-                
-                // เช็คว่ามี error กลับมาหรือไม่
-                const hasError = results.some(r => r.status !== 'success');
-                if (hasError) {
-                    throw new Error('บางรายการส่งไม่สำเร็จ กรุณาลองใหม่');
-                }
 
-                Swal.fire({ icon: 'success', title: 'ส่งคำขอเรียบร้อยแล้ว', text: 'รอเจ้าหน้าที่ซักฟอกตรวจสอบและอนุมัติ' });
+                selectedStockItems = [];
+                renderStockRequestTable();
                 closeStockRequestModal();
+                Swal.fire({ icon: 'success', title: 'ส่งคำขอเรียบร้อยแล้ว', text: 'รอเจ้าหน้าที่ซักฟอกตรวจสอบและอนุมัติ' });
             } catch (error) {
-                Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: error.message });
+                Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: error.message || 'ส่งคำขอไม่สำเร็จ' });
             }
         }
-        
+
         function closeStockRequestModal() {
             document.getElementById('stockRequestModal').classList.add('hidden');
         }
     </script>
 </body>
 </html>
+
+
+
+
+
+
