@@ -264,6 +264,15 @@
             gap: 10px;
         }
 
+        #laundryWorkspace .hero {
+            grid-template-columns: 1fr;
+        }
+
+        #laundryWorkspace .hero-side {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            width: 100%;
+        }
+
         .metric-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -322,6 +331,21 @@
             font-size: 1.5rem;
             position: relative;
             z-index: 1;
+        }
+
+        .metric-link {
+            width: 100%;
+            border: 1px solid var(--border);
+            text-align: left;
+            cursor: pointer;
+            transition: transform 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        .metric-link:hover,
+        .metric-link:focus-visible {
+            transform: translateY(-2px);
+            box-shadow: 0 16px 30px rgba(21, 59, 99, 0.12);
+            outline: none;
         }
 
         .metric-watermark {
@@ -575,8 +599,36 @@
             background: #16885b;
         }
 
+        .table-btn:disabled,
+        .ghost-btn:disabled,
+        .primary-btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
         .table-action-group {
             display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .pagination-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+
+        .pagination-info {
+            color: var(--muted);
+            font-size: 0.88rem;
+        }
+
+        .pagination-actions {
+            display: flex;
+            align-items: center;
             gap: 8px;
             flex-wrap: wrap;
         }
@@ -696,6 +748,10 @@
         .queue-grid {
             display: grid;
             gap: 16px;
+        }
+
+        .laundry-anchor {
+            scroll-margin-top: 100px;
         }
 
         .queue-card .section-head {
@@ -1058,9 +1114,21 @@
             grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
         }
 
+        .site-footer {
+            margin-top: 24px;
+            padding: 18px 20px 28px;
+            text-align: center;
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
         @media (max-width: 980px) {
             .hero {
                 grid-template-columns: 1fr;
+            }
+
+            #laundryWorkspace .hero-side {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
 
             .guide-head {
@@ -1080,6 +1148,10 @@
 
             .page {
                 padding: 14px;
+            }
+
+            #laundryWorkspace .hero-side {
+                grid-template-columns: 1fr;
             }
 
             .guide-modal {
@@ -1336,26 +1408,27 @@
 
             <section id="laundryWorkspace" class="hidden">
                 <div class="hero">
-                    <div>
-                        <h2>คิวงานซักฟอก</h2>
-                        <p>ลงรับใบเบิก บันทึกจำนวนผ้าที่รับ จำนวนที่จ่าย คงค้าง และพิมพ์ใบนำจ่าย</p>
-                    </div>
                     <div class="hero-side">
-                        <div class="metric metric-blue">
-                            <small>คิวใหม่</small>
+                        <button class="metric metric-blue metric-link" type="button" onclick="scrollToLaundrySection('laundryPendingReceiveSection')">
+                            <small>คิวรอรับใบเบิก</small>
                             <strong id="laundryPendingReceiveMetric">0</strong>
                             <span class="metric-watermark"><i class="fas fa-inbox"></i></span>
-                        </div>
-                        <div class="metric metric-amber">
-                            <small>รอหน่วยงานรับผ้า</small>
+                        </button>
+                        <button class="metric metric-amber metric-link" type="button" onclick="scrollToLaundrySection('laundryPendingIssueSection')">
+                            <small>คิวรอจ่ายผ้า</small>
                             <strong id="laundryPendingIssueMetric">0</strong>
                             <span class="metric-watermark"><i class="fas fa-truck-ramp-box"></i></span>
-                        </div>
-                        <div class="metric metric-green">
+                        </button>
+                        <button class="metric metric-green metric-link" type="button" onclick="scrollToLaundrySection('laundryPendingReceiptSection')">
                             <small>จ่ายแล้วรอหน่วยงานลงรับ</small>
                             <strong id="laundryPendingReceiptMetric">0</strong>
                             <span class="metric-watermark"><i class="fas fa-bell-concierge"></i></span>
-                        </div>
+                        </button>
+                        <button class="metric metric-teal metric-link" type="button" onclick="scrollToLaundrySection('laundryStockRequestSection')">
+                            <small>ขอเพิ่ม / ปรับลด STOCK</small>
+                            <strong id="laundryStockRequestMetric">0</strong>
+                            <span class="metric-watermark"><i class="fas fa-boxes-stacked"></i></span>
+                        </button>
                     </div>
                 </div>
 
@@ -1368,6 +1441,34 @@
 
                 <section id="laundryQueue" class="panel active">
                     <div class="stack">
+                        <div id="laundryStockRequestSection" class="card laundry-anchor">
+                            <div class="section-head">
+                                <div>
+                                    <h3>รายการขอเพิ่ม / ปรับลด STOCK</h3>
+                                    <p>รายการที่หน่วยงานขอปรับปรุง Stock</p>
+                                </div>
+                            </div>
+                            <div class="table-wrap">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>วันที่ส่งคำขอ</th>
+                                            <th>หน่วยงาน</th>
+                                            <th>รายการผ้า</th>
+                                            <th>ประเภท</th>
+                                            <th>เดิม -> ใหม่</th>
+                                            <th>เหตุผล</th>
+                                            <th>สถานะ</th>
+                                            <th>การจัดการ</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="stockRequestTableBody">
+                                        <tr><td colspan="8" style="text-align:center;">ไม่มีรายการคำขอ</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
                         <div id="laundryFilterCard" class="card">
                             <div class="section-head">
                                 <div>
@@ -1399,7 +1500,7 @@
                         </div>
 
                         <div id="laundryQueueGroups" class="queue-grid">
-                            <div class="card queue-card receive">
+                            <div id="laundryPendingReceiveSection" class="card queue-card receive laundry-anchor">
                                 <div class="section-head">
                                     <div>
                                         <h3>คิวรอรับใบเบิก</h3>
@@ -1424,7 +1525,7 @@
                                 </div>
                             </div>
 
-                            <div class="card queue-card issue">
+                            <div id="laundryPendingIssueSection" class="card queue-card issue laundry-anchor">
                                 <div class="section-head">
                                     <div>
                                         <h3>คิวรอจ่ายผ้า</h3>
@@ -1450,11 +1551,11 @@
                                 </div>
                             </div>
 
-                            <div class="card queue-card receipt">
+                            <div id="laundryPendingReceiptSection" class="card queue-card receipt laundry-anchor">
                                 <div class="section-head">
                                     <div>
                                         <h3>จ่ายผ้าสำเร็จรอหน่วยงานลงรับ</h3>
-                                        <p>รอให้หน่วยงานเข้ามาลงชื่อรับผ้าในระบบ</p>
+                                        <p>รอให้หน่วยงานเข้ามาลงชื่อรับผ้าในระบบ โดยแบ่งหน้า 10 รายการต่อหน้า</p>
                                     </div>
                                     <span class="queue-count" id="laundryPendingReceiptCount">0 รายการ</span>
                                 </div>
@@ -1474,33 +1575,7 @@
                                         <tbody id="laundryPendingReceiptBody"></tbody>
                                     </table>
                                 </div>
-                            </div>
-                        </div>
-                        <div class="card" style="margin-top: 20px;">
-                            <div class="section-head">
-                                <div>
-                                    <h3>รายการขอเพิ่ม / ปรับลด STOCK</h3>
-                                    <p>รายการที่หน่วยงานขอปรับปรุง Stock</p>
-                                </div>
-                            </div>
-                            <div class="table-wrap">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>วันที่ส่งคำขอ</th>
-                                            <th>หน่วยงาน</th>
-                                            <th>รายการผ้า</th>
-                                            <th>ประเภท</th>
-                                            <th>เดิม -> ใหม่</th>
-                                            <th>เหตุผล</th>
-                                            <th>สถานะ</th>
-                                            <th>การจัดการ</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="stockRequestTableBody">
-                                        <tr><td colspan="8" style="text-align:center;">ไม่มีรายการคำขอ</td></tr>
-                                    </tbody>
-                                </table>
+                                <div id="laundryPendingReceiptPagination" class="pagination-bar"></div>
                             </div>
                         </div>
 
@@ -1606,6 +1681,7 @@
                 <div id="adminDetailCard" class="card hidden"></div>
             </section>
         </main>
+        <footer class="site-footer">© 2026 AIDE System. All rights reserved.| Developed By Natnarinthorn</footer>
     </div>
 
     <div id="stockRequestModal" class="record-modal hidden">
@@ -2001,6 +2077,7 @@
         let selectedAdminRequest = null;
         let preferredUnitAction = '';
         let preferredLaundryAction = '';
+        let laundryPendingReceiptPage = 1;
         let lastKnownServerVersion = APP_VERSION;
         let hasShownReloadPrompt = false;
         let autoRefreshHandle = null;
@@ -2010,6 +2087,7 @@
         let notificationItems = [];
         const snapshotByScope = { unit: new Map(), laundry: new Map(), admin: new Map() };
         const notificationKeys = new Set();
+        const LAUNDRY_RECEIPT_PAGE_SIZE = 10;
 
         const isAdminMode = () => currentRole === 'admin';
         const isLaundryWard = () => !isAdminMode() && currentWard === 'ซักฟอก';
@@ -3759,6 +3837,12 @@
             }
         }
 
+        function scrollToLaundrySection(sectionId) {
+            const section = document.getElementById(sectionId);
+            if (!section) return;
+            section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
         function getFilteredLaundryRequests() {
             const keyword = (document.getElementById('laundrySearchInput')?.value || '').trim().toLowerCase();
             const startDate = document.getElementById('laundryDateStart')?.value || '';
@@ -3822,12 +3906,54 @@
             `).join('');
         }
 
+        function setLaundryPendingReceiptPage(page) {
+            laundryPendingReceiptPage = Math.max(Number(page || 1), 1);
+            renderLaundryWorkspace();
+        }
+
+        function renderLaundryPendingReceiptPagination(totalRows, totalPages, currentPage) {
+            const pagination = document.getElementById('laundryPendingReceiptPagination');
+            if (!pagination) return;
+
+            if (totalRows === 0) {
+                pagination.innerHTML = '';
+                return;
+            }
+
+            const startItem = ((currentPage - 1) * LAUNDRY_RECEIPT_PAGE_SIZE) + 1;
+            const endItem = Math.min(currentPage * LAUNDRY_RECEIPT_PAGE_SIZE, totalRows);
+
+            if (totalPages <= 1) {
+                pagination.innerHTML = `
+                    <div class="pagination-info">แสดง ${startItem}-${endItem} จาก ${totalRows.toLocaleString()} รายการ</div>
+                `;
+                return;
+            }
+
+            pagination.innerHTML = `
+                <div class="pagination-info">แสดง ${startItem}-${endItem} จาก ${totalRows.toLocaleString()} รายการ | หน้า ${currentPage.toLocaleString()} / ${totalPages.toLocaleString()}</div>
+                <div class="pagination-actions">
+                    <button class="table-btn secondary" type="button" onclick="setLaundryPendingReceiptPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>ก่อนหน้า</button>
+                    <button class="table-btn secondary" type="button" onclick="setLaundryPendingReceiptPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>ถัดไป</button>
+                </div>
+            `;
+        }
+
         function renderLaundryWorkspace() {
             const filteredRows = getFilteredLaundryRequests();
             const waitReceiveRows = filteredRows.filter(row => row.status === 'submitted');
             const waitIssueRows = filteredRows.filter(row => ['received', 'processing'].includes(row.status));
             const waitReceiptRows = filteredRows.filter(row => ['partial_issued', 'issued_waiting_receipt'].includes(row.status));
+            const totalReceiptPages = Math.max(Math.ceil(waitReceiptRows.length / LAUNDRY_RECEIPT_PAGE_SIZE), 1);
+            if (laundryPendingReceiptPage > totalReceiptPages) {
+                laundryPendingReceiptPage = totalReceiptPages;
+            }
+            const receiptPageStart = (laundryPendingReceiptPage - 1) * LAUNDRY_RECEIPT_PAGE_SIZE;
+            const waitReceiptDisplayRows = waitReceiptRows.slice(receiptPageStart, receiptPageStart + LAUNDRY_RECEIPT_PAGE_SIZE);
             const historyRows = filteredRows.filter(row => ['completed', 'cancelled'].includes(row.status));
+            const pendingStockRequests = Array.isArray(stockRequests)
+                ? stockRequests.filter(row => row.status === 'pending')
+                : [];
 
             const legacyTabs = document.querySelector('#laundryWorkspace > .toolbar');
             const legacyQueueCard = document.getElementById('laundryQueueBody')?.closest('.card');
@@ -3838,25 +3964,18 @@
             if (legacyDetailCard) legacyDetailCard.classList.add('hidden');
             if (legacyHistoryPanel) legacyHistoryPanel.classList.add('hidden');
 
-            const laundryHeroDescription = document.querySelector('#laundryWorkspace .hero p');
-            if (laundryHeroDescription) {
-                laundryHeroDescription.innerText = 'แยกคิวงานซักฟอกเป็นคิวรอรับใบเบิก คิวรอจ่ายผ้า และคิวจ่ายผ้าสำเร็จรอหน่วยงานลงรับ พร้อมค้นหาใบเบิกได้จากเลขที่ใบเบิก ชื่อหน่วยงาน หรือช่วงวันที่';
-            }
-            const laundryMetricLabels = document.querySelectorAll('#laundryWorkspace .hero-side .metric small');
-            if (laundryMetricLabels[0]) laundryMetricLabels[0].innerText = 'คิวรอรับใบเบิก';
-            if (laundryMetricLabels[1]) laundryMetricLabels[1].innerText = 'คิวรอจ่ายผ้า';
-            if (laundryMetricLabels[2]) laundryMetricLabels[2].innerText = 'จ่ายแล้วรอหน่วยงานลงรับ';
-
             document.getElementById('laundryPendingReceiveMetric').innerText = waitReceiveRows.length.toLocaleString();
             document.getElementById('laundryPendingIssueMetric').innerText = waitIssueRows.length.toLocaleString();
             document.getElementById('laundryPendingReceiptMetric').innerText = waitReceiptRows.length.toLocaleString();
+            document.getElementById('laundryStockRequestMetric').innerText = pendingStockRequests.length.toLocaleString();
             document.getElementById('laundryPendingReceiveCount').innerText = `${waitReceiveRows.length.toLocaleString()} รายการ`;
             document.getElementById('laundryPendingIssueCount').innerText = `${waitIssueRows.length.toLocaleString()} รายการ`;
             document.getElementById('laundryPendingReceiptCount').innerText = `${waitReceiptRows.length.toLocaleString()} รายการ`;
 
             renderLaundryRows(waitReceiveRows, 'laundryPendingReceiveBody', 'receive');
             renderLaundryRows(waitIssueRows, 'laundryPendingIssueBody', 'issue');
-            renderLaundryRows(waitReceiptRows, 'laundryPendingReceiptBody', 'receipt');
+            renderLaundryRows(waitReceiptDisplayRows, 'laundryPendingReceiptBody', 'receipt');
+            renderLaundryPendingReceiptPagination(waitReceiptRows.length, totalReceiptPages, laundryPendingReceiptPage);
             renderLaundryStockRequestRows();
 
             document.getElementById('laundryHistoryBody').innerHTML = historyRows.length === 0
@@ -3946,6 +4065,7 @@
         }
 
         function applyLaundryFilters() {
+            laundryPendingReceiptPage = 1;
             renderLaundryWorkspace();
         }
 
@@ -3956,6 +4076,7 @@
             if (searchInput) searchInput.value = '';
             if (startInput) startInput.value = '';
             if (endInput) endInput.value = '';
+            laundryPendingReceiptPage = 1;
             renderLaundryWorkspace();
         }
 
@@ -5140,9 +5261,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
-
