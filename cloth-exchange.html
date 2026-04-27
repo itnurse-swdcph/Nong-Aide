@@ -758,6 +758,100 @@
             margin-bottom: 10px;
         }
 
+        .report-note {
+            padding: 14px 16px;
+            border: 1px solid #d7e6f5;
+            border-radius: 16px;
+            background: linear-gradient(180deg, #f6fbff 0%, #ffffff 100%);
+            color: var(--text);
+            line-height: 1.75;
+            font-size: 0.9rem;
+        }
+
+        .report-note.warning {
+            border-color: #f0d299;
+            background: linear-gradient(180deg, #fff8eb 0%, #ffffff 100%);
+        }
+
+        .report-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+        }
+
+        .report-kpi {
+            padding: 16px 18px;
+        }
+
+        .report-kpi small {
+            display: block;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        .report-kpi strong {
+            font-size: 1.28rem;
+            color: var(--navy);
+        }
+
+        .report-filter-grid {
+            grid-template-columns: minmax(180px, 240px) minmax(300px, 1fr);
+            align-items: end;
+        }
+
+        .report-meta {
+            color: var(--muted);
+            font-size: 0.88rem;
+            line-height: 1.7;
+        }
+
+        .report-item-head {
+            display: grid;
+            gap: 2px;
+        }
+
+        .report-item-head small {
+            color: var(--muted);
+            font-size: 0.74rem;
+            font-weight: 500;
+        }
+
+        .report-total-row td,
+        .report-total-row th {
+            font-weight: 700;
+            background: #f4f8fc;
+        }
+
+        .stock-editor-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .stock-editor-row {
+            display: grid;
+            grid-template-columns: minmax(240px, 1.4fr) minmax(120px, 0.7fr) minmax(120px, 0.7fr);
+            gap: 12px;
+            align-items: center;
+            padding: 12px 14px;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: #fbfdff;
+        }
+
+        .stock-editor-label small {
+            display: block;
+            color: var(--muted);
+            font-size: 0.76rem;
+        }
+
+        .stock-editor-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-align: right;
+        }
+
         .queue-count {
             display: inline-flex;
             align-items: center;
@@ -1131,6 +1225,11 @@
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
 
+             .report-filter-grid,
+             .stock-editor-row {
+                grid-template-columns: 1fr;
+            }
+
             .guide-head {
                 flex-direction: column;
             }
@@ -1436,6 +1535,7 @@
                     <div class="tabs">
                         <button class="tab-btn active" onclick="switchPanel('laundryWorkspace', 'laundryQueue', this)">คิวงาน</button>
                         <button class="tab-btn" onclick="switchPanel('laundryWorkspace', 'laundryHistory', this)">ประวัติ</button>
+                        <button class="tab-btn" onclick="openLaundryReportTab(this)">รายงาน STOCK</button>
                     </div>
                 </div>
 
@@ -1631,6 +1731,61 @@
                                 </thead>
                                 <tbody id="laundryHistoryBody"></tbody>
                             </table>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="laundryReport" class="panel">
+                    <div class="stack">
+                        <div class="card">
+                            <div class="section-head">
+                                <div>
+                                    <h3>รายงาน STOCK เครื่องผ้าหน่วยงาน</h3>
+                                </div>
+                                <div class="report-meta" id="laundryStockReportMeta">ยังไม่ได้โหลดรายงาน</div>
+                            </div>
+                            <div class="field-grid report-filter-grid">
+                                <label class="field">
+                                    หน่วยงาน
+                                    <select id="laundryStockReportWardFilter">
+                                        <option value="all">ทุกหน่วยงาน</option>
+                                    </select>
+                                </label>
+                                <div class="field">
+                                    การจัดการ
+                                    <div class="inline-actions">
+                                        <button class="primary-btn" type="button" onclick="reloadWardStockReport()"><i class="fas fa-chart-column"></i> แสดงรายงาน</button>
+                                        <button class="ghost-btn" type="button" onclick="exportWardStockReportExcel()"><i class="fas fa-file-excel"></i> Excel</button>
+                                        <button class="ghost-btn" type="button" onclick="exportWardStockReportPdf()"><i class="fas fa-file-pdf"></i> PDF</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="laundryStockReportSummary" class="report-kpi-grid"></div>
+
+                        <div class="card">
+                            <div class="section-head">
+                                <div>
+                                    <h3>ตารางรายงาน</h3>
+                                    <p>แสดงจำนวนเตียง, STOCK แต่ละรายการ, รวม STOCK และอัตราการเบิกใช้</p>
+                                </div>
+                            </div>
+                            <div id="laundryStockReportTableWrap" class="table-wrap">
+                                <div class="empty">กด "แสดงรายงาน" เพื่อโหลดข้อมูล</div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="section-head">
+                                <div>
+                                    <h3>สรุปรวม STOCK ตามรายการ</h3>
+                                    <p>รวมยอด STOCK เฉพาะช่วงข้อมูลที่กำลังเปิดดูในรายงาน</p>
+                                </div>
+                            </div>
+                            <div id="laundryStockReportItemSummaryWrap" class="table-wrap">
+                                <div class="empty">ยังไม่มีข้อมูลสรุป</div>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -2047,7 +2202,7 @@
 
     <script>
         const EXCHANGE_API = 'https://script.google.com/macros/s/AKfycbwB42c0EM8n64wEGm76Ap5Kq-VSJKaBNfCPnBUEEN_TztQ_f5za1bOlJU_vfYo05T7nVw/exec';
-        const APP_VERSION = '2026.04.22.01';
+        const APP_VERSION = '2026.04.27.02';
         const AUTO_REFRESH_MS = 30000;
         const SESSION_KEYS = { ward: 'aide_ward', role: 'aide_role', versionPrompt: 'aide_exchange_version_prompt' };
         const ADMIN_PASSWORD = '11450';
@@ -2070,6 +2225,9 @@
         let extraRequestItems = [];
         let globalClothItems = [];
         let stockRequests = [];
+        let wardStockReport = null;
+        let wardStockReportLoaded = false;
+        let wardStockEditorState = null;
         let unitRequests = [];
         let allRequests = [];
         let selectedUnitRequest = null;
@@ -2498,6 +2656,17 @@
             const result = await response.json();
             if (result.status !== 'success') throw new Error(result.message || 'โหลดคำขอปรับปรุง STOCK ไม่สำเร็จ');
             stockRequests = Array.isArray(result.data) ? result.data : [];
+        }
+
+        async function fetchWardStockReport(ward = '') {
+            ensureExchangeApiReady();
+            const query = ward ? `&ward=${encodeURIComponent(ward)}` : '';
+            const response = await fetch(`${EXCHANGE_API}?action=getWardStockReport${query}`);
+            const result = await response.json();
+            if (!response.ok || result.status !== 'success') throw new Error(result.message || 'โหลดรายงาน STOCK เครื่องผ้าหน่วยงานไม่สำเร็จ');
+            wardStockReport = result.data || null;
+            wardStockReportLoaded = true;
+            return wardStockReport;
         }
 
         async function fetchAllRequests() {
@@ -3955,14 +4124,10 @@
                 ? stockRequests.filter(row => row.status === 'pending')
                 : [];
 
-            const legacyTabs = document.querySelector('#laundryWorkspace > .toolbar');
             const legacyQueueCard = document.getElementById('laundryQueueBody')?.closest('.card');
             const legacyDetailCard = document.getElementById('laundryDetailCard');
-            const legacyHistoryPanel = document.getElementById('laundryHistory');
-            if (legacyTabs) legacyTabs.classList.add('hidden');
             if (legacyQueueCard) legacyQueueCard.classList.add('hidden');
             if (legacyDetailCard) legacyDetailCard.classList.add('hidden');
-            if (legacyHistoryPanel) legacyHistoryPanel.classList.add('hidden');
 
             document.getElementById('laundryPendingReceiveMetric').innerText = waitReceiveRows.length.toLocaleString();
             document.getElementById('laundryPendingIssueMetric').innerText = waitIssueRows.length.toLocaleString();
@@ -4084,12 +4249,380 @@
             try {
                 await withLoadingPopup('กำลังรีโหลดข้อมูลซักฟอก...', async () => {
                     await Promise.all([fetchAllRequests(), fetchStockRequests()]);
+                    if (document.getElementById('laundryReport')?.classList.contains('active') || wardStockReportLoaded) {
+                        await fetchWardStockReport(getWardStockReportFilterValue());
+                    }
                 });
                 syncNotifications('laundry', allRequests);
                 renderLaundryWorkspace();
+                if (wardStockReportLoaded) {
+                    renderWardStockReport();
+                }
             } catch (error) {
                 Swal.fire({ icon: 'error', title: 'รีโหลดข้อมูลไม่สำเร็จ', text: error.message || 'เกิดข้อผิดพลาด' });
             }
+        }
+
+        async function openLaundryReportTab(button) {
+            switchPanel('laundryWorkspace', 'laundryReport', button);
+            if (!wardStockReportLoaded) {
+                await reloadWardStockReport();
+            } else {
+                renderWardStockReport();
+            }
+        }
+
+        function getWardStockReportFilterValue() {
+            const value = document.getElementById('laundryStockReportWardFilter')?.value || 'all';
+            return value === 'all' ? '' : value;
+        }
+
+        async function reloadWardStockReport() {
+            try {
+                await withLoadingPopup('กำลังโหลดรายงาน STOCK เครื่องผ้าหน่วยงาน...', async () => {
+                    await fetchWardStockReport(getWardStockReportFilterValue());
+                });
+                renderWardStockReport();
+            } catch (error) {
+                renderWardStockReportError(error.message || 'เกิดข้อผิดพลาด');
+                Swal.fire({ icon: 'error', title: 'โหลดรายงานไม่สำเร็จ', text: error.message || 'เกิดข้อผิดพลาด' });
+            }
+        }
+
+        function renderWardStockReportError(message) {
+            wardStockReportLoaded = false;
+            document.getElementById('laundryStockReportMeta').innerHTML = escapeHtml(message || 'ไม่สามารถโหลดรายงานได้');
+            document.getElementById('laundryStockReportSummary').innerHTML = '';
+            document.getElementById('laundryStockReportTableWrap').innerHTML = `<div class="empty">${escapeHtml(message || 'ไม่สามารถโหลดรายงานได้')}</div>`;
+            document.getElementById('laundryStockReportItemSummaryWrap').innerHTML = '<div class="empty">ยังไม่มีข้อมูลสรุป</div>';
+        }
+
+        function renderWardStockReport() {
+            if (!wardStockReport || !Array.isArray(wardStockReport.rows)) {
+                renderWardStockReportError('ยังไม่มีข้อมูลรายงาน');
+                return;
+            }
+
+            populateWardStockReportWardOptions();
+
+            const summary = wardStockReport.summary || {};
+            const missingWards = Array.isArray(wardStockReport?.bedConfig?.missingWards) ? wardStockReport.bedConfig.missingWards : [];
+            const generatedAt = wardStockReport.generatedAt || '-';
+            const selectionText = wardStockReport.selectedWard && wardStockReport.selectedWard !== 'all'
+                ? `หน่วยงาน: ${wardStockReport.selectedWard}`
+                : 'หน่วยงาน: ทุกหน่วยงาน';
+
+            document.getElementById('laundryStockReportMeta').innerHTML = `
+                <div>${escapeHtml(selectionText)}</div>
+                <div>ออกรายงานเมื่อ ${escapeHtml(formatThaiDateTime(generatedAt))}</div>
+            `;
+
+            document.getElementById('laundryStockReportSummary').innerHTML = `
+                <div class="card report-kpi"><small>จำนวนหน่วยงาน</small><strong>${formatReportNumber(summary.totalWards || 0, 0)}</strong></div>
+                <div class="card report-kpi"><small>จำนวนเตียงรวม</small><strong>${formatReportNumber(summary.totalBeds || 0, 0)}</strong></div>
+                <div class="card report-kpi"><small>รวม STOCK</small><strong>${formatReportNumber(summary.totalStock || 0, 0)}</strong></div>
+                <div class="card report-kpi"><small>หน่วยงานที่ยังไม่ตั้งจำนวนเตียง</small><strong>${formatReportNumber(missingWards.length, 0)}</strong></div>
+            `;
+
+            document.getElementById('laundryStockReportTableWrap').innerHTML = buildWardStockReportTableHtml();
+            document.getElementById('laundryStockReportItemSummaryWrap').innerHTML = buildWardStockReportItemSummaryHtml();
+        }
+
+        function populateWardStockReportWardOptions() {
+            const select = document.getElementById('laundryStockReportWardFilter');
+            if (!select || !wardStockReport) return;
+
+            const currentValue = wardStockReport.selectedWard && wardStockReport.selectedWard !== 'all'
+                ? wardStockReport.selectedWard
+                : 'all';
+
+            const options = ['<option value="all">ทุกหน่วยงาน</option>']
+                .concat((wardStockReport.wardOptions || []).map(ward => `
+                    <option value="${escapeAttribute(ward)}"${currentValue === ward ? ' selected' : ''}>${escapeHtml(ward)}</option>
+                `));
+
+            select.innerHTML = options.join('');
+        }
+
+        function buildWardStockReportTableHtml(includeActions = true) {
+            const items = Array.isArray(wardStockReport?.items) ? wardStockReport.items : [];
+            const rows = Array.isArray(wardStockReport?.rows) ? wardStockReport.rows : [];
+            const summary = wardStockReport?.summary || {};
+
+            if (!rows.length) {
+                return '<div class="empty">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</div>';
+            }
+
+            return `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>หน่วยงาน</th>
+                            <th>จำนวนเตียง</th>
+                            ${items.map(item => `
+                                <th>
+                                    <div class="report-item-head">
+                                        <span>${escapeHtml(item.itemName)}</span>
+                                        <small>${escapeHtml(item.mainCategory || '-')}</small>
+                                    </div>
+                                </th>
+                            `).join('')}
+                            <th>รวม STOCK</th>
+                            ${includeActions ? '<th>จัดการ</th>' : ''}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows.map(row => `
+                            <tr>
+                                <td>${escapeHtml(row.ward || '-')}</td>
+                                <td>${formatReportNumber(row.bedCount || 0, 0)}</td>
+                                ${items.map(item => `<td>${formatReportNumber(row.items?.[item.key] || 0, 0)}</td>`).join('')}
+                                <td>${formatReportNumber(row.totalStock || 0, 0)}</td>
+                                ${includeActions ? `<td><button class="table-btn secondary" type="button" onclick="openWardStockEditor('${escapeJs(row.ward || '')}')">แก้ไข STOCK</button></td>` : ''}
+                            </tr>
+                        `).join('')}
+                        <tr class="report-total-row">
+                            <td>รวม</td>
+                            <td>${formatReportNumber(summary.totalBeds || 0, 0)}</td>
+                            ${items.map(item => {
+                                const totalItem = (summary.byItem || []).find(entry => entry.key === item.key);
+                                return `<td>${formatReportNumber(totalItem?.totalStock || 0, 0)}</td>`;
+                            }).join('')}
+                            <td>${formatReportNumber(summary.totalStock || 0, 0)}</td>
+                            ${includeActions ? '<td></td>' : ''}
+                        </tr>
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function buildWardStockReportItemSummaryHtml() {
+            const items = Array.isArray(wardStockReport?.summary?.byItem) ? wardStockReport.summary.byItem : [];
+            if (!items.length) {
+                return '<div class="empty">ไม่พบข้อมูลสรุป</div>';
+            }
+
+            return `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>รายการผ้า</th>
+                            <th>หมวดหมู่หลัก</th>
+                            <th>รวม STOCK</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${items.map(item => `
+                            <tr>
+                                <td>${escapeHtml(item.itemName || '-')}</td>
+                                <td>${escapeHtml(item.mainCategory || '-')}</td>
+                                <td>${formatReportNumber(item.totalStock || 0, 0)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function buildWardStockReportDocumentHtml() {
+            const title = 'รายงาน STOCK เครื่องผ้าหน่วยงาน';
+            const selectionText = wardStockReport?.selectedWard && wardStockReport.selectedWard !== 'all'
+                ? `หน่วยงาน: ${wardStockReport.selectedWard}`
+                : 'หน่วยงาน: ทุกหน่วยงาน';
+            const generatedAt = wardStockReport?.generatedAt || '-';
+
+            return `
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>${title}</title>
+                    <style>
+                        body { font-family: 'Sarabun', 'Prompt', sans-serif; padding: 24px; color: #193047; }
+                        h1 { margin: 0 0 8px 0; font-size: 24px; }
+                        .meta { margin-bottom: 18px; color: #506276; line-height: 1.8; }
+                        .note { margin-bottom: 18px; padding: 12px 14px; border: 1px solid #d9e6f2; background: #f7fbff; border-radius: 10px; line-height: 1.7; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+                        th, td { border: 1px solid #d7e3ef; padding: 8px; font-size: 12px; text-align: left; vertical-align: top; }
+                        th { background: #eef5fb; }
+                        .total-row td { font-weight: 700; background: #f4f8fc; }
+                        .section-title { margin-top: 20px; font-size: 18px; font-weight: 700; }
+                    </style>
+                </head>
+                <body>
+                    <h1>${title}</h1>
+                    <div class="meta">${escapeHtml(selectionText)}<br>ออกรายงานเมื่อ ${escapeHtml(formatThaiDateTime(generatedAt))}</div>
+                    ${buildWardStockReportTableHtml(false)
+                        .replace('class="report-total-row"', 'class="total-row"')}
+                    <div class="section-title">สรุปรวม STOCK ตามรายการ</div>
+                    ${buildWardStockReportItemSummaryHtml()}
+                </body>
+                </html>
+            `;
+        }
+
+        function exportWardStockReportExcel() {
+            if (!wardStockReportLoaded || !wardStockReport || !Array.isArray(wardStockReport.rows) || !wardStockReport.rows.length) {
+                Swal.fire({ icon: 'warning', title: 'ยังไม่มีรายงานให้ส่งออก', text: 'กรุณากดแสดงรายงานก่อน' });
+                return;
+            }
+
+            const blob = new Blob(['\ufeff', buildWardStockReportDocumentHtml()], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+            downloadBlobFile(blob, `${buildWardStockReportFileNameBase()}.xls`);
+        }
+
+        function exportWardStockReportPdf() {
+            if (!wardStockReportLoaded || !wardStockReport || !Array.isArray(wardStockReport.rows) || !wardStockReport.rows.length) {
+                Swal.fire({ icon: 'warning', title: 'ยังไม่มีรายงานให้ส่งออก', text: 'กรุณากดแสดงรายงานก่อน' });
+                return;
+            }
+
+            const printWindow = window.open('', '_blank');
+            if (!printWindow) {
+                Swal.fire({ icon: 'error', title: 'เปิดหน้าต่าง PDF ไม่สำเร็จ', text: 'กรุณาอนุญาต pop-up สำหรับหน้านี้' });
+                return;
+            }
+
+            const html = buildWardStockReportDocumentHtml().replace('</body>', `
+                <script>
+                    window.onload = function () {
+                        setTimeout(function () {
+                            window.focus();
+                            window.print();
+                        }, 150);
+                    };
+                <\/script>
+            </body>`);
+
+            printWindow.document.open();
+            printWindow.document.write(html);
+            printWindow.document.close();
+        }
+
+        function openWardStockEditor(ward) {
+            const reportRow = (wardStockReport?.rows || []).find(row => row.ward === ward);
+            const items = Array.isArray(wardStockReport?.items) ? wardStockReport.items : [];
+            if (!reportRow || !items.length) {
+                Swal.fire({ icon: 'warning', title: 'ไม่พบข้อมูลหน่วยงาน', text: 'กรุณารีโหลดรายงานอีกครั้ง' });
+                return;
+            }
+
+            wardStockEditorState = {
+                ward,
+                items: items.map(item => ({
+                    key: item.key,
+                    itemName: item.itemName,
+                    mainCategory: item.mainCategory,
+                    parLevel: Number(reportRow.items?.[item.key] || 0)
+                }))
+            };
+
+            openRecordModal(
+                `แก้ไข STOCK : ${ward}`,
+                'บันทึกยอด STOCK ของแต่ละรายการสำหรับหน่วยงานนี้',
+                buildWardStockEditorHtml()
+            );
+        }
+
+        function buildWardStockEditorHtml() {
+            const items = Array.isArray(wardStockEditorState?.items) ? wardStockEditorState.items : [];
+            if (!items.length) {
+                return '<div class="empty">ไม่พบรายการสำหรับแก้ไข</div>';
+            }
+
+            return `
+                <div class="stock-editor-grid">
+                    ${items.map((item, index) => `
+                        <div class="stock-editor-row">
+                            <div class="stock-editor-label">
+                                <strong>${escapeHtml(item.itemName)}</strong>
+                                <small>${escapeHtml(item.mainCategory || '-')}</small>
+                            </div>
+                            <div>
+                                <small>STOCK ปัจจุบัน</small>
+                                <div>${formatReportNumber(item.parLevel || 0, 0)}</div>
+                            </div>
+                            <div>
+                                <small>STOCK ใหม่</small>
+                                <input class="stock-editor-input" type="number" min="0" value="${escapeAttribute(item.parLevel || 0)}" id="wardStockEdit-${index}">
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="actions">
+                    <button class="ghost-btn" type="button" onclick="closeRecordModal()">ยกเลิก</button>
+                    <button class="primary-btn" type="button" onclick="saveWardStockEditor()">บันทึก STOCK</button>
+                </div>
+            `;
+        }
+
+        async function saveWardStockEditor() {
+            if (!wardStockEditorState || !wardStockEditorState.ward) return;
+
+            const items = wardStockEditorState.items.map((item, index) => ({
+                itemName: item.itemName,
+                mainCategory: item.mainCategory,
+                parLevel: Number(document.getElementById(`wardStockEdit-${index}`)?.value || 0)
+            }));
+
+            if (items.some(item => item.parLevel < 0 || !Number.isFinite(item.parLevel))) {
+                Swal.fire({ icon: 'warning', title: 'ข้อมูลไม่ถูกต้อง', text: 'กรุณากรอก STOCK เป็นตัวเลขตั้งแต่ 0 ขึ้นไป' });
+                return;
+            }
+
+            try {
+                await withLoadingPopup('กำลังบันทึก STOCK หน่วยงาน...', async () => {
+                    const response = await fetch(EXCHANGE_API, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({
+                            action: 'updateWardStockLevels',
+                            ward: wardStockEditorState.ward,
+                            items
+                        })
+                    });
+                    const result = await response.json();
+                    if (!response.ok || result.status !== 'success') throw new Error(result.message || 'บันทึก STOCK ไม่สำเร็จ');
+                });
+
+                closeRecordModal();
+                await reloadWardStockReport();
+                Swal.fire({ icon: 'success', title: 'บันทึก STOCK เรียบร้อยแล้ว' });
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'บันทึก STOCK ไม่สำเร็จ', text: error.message || 'เกิดข้อผิดพลาด' });
+            }
+        }
+
+        function buildWardStockReportFileNameBase() {
+            const wardLabel = wardStockReport?.selectedWard && wardStockReport.selectedWard !== 'all'
+                ? wardStockReport.selectedWard
+                : 'ทุกหน่วยงาน';
+            const date = new Date().toISOString().slice(0, 10);
+            return sanitizeFileName(`stock-เครื่องผ้าหน่วยงาน-${wardLabel}-${date}`);
+        }
+
+        function sanitizeFileName(value) {
+            return String(value || 'report').replace(/[\\/:*?"<>|]+/g, '-');
+        }
+
+        function downloadBlobFile(blob, fileName) {
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = fileName;
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        function formatReportNumber(value, fractionDigits = 0) {
+            const number = Number(value || 0);
+            return Number.isFinite(number)
+                ? number.toLocaleString('th-TH', {
+                    minimumFractionDigits: fractionDigits,
+                    maximumFractionDigits: fractionDigits
+                })
+                : '-';
         }
 
         function buildUnitDetailHtml(detail) {
