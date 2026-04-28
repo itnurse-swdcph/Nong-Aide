@@ -33,7 +33,10 @@
         .card-broken { border-color: #dc3545; } .card-broken i { color: #dc3545; }
         .card-disposed { border-color: #6c757d; } .card-disposed i { color: #6c757d; }
 
-        .action-bar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; background: var(--white); padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .section-container--workspace { align-items: flex-start; padding-top: 20px; padding-bottom: 40px; }
+        .equipment-shell { width: 100%; max-width: 1180px; display: flex; flex-direction: column; gap: 18px; }
+
+        .action-bar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; background: var(--white); padding: 15px; border-radius: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); position: sticky; top: 84px; z-index: 15; }
         .search-box { flex: 1; padding: 12px 15px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Prompt'; min-width: 200px; outline: none; transition: 0.3s; }
         .search-box:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,51,102,0.1); }
         
@@ -135,6 +138,73 @@
         /* --- สไตล์สำหรับระบบพิมพ์ QR Code --- */
         #printArea { display: none; } /* ซ่อนบนหน้าจอปกติ */
         
+        .print-mode-sheet { display: grid; }
+        .print-mode-thermal { display: block; }
+        .qr-label-container.thermal-label {
+            width: 50.4mm;
+            height: 25mm;
+            padding: 0.4mm;
+            display: grid;
+            grid-template-columns: 22.6mm 1fr;
+            gap: 0.6mm;
+            align-items: center;
+            border: none;
+            page-break-inside: avoid;
+            box-sizing: border-box;
+            break-inside: avoid;
+        }
+        .thermal-qr-wrap {
+            width: 22.6mm;
+            height: 22.6mm;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .thermal-qr-wrap img {
+            width: 21.8mm;
+            height: 21.8mm;
+            object-fit: contain;
+        }
+        .thermal-info-wrap {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-width: 0;
+            gap: 0.8mm;
+            text-align: left;
+            font-family: 'Prompt', sans-serif;
+            color: #000;
+        }
+        .thermal-name {
+            font-size: 8.4pt;
+            font-weight: 700;
+            line-height: 1.02;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .thermal-meta {
+            font-size: 6.6pt;
+            line-height: 1.08;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .thermal-chip {
+            display: inline-flex;
+            align-items: center;
+            width: fit-content;
+            max-width: 100%;
+            padding: 0.3mm 1mm;
+            border-radius: 999px;
+            background: #edf3fb;
+            color: #17344d;
+            font-size: 6pt;
+            font-weight: 600;
+        }
+
         @media print {
             body * { visibility: hidden; } /* ซ่อนทุกอย่างในหน้าเว็บ */
             #printArea, #printArea * { visibility: visible; } /* แสดงเฉพาะพื้นที่ปริ้นท์ */
@@ -154,7 +224,15 @@
             .qr-label-container img { width: 100%; max-width: 85%; height: auto; }
             .qr-label-title { font-size: 8pt; font-family: sans-serif; font-weight: bold; margin-top: 2px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
             .qr-label-id { font-size: 7pt; font-family: sans-serif; color: #333; }
-            @page { margin: 0.5cm; size: A4 portrait; }
+            .print-mode-thermal {
+                display: block !important;
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: auto;
+                padding: 0;
+                gap: 0;
+            }
         }
         /* ==========================================
            สไตล์สำหรับ Footer (ส่วนท้ายเว็บ) ล้ำๆ
@@ -238,6 +316,9 @@
         }
 
         @media (max-width: 600px) {
+            .action-bar {
+                position: static;
+            }
             .footer-bottom {
                 justify-content: center;
                 flex-direction: column;
@@ -249,15 +330,15 @@
 <body>
     <nav class="navbar">
         <div class="nav-left">
-            <span class="app-title" style="cursor: pointer;" onclick="window.close()"><i class="fas fa-arrow-left"></i> กลับหน้าหลัก</span>
+            <span class="app-title" style="cursor: pointer;" onclick="window.location.href='index.html'"><i class="fas fa-arrow-left"></i> กลับหน้าหลัก</span>
         </div>
         <div class="nav-right">
             <span class="ward-badge"><i class="fas fa-hospital-user"></i> <span id="displayWard">กำลังโหลด...</span></span>
         </div>
     </nav>
 
-    <div class="section-container" style="align-items: flex-start; padding-top: 20px;">
-        <div style="width: 100%; max-width: 1000px;">
+    <div class="section-container section-container--workspace">
+        <div class="equipment-shell">
             
             <h1 class="page-title">
                 <i class="fas fa-microscope"></i> ระบบตรวจนับครุภัณฑ์ทางการแพทย์
@@ -271,6 +352,35 @@
                     </button>
                 </div>
             </h1>
+
+            <section class="workspace-hero hidden" aria-hidden="true">
+                <div class="workspace-hero-main">
+                    <div>
+                        <span class="hero-eyebrow"><i class="fas fa-shield-heart"></i> Medical Asset Control Workspace</span>
+                        <h2 class="hero-heading">ศูนย์ปฏิบัติการตรวจนับ พิมพ์ QR และติดตามสถานะครุภัณฑ์</h2>
+                        <p class="hero-description">ปรับให้เป็นหน้าจอทำงานแบบพร้อมใช้งานในระดับองค์กร แยกขอบเขตของหน่วยงานกับผู้ดูแลระบบให้ชัดเจน พร้อมรองรับการพิมพ์ป้ายทั้งแบบแผ่นทั่วไปและ Thermal Printer 2x1 นิ้ว</p>
+                    </div>
+                    <div class="hero-meta-grid">
+                        <div class="hero-meta-card">
+                            <span class="hero-meta-label">ขอบเขตข้อมูล</span>
+                            <strong class="hero-meta-value" id="heroScopeLabel">กำลังโหลด...</strong>
+                        </div>
+                        <div class="hero-meta-card">
+                            <span class="hero-meta-label">ระดับการใช้งาน</span>
+                            <strong class="hero-meta-value" id="heroRoleLabel">กำลังตรวจสอบ...</strong>
+                        </div>
+                        <div class="hero-meta-card">
+                            <span class="hero-meta-label">ซิงก์ข้อมูลล่าสุด</span>
+                            <strong class="hero-meta-value" id="heroSyncLabel">ยังไม่ซิงก์</strong>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <div id="roleAccessNotice" class="role-access-note hidden" aria-hidden="true">
+                <i class="fas fa-lock"></i>
+                <span>กำลังตรวจสอบสิทธิ์การใช้งานและขอบเขตการพิมพ์ป้าย QR...</span>
+            </div>
 
             <div class="dashboard-grid">
                 <div class="stat-card card-total">
@@ -296,6 +406,8 @@
             </div>
 
             <div class="action-bar">
+                <button id="btnWardPrint" class="btn btn-outline hidden" onclick="openWardPrintModal()"><i class="fas fa-print"></i> พิมพ์ป้าย QR หน่วยงาน</button>
+                <button class="btn btn-outline" onclick="refreshCurrentData()"><i class="fas fa-rotate"></i> รีเฟรช</button>
                 <input type="text" id="searchInput" class="search-box" placeholder="ค้นหาชื่อ, เลขครุภัณฑ์, ยี่ห้อ, ตำแหน่ง...">
                 <button class="btn btn-accent" onclick="toggleScanner()"><i class="fas fa-qrcode"></i> สแกน QR</button>
                 <button class="btn btn-success" onclick="exportToCSV()"><i class="fas fa-file-excel"></i> ส่งออกไฟล์ (Excel)</button>
@@ -563,9 +675,11 @@
 
    <script>
         const urlParams = new URLSearchParams(window.location.search);
-        const currentWard = urlParams.get('ward');
         const entryRole = urlParams.get('role');
-        const isAdminEntry = entryRole === 'admin';
+        const savedRole = sessionStorage.getItem('aide_role');
+        const savedWard = sessionStorage.getItem('aide_ward');
+        const currentWard = (savedRole === 'admin' ? '' : (savedWard || urlParams.get('ward') || '')).trim();
+        const isAdminEntry = entryRole === 'admin' && savedRole === 'admin';
         
         // 🔴 เชื่อมต่อ API เรียบร้อย
         const EQUIPMENT_API = "https://script.google.com/macros/s/AKfycbyx7gZYzGOotSCBwm-vhQDT0K_2vTQEuY7JoyRHhiqzyHQHEOBxHUjc1HYCtNclBYOLCw/exec"; 
@@ -574,11 +688,14 @@
         let allEquipment = []; 
         let filteredEquipment = []; 
         let html5QrcodeScanner = null;
+        let scannerRunning = false;
         let currentActiveTab = 'inspection';
         let isAdminLoggedIn = false;
         let wardOptions = [];
         let currentSearchTerm = '';
         let currentAllStatusFilter = 'all';
+        let lastDataSyncAt = null;
+        let printCleanupTimer = null;
 
         // ตัวแปรสำหรับระบบค้นหาอัตโนมัติ
         let typingTimer;                
@@ -587,6 +704,68 @@
 
         function normalizeWard(value) {
             return String(value || '').trim();
+        }
+
+        function formatSyncTimestamp(dateValue) {
+            if (!dateValue) return 'ยังไม่ซิงก์';
+            const date = new Date(dateValue);
+            if (isNaN(date)) return 'ยังไม่ซิงก์';
+            return date.toLocaleString('th-TH', {
+                day: 'numeric',
+                month: 'short',
+                year: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function updateWorkspaceMeta() {
+            const scopeLabel = document.getElementById('heroScopeLabel');
+            const roleLabel = document.getElementById('heroRoleLabel');
+            const syncLabel = document.getElementById('heroSyncLabel');
+            const accessNotice = document.getElementById('roleAccessNotice');
+            const wardPrintButton = document.getElementById('btnWardPrint');
+
+            if (scopeLabel) {
+                scopeLabel.textContent = isAdminLoggedIn ? 'ภาพรวมทั้งโรงพยาบาล' : (currentWard || 'กรุณาเข้าสู่ระบบ');
+            }
+            if (roleLabel) {
+                roleLabel.textContent = isAdminLoggedIn ? 'ผู้ดูแลระบบ' : (currentWard ? 'ระดับหน่วยงาน' : 'ยังไม่ยืนยันตัวตน');
+            }
+            if (syncLabel) {
+                syncLabel.textContent = formatSyncTimestamp(lastDataSyncAt);
+            }
+            if (wardPrintButton) {
+                wardPrintButton.classList.toggle('hidden', isAdminLoggedIn || !currentWard);
+            }
+            if (accessNotice) {
+                if (isAdminLoggedIn) {
+                    accessNotice.innerHTML = '<i class="fas fa-user-shield"></i><span>โหมดผู้ดูแลระบบสามารถดูข้อมูลภาพรวมทั้งโรงพยาบาล จัดการข้อมูลหลัก และพิมพ์ป้าย QR ได้จากรายการที่เลือกในตารางกลาง</span>';
+                } else if (currentWard) {
+                    accessNotice.innerHTML = `<i class="fas fa-building-lock"></i><span>สิทธิ์ระดับหน่วยงานถูกจำกัดไว้เฉพาะข้อมูลของ <strong>${currentWard}</strong> และการพิมพ์ป้าย QR จะเลือกได้เฉพาะครุภัณฑ์ที่เป็นเจ้าของของหน่วยงานนี้เท่านั้น</span>`;
+                } else {
+                    accessNotice.innerHTML = '<i class="fas fa-lock"></i><span>กรุณาเข้าสู่ระบบจากหน้าหลักก่อนใช้งาน เพื่อให้ระบบกำหนดขอบเขตข้อมูลและสิทธิ์การพิมพ์อย่างถูกต้อง</span>';
+                }
+            }
+        }
+
+        function markDataSynced() {
+            lastDataSyncAt = new Date();
+            updateWorkspaceMeta();
+        }
+
+        function getWardOwnedItemsForPrint() {
+            const ward = normalizeWard(currentWard);
+            return allEquipment.filter(item => !item._isDisposed && item._ownerWard === ward);
+        }
+
+        function escapeHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
         }
 
         function getItemStatusText(item) {
@@ -755,14 +934,40 @@
             return normalizeStatusForFilter(item._statusText || item['สถานะ']) === statusFilter;
         }
 
+        async function refreshCurrentData() {
+            Swal.fire({
+                title: 'กำลังรีเฟรชข้อมูล...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            if (isAdminLoggedIn) {
+                await fetchAllEquipmentForAdmin();
+            } else if (currentWard) {
+                await fetchEquipment();
+            }
+
+            Swal.close();
+        }
+
         // ==========================================
         // Initialization (ทำงานเมื่อโหลดหน้าเว็บเสร็จ)
         // ==========================================
         document.addEventListener('DOMContentLoaded', () => {
             setCurrentMonthHeading();
+            updateWorkspaceMeta();
             if (isAdminEntry) {
                 initializeAdminEntry();
                 fetchAllEquipmentForAdmin();
+            } else if (entryRole === 'admin' && !isAdminEntry) {
+                document.getElementById('displayWard').innerText = 'Access Restricted';
+                document.getElementById('wardSubtitle').innerText = 'กรุณาเข้าสู่ระบบแอดมินจากหน้าหลักก่อนใช้งาน';
+                document.getElementById('loadingState').classList.add('hidden');
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'สิทธิ์ไม่ถูกต้อง',
+                    text: 'ระบบไม่อนุญาตให้เข้าสู่โหมดผู้ดูแลระบบโดยตรง กรุณาเข้าสู่ระบบจากหน้าหลักของแอพ'
+                });
             } else if (currentWard) {
                 document.getElementById('displayWard').innerText = currentWard;
                 document.getElementById('wardSubtitle').innerText = `หน่วยงาน: ${currentWard}`;
@@ -771,6 +976,7 @@
                 document.getElementById('displayWard').innerText = 'หน้าหลัก';
                 document.getElementById('wardSubtitle').innerText = 'กรุณาเข้าสู่ระบบผ่านหน้าหลัก';
                 document.getElementById('loadingState').classList.add('hidden');
+                updateWorkspaceMeta();
             }
 
             const searchInputObj = document.getElementById('searchInput');
@@ -810,6 +1016,7 @@
             document.getElementById('wardSubtitle').innerHTML = '<span style="color:#d32f2f; font-weight:bold;"><i class="fas fa-user-shield"></i> ผู้ดูแลระบบ</span>';
             document.getElementById('btnAdminLogin').style.display = 'none';
             document.getElementById('tab-admin').classList.remove('hidden-tab');
+            updateWorkspaceMeta();
         }
 
         // ==========================================
@@ -875,12 +1082,14 @@
                         updateDashboardStats(); 
                         switchTab(currentActiveTab); 
                         ensureWardOptionsLoaded();
+                        markDataSynced();
                     } else {
                         allEquipment = [];
                         filteredEquipment = [];
                         wardOptions = [];
                         updateDashboardStats();
                         switchTab(currentActiveTab);
+                        updateWorkspaceMeta();
                     }
                 } catch (jsonError) {
                     document.getElementById('loadingState').innerHTML = '<div style="text-align: center; color: red;">เกิดข้อผิดพลาดจากฐานข้อมูล</div>';
@@ -894,14 +1103,15 @@
 
         function updateDashboardStats() {
             const scoped = getWardScopedData();
+            const statItems = isAdminLoggedIn ? filteredEquipment : scoped.visibleItems;
             let normalCount = 0, brokenCount = 0, disposedCount = 0;
-            scoped.visibleItems.forEach(item => {
+            statItems.forEach(item => {
                 const status = item._statusText;
                 if (status === 'ปกติ' || status === 'ปกติ/พร้อมใช้งาน') normalCount++;
                 else if (status === 'ชำรุดส่งซ่อม' || status === 'รอจำหน่าย') brokenCount++;
                 else if (status === 'จำหน่าย' || status === 'แทงจำหน่าย') disposedCount++;
             });
-            document.getElementById('stat-total').innerText = scoped.visibleItems.length;
+            document.getElementById('stat-total').innerText = statItems.length;
             document.getElementById('stat-normal').innerText = normalCount;
             document.getElementById('stat-broken').innerText = brokenCount;
             document.getElementById('stat-disposed').innerText = disposedCount;
@@ -1086,23 +1296,78 @@
             return '<i class="fas fa-check-circle"></i>';
         }
 
-        function toggleScanner() {
+        async function toggleScanner() {
             const readerDiv = document.getElementById('qr-reader');
-            if (readerDiv.style.display === 'block') {
+
+            if (scannerRunning) {
+                try {
+                    if (html5QrcodeScanner && typeof html5QrcodeScanner.stop === 'function') {
+                        await html5QrcodeScanner.stop();
+                    }
+                    if (html5QrcodeScanner && typeof html5QrcodeScanner.clear === 'function') {
+                        await html5QrcodeScanner.clear();
+                    }
+                } catch (error) {
+                    console.error('Error stopping QR scanner:', error);
+                } finally {
+                    html5QrcodeScanner = null;
+                    scannerRunning = false;
+                    readerDiv.style.display = 'none';
+                    readerDiv.innerHTML = '';
+                }
+                return;
+            }
+
+            readerDiv.style.display = 'block';
+            readerDiv.innerHTML = '';
+            html5QrcodeScanner = new Html5Qrcode("qr-reader");
+
+            try {
+                const cameras = await Html5Qrcode.getCameras();
+                const preferredCamera = cameras.find(camera => /back|rear|environment/gi.test(camera.label || '')) || cameras[0];
+
+                if (!preferredCamera) {
+                    throw new Error('No camera found');
+                }
+
+                await html5QrcodeScanner.start(
+                    { deviceId: { exact: preferredCamera.id } },
+                    { fps: 10, qrbox: { width: 250, height: 250 } },
+                    onScanSuccess,
+                    onScanFailure
+                );
+                scannerRunning = true;
+            } catch (error) {
+                console.error('Error starting QR scanner:', error);
                 readerDiv.style.display = 'none';
-                if(html5QrcodeScanner) html5QrcodeScanner.clear();
-            } else {
-                readerDiv.style.display = 'block';
-                html5QrcodeScanner = new Html5QrcodeScanner("qr-reader", { fps: 10, qrbox: {width: 250, height: 250} }, false);
-                html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+                readerDiv.innerHTML = '';
+                html5QrcodeScanner = null;
+                scannerRunning = false;
+                Swal.fire(
+                    'ไม่สามารถเปิดกล้องได้',
+                    'หากใช้งานผ่าน Desktop App ระบบควรเปิดกล้องได้ทันที แต่ถ้าเป็นเบราว์เซอร์ทั่วไปยังอาจมีข้อจำกัดจากสิทธิ์ของเบราว์เซอร์',
+                    'error'
+                );
             }
         }
         
-        function onScanSuccess(decodedText) {
-            if(html5QrcodeScanner) {
-                html5QrcodeScanner.clear();
-                document.getElementById('qr-reader').style.display = 'none';
+        async function onScanSuccess(decodedText) {
+            if (html5QrcodeScanner) {
+                try {
+                    if (typeof html5QrcodeScanner.stop === 'function') {
+                        await html5QrcodeScanner.stop();
+                    }
+                    if (typeof html5QrcodeScanner.clear === 'function') {
+                        await html5QrcodeScanner.clear();
+                    }
+                } catch (error) {
+                    console.error('Error clearing QR scanner:', error);
+                }
             }
+            html5QrcodeScanner = null;
+            scannerRunning = false;
+            document.getElementById('qr-reader').style.display = 'none';
+            document.getElementById('qr-reader').innerHTML = '';
             document.getElementById('searchInput').value = decodedText;
             processSearchOrScan(decodedText);
         }
@@ -1509,8 +1774,10 @@
                 if (result.isConfirmed) {
                     if (result.value.user === '11450' && result.value.pass === '11450') {
                         isAdminLoggedIn = true;
+                        sessionStorage.setItem('aide_role', 'admin');
                         document.getElementById('btnAdminLogin').style.display = 'none';
                         document.getElementById('tab-admin').classList.remove('hidden-tab');
+                        updateWorkspaceMeta();
                         
                         Swal.fire({
                             icon: 'success', title: 'เข้าสู่ระบบสำเร็จ', text: 'กำลังดึงข้อมูลภาพรวมทั้งโรงพยาบาล...',
@@ -1552,6 +1819,7 @@
                     
                     document.getElementById('loadingState').classList.add('hidden');
                     switchTab('admin'); 
+                    markDataSynced();
                 }
             } catch (error) {
                 console.error("Error fetching all items:", error);
@@ -1568,6 +1836,7 @@
                 const matchSearch = matchesSearchTerm(item, searchTerm);
                 return matchWard && matchSearch;
             });
+            updateDashboardStats();
             renderActiveView(); 
         }
 
@@ -1577,8 +1846,11 @@
                 timer: 1500, showConfirmButton: false 
             }).then(() => {
                 if (currentWard) {
+                    sessionStorage.setItem('aide_role', 'user');
+                    sessionStorage.setItem('aide_ward', currentWard);
                     window.location.href = window.location.pathname + "?ward=" + encodeURIComponent(currentWard);
                 } else {
+                    sessionStorage.removeItem('aide_role');
                     window.location.href = 'index.html';
                 }
             });
@@ -1905,7 +2177,328 @@
                 }
             };
         }
-    </script>
+        function getQrItemId(item) {
+            return String(item['เลขครุภัณฑ์'] || '').trim();
+        }
+
+        function getQrRmc(item) {
+            return String(item['RMC No'] || '').trim();
+        }
+
+        function buildQrData(item) {
+            return getQrRmc(item) || getQrItemId(item) || 'NO-ID';
+        }
+
+        function buildQrImageUrl(item, size = 160) {
+            return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(buildQrData(item))}`;
+        }
+
+        function cleanupPrintArea() {
+            const printArea = document.getElementById('printArea');
+            printArea.innerHTML = '';
+            printArea.className = '';
+            printArea.style.gridTemplateColumns = '';
+            printArea.style.width = '';
+            printArea.style.padding = '';
+            if (printCleanupTimer) {
+                clearTimeout(printCleanupTimer);
+                printCleanupTimer = null;
+            }
+        }
+
+        function applyDynamicPrintPageStyle(mode) {
+            let styleTag = document.getElementById('dynamicPrintPageStyle');
+            if (!styleTag) {
+                styleTag = document.createElement('style');
+                styleTag.id = 'dynamicPrintPageStyle';
+                document.head.appendChild(styleTag);
+            }
+            styleTag.textContent = mode === 'thermal'
+                ? '@page { size: 50.8mm 25.4mm; margin: 0.2mm; }'
+                : '@page { size: A4 portrait; margin: 0.5cm; }';
+        }
+
+        function createQrSelectionRows(items, selectable = true) {
+            return items.map(item => {
+                const itemId = escapeHtml(getQrItemId(item));
+                const name = escapeHtml(item['ชื่อครุภัณฑ์'] || '-');
+                const brand = escapeHtml(item['ยี่ห้อ'] || '-');
+                const owner = escapeHtml(item._ownerWard || item['หน่วยงาน'] || '-');
+                const usage = escapeHtml(item._usageWard || item['ใช้งานที่'] || owner);
+                const checkbox = selectable
+                    ? `<input type="checkbox" class="swal-qr-item" value="${itemId}" checked style="transform: scale(1.15); margin-top: 2px;">`
+                    : `<i class="fas fa-check-circle" style="color:#16a34a; margin-top:2px;"></i>`;
+
+                return `
+                    <label data-qr-row style="display:flex; gap:12px; align-items:flex-start; padding:10px 0; border-bottom:1px solid #eef2f7;">
+                        ${checkbox}
+                        <span style="display:block; text-align:left; min-width:0;">
+                            <strong style="display:block; color:var(--primary);">${name}</strong>
+                            <span style="display:block; font-size:0.82rem; color:#475569;">ID: ${itemId} | RMC: ${escapeHtml(getQrRmc(item) || '-')}</span>
+                            <span style="display:block; font-size:0.78rem; color:#64748b;">เจ้าของ: ${owner} | ใช้งานที่: ${usage} | ยี่ห้อ: ${brand}</span>
+                        </span>
+                    </label>
+                `;
+            }).join('');
+        }
+
+        async function openScopedPrintDialog(items, options = {}) {
+            const {
+                title = 'พิมพ์ป้าย QR',
+                description = '',
+                selectable = true,
+                confirmButtonColor = '#ffc107'
+            } = options;
+
+            const dialogResult = await Swal.fire({
+                title,
+                width: 760,
+                html: `
+                    <div style="text-align:left;">
+                        <p style="margin-bottom:12px; color:#475569;">${description}</p>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+                            <div>
+                                <label style="font-size:0.9rem; color:var(--primary); font-weight:600;">ประเภทเครื่องพิมพ์</label>
+                                <select id="qrPrinterType" class="swal-input" style="margin-top:5px;">
+                                    <option value="sheet">เครื่องพิมพ์ทั่วไป / กระดาษ A4</option>
+                                    <option value="thermal">Thermal Printer 2x1 นิ้ว</option>
+                                </select>
+                            </div>
+                            <div id="sheetSizeWrapper">
+                                <label style="font-size:0.9rem; color:var(--primary); font-weight:600;">ขนาดป้ายบนกระดาษ A4</label>
+                                <select id="qrSizeSelect" class="swal-input" style="margin-top:5px;">
+                                    <option value="1">1 นิ้ว</option>
+                                    <option value="1.5" selected>1.5 นิ้ว</option>
+                                    <option value="2">2 นิ้ว</option>
+                                </select>
+                            </div>
+                        </div>
+                        ${selectable ? `
+                            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px; flex-wrap:wrap;">
+                                <label style="display:flex; align-items:center; gap:8px; color:var(--primary); font-weight:500;">
+                                    <input type="checkbox" id="selectAllWardQr" checked>
+                                    เลือกทั้งหมด
+                                </label>
+                                <input type="text" id="filterWardQr" class="swal-input" style="max-width:280px; margin:0;" placeholder="ค้นหารายการที่จะพิมพ์">
+                            </div>
+                        ` : ''}
+                        <div id="qrSelectionList" style="max-height:320px; overflow:auto; padding:0 4px;">
+                            ${createQrSelectionRows(items, selectable)}
+                        </div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: '<i class="fas fa-print"></i> สร้างและพิมพ์',
+                cancelButtonText: 'ยกเลิก',
+                confirmButtonColor,
+                focusConfirm: false,
+                didOpen: () => {
+                    const printerType = document.getElementById('qrPrinterType');
+                    const sheetWrapper = document.getElementById('sheetSizeWrapper');
+                    if (printerType && sheetWrapper) {
+                        printerType.addEventListener('change', () => {
+                            sheetWrapper.style.display = printerType.value === 'thermal' ? 'none' : 'block';
+                        });
+                    }
+
+                    const selectAll = document.getElementById('selectAllWardQr');
+                    const list = document.getElementById('qrSelectionList');
+                    const filterInput = document.getElementById('filterWardQr');
+
+                    if (selectAll && list) {
+                        selectAll.addEventListener('change', () => {
+                            list.querySelectorAll('.swal-qr-item').forEach(input => {
+                                input.checked = selectAll.checked;
+                            });
+                        });
+                    }
+
+                    if (filterInput && list) {
+                        filterInput.addEventListener('input', () => {
+                            const term = filterInput.value.toLowerCase().trim();
+                            list.querySelectorAll('[data-qr-row]').forEach(row => {
+                                row.style.display = row.textContent.toLowerCase().includes(term) ? 'flex' : 'none';
+                            });
+                        });
+                    }
+                },
+                preConfirm: () => {
+                    const printerType = document.getElementById('qrPrinterType').value;
+                    const selectedIds = selectable
+                        ? Array.from(document.querySelectorAll('.swal-qr-item:checked')).map(input => input.value)
+                        : items.map(item => getQrItemId(item));
+
+                    if (!selectedIds.length) {
+                        Swal.showValidationMessage('กรุณาเลือกรายการอย่างน้อย 1 รายการก่อนพิมพ์');
+                        return false;
+                    }
+
+                    return {
+                        selectedIds,
+                        printerType,
+                        sizeInches: document.getElementById('qrSizeSelect') ? document.getElementById('qrSizeSelect').value : '1.5'
+                    };
+                }
+            });
+
+            if (!dialogResult.isConfirmed || !dialogResult.value) return;
+            await executePrintQR(dialogResult.value.selectedIds, dialogResult.value);
+        }
+
+        function openPrintQRModal() {
+            const checkboxes = document.querySelectorAll('.qr-checkbox:checked');
+            const selectedIds = Array.from(checkboxes).map(cb => cb.value);
+
+            if (selectedIds.length === 0) {
+                Swal.fire('แจ้งเตือน', 'กรุณาเลือกรายการที่ต้องการพิมพ์ QR Code อย่างน้อย 1 รายการ', 'warning');
+                return;
+            }
+
+            const selectedItems = allEquipment.filter(item => selectedIds.includes(getQrItemId(item)));
+            openScopedPrintDialog(selectedItems, {
+                title: 'พิมพ์ป้าย QR Code',
+                description: `รายการที่เลือกจากส่วนกลาง ${selectedItems.length} รายการ สามารถเลือกพิมพ์ผ่านกระดาษ A4 หรือ Thermal Printer 2x1 นิ้วได้`,
+                selectable: false
+            });
+        }
+
+        function openWardPrintModal() {
+            const wardItems = getWardOwnedItemsForPrint();
+            if (!wardItems.length) {
+                Swal.fire('แจ้งเตือน', 'ไม่พบครุภัณฑ์ที่เป็นเจ้าของของหน่วยงานนี้สำหรับพิมพ์ป้าย QR', 'info');
+                return;
+            }
+
+            openScopedPrintDialog(wardItems, {
+                title: `พิมพ์ป้าย QR ของหน่วยงาน ${currentWard}`,
+                description: 'เพื่อควบคุมสิทธิ์ระดับหน่วยงาน ระบบจะแสดงเฉพาะครุภัณฑ์ที่เป็นเจ้าของของหน่วยงานนี้เท่านั้น',
+                selectable: true,
+                confirmButtonColor: '#003366'
+            });
+        }
+
+        function createSheetLabel(item, widthMM) {
+            const container = document.createElement('div');
+            container.className = 'qr-label-container';
+            container.style.width = widthMM;
+            container.style.height = widthMM;
+            container.style.boxSizing = 'border-box';
+            container.style.overflow = 'hidden';
+
+            const qrImage = new Image();
+            qrImage.alt = 'QR';
+            qrImage.src = buildQrImageUrl(item, 150);
+            qrImage.style.width = '100%';
+            qrImage.style.maxWidth = '42%';
+            qrImage.style.height = 'auto';
+            qrImage.style.margin = '0 auto';
+
+            container.innerHTML = `
+                <div style="font-size: 7pt; font-weight: bold; line-height: 1.2; margin-bottom: 2px; height: 2.4em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; word-break: break-word; text-align: center;">
+                    ${escapeHtml(item['ชื่อครุภัณฑ์'] || '-')}
+                </div>
+                <div style="font-size: 6pt; color: #444; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">ยี่ห้อ: ${escapeHtml(item['ยี่ห้อ'] || '-')}</div>
+            `;
+            container.appendChild(qrImage);
+            container.insertAdjacentHTML('beforeend', `
+                <div style="font-size: 5.5pt; color: #666; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">RMC: ${escapeHtml(getQrRmc(item) || '-')}</div>
+                <div style="font-size: 7.5pt; font-weight: bold; color: #000; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">ID: ${escapeHtml(getQrItemId(item) || '-')}</div>
+                <div style="font-size: 5.5pt; color: #555; background: #eee; padding: 1px 4px; border-radius: 4px; margin-top: 1px; display: inline-block;">ตรวจทุก ${escapeHtml(getInspectionFrequency(item))} เดือน</div>
+            `);
+
+            return { container, qrImage };
+        }
+
+        function createThermalLabel(item) {
+            const container = document.createElement('div');
+            container.className = 'qr-label-container thermal-label';
+
+            const qrWrap = document.createElement('div');
+            qrWrap.className = 'thermal-qr-wrap';
+            const qrImage = new Image();
+            qrImage.alt = 'QR';
+            qrImage.src = buildQrImageUrl(item, 220);
+            qrWrap.appendChild(qrImage);
+
+            const infoWrap = document.createElement('div');
+            infoWrap.className = 'thermal-info-wrap';
+            infoWrap.innerHTML = `
+                <div class="thermal-name">${escapeHtml(item['ชื่อครุภัณฑ์'] || '-')}</div>
+                <div class="thermal-meta">ID: ${escapeHtml(getQrItemId(item) || '-')}</div>
+                <div class="thermal-meta">RMC: ${escapeHtml(getQrRmc(item) || '-')}</div>
+                <div class="thermal-meta">หน่วยงาน: ${escapeHtml(item._usageWard || item._ownerWard || item['หน่วยงาน'] || '-')}</div>
+                <div class="thermal-chip">ตรวจทุก ${escapeHtml(getInspectionFrequency(item))} เดือน</div>
+            `;
+
+            container.appendChild(qrWrap);
+            container.appendChild(infoWrap);
+            return { container, qrImage };
+        }
+
+        async function executePrintQR(selectedIds, options = {}) {
+            const { printerType = 'sheet', sizeInches = '1.5' } = options;
+            const printArea = document.getElementById('printArea');
+            const itemsToPrint = allEquipment.filter(item => selectedIds.includes(getQrItemId(item)));
+
+            if (!itemsToPrint.length) {
+                Swal.fire('แจ้งเตือน', 'ไม่พบรายการสำหรับพิมพ์ป้าย QR', 'warning');
+                return;
+            }
+
+            cleanupPrintArea();
+            applyDynamicPrintPageStyle(printerType);
+
+            const imageLoadPromises = [];
+
+            if (printerType === 'thermal') {
+                printArea.classList.add('print-mode-thermal');
+                printArea.style.width = '50.4mm';
+                printArea.style.padding = '0';
+                itemsToPrint.forEach(item => {
+                    const { container, qrImage } = createThermalLabel(item);
+                    printArea.appendChild(container);
+                    imageLoadPromises.push(new Promise(resolve => {
+                        qrImage.onload = resolve;
+                        qrImage.onerror = resolve;
+                    }));
+                });
+            } else {
+                let columns = 'repeat(5, 1fr)';
+                let widthMM = '38.1mm';
+                if (sizeInches === '1') {
+                    columns = 'repeat(7, 1fr)';
+                    widthMM = '25.4mm';
+                } else if (sizeInches === '2') {
+                    columns = 'repeat(4, 1fr)';
+                    widthMM = '50.8mm';
+                }
+
+                printArea.classList.add('print-mode-sheet');
+                printArea.style.gridTemplateColumns = columns;
+
+                itemsToPrint.forEach(item => {
+                    const { container, qrImage } = createSheetLabel(item, widthMM);
+                    printArea.appendChild(container);
+                    imageLoadPromises.push(new Promise(resolve => {
+                        qrImage.onload = resolve;
+                        qrImage.onerror = resolve;
+                    }));
+                });
+            }
+
+            Swal.fire({
+                title: 'กำลังเตรียมหน้าพิมพ์...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            await Promise.all(imageLoadPromises);
+            Swal.close();
+
+            window.addEventListener('afterprint', cleanupPrintArea, { once: true });
+            window.print();
+            printCleanupTimer = setTimeout(cleanupPrintArea, 1500);
+        }
     </script>
 </body>
 </html>
