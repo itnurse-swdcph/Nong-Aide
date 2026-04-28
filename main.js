@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, shell } = require("electron");
+const { app, BrowserWindow, Menu, shell, session } = require("electron");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 
@@ -61,6 +61,23 @@ function createAppWindow(targetUrl = pathToFileURL(START_PAGE).toString(), overr
 }
 
 app.whenReady().then(() => {
+  session.defaultSession.setPermissionCheckHandler((_webContents, permission, requestingOrigin) => {
+    if (requestingOrigin && requestingOrigin.startsWith("file://")) {
+      return permission === "media" || permission === "camera" || permission === "microphone";
+    }
+
+    return false;
+  });
+
+  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback, details) => {
+    if (details.requestingUrl && details.requestingUrl.startsWith("file://")) {
+      callback(permission === "media" || permission === "camera" || permission === "microphone");
+      return;
+    }
+
+    callback(false);
+  });
+
   Menu.setApplicationMenu(null);
   createAppWindow();
 
