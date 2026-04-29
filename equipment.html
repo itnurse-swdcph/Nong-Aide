@@ -1496,6 +1496,8 @@
                 const statusClass = getStatusClass(item._statusText);
                 const statusIcon = getStatusIcon(item._statusText);
                 const safeItemJson = JSON.stringify(item).replace(/"/g, '&quot;');
+                const brandText = item['ยี่ห้อ'] || item['เธขเธตเนเธซเนเธญ'] || '-';
+                const modelText = item['ชื่อรุ่น'] || item['เธเธทเนเธญเธฃเธธเนเธ'] || '-';
                 const ownerUsageInfo = item._ownerWard === item._usageWard
                     ? `<span class="info-item"><i class="fas fa-building"></i> หน่วยงาน: <strong>${item._usageWard || '-'}</strong></span>`
                     : `
@@ -1508,6 +1510,9 @@
                 card.innerHTML = `
                     <div class="item-details">
                         <h4>${item['ชื่อครุภัณฑ์'] || 'ไม่ระบุชื่อ'} ${getRiskHtml(item)}</h4>
+                        <div style="font-size: 0.95rem; font-weight: 400; color: #5f6b7a; margin-top: -4px; margin-bottom: 8px;">
+                            ยี่ห้อ: ${brandText} / รุ่น: ${modelText}
+                        </div>
                         <div class="info-row">
                             <span class="info-item"><i class="fas fa-fingerprint"></i> RMC: <strong>${item['RMC No'] || '-'}</strong></span>
                             <span class="info-item"><i class="fas fa-barcode"></i> ID: <strong>${item['เลขครุภัณฑ์'] || '-'}</strong></span>
