@@ -409,7 +409,7 @@
                 <button id="btnWardPrint" class="btn btn-outline hidden" onclick="openWardPrintModal()"><i class="fas fa-print"></i> พิมพ์ป้าย QR หน่วยงาน</button>
                 <button class="btn btn-outline" onclick="refreshCurrentData()"><i class="fas fa-rotate"></i> รีเฟรช</button>
                 <input type="text" id="searchInput" class="search-box" placeholder="ค้นหาชื่อ, เลขครุภัณฑ์, ยี่ห้อ, ตำแหน่ง...">
-                <button class="btn btn-accent" onclick="toggleScanner()"><i class="fas fa-qrcode"></i> สแกน QR</button>
+                <button id="btnScanQr" class="btn btn-accent" onclick="toggleScanner()"><i class="fas fa-qrcode"></i> สแกน QR</button>
                 <button class="btn btn-success" onclick="exportToCSV()"><i class="fas fa-file-excel"></i> ส่งออกไฟล์ (Excel)</button>
             </div>
 
@@ -439,7 +439,7 @@
 
             <div id="view-inspection" class="hidden">
                 <h3 class="section-heading"><i class="far fa-calendar-alt"></i> รายการที่ต้องตรวจสอบประจำรอบเดือน <span id="currentMonthText"></span></h3>
-                <div class="info-note-box">
+                <div id="inspectionWindowNotice" class="info-note-box">
                     ระบบเปิดรอบตรวจพร้อมกันตั้งแต่วันที่ 1 ของเดือน โดยอิงตามเดือนครบกำหนด ไม่อิงตามวันตรวจล่าสุดของแต่ละรายการ
                 </div>
                 <div class="list-section">
@@ -607,6 +607,9 @@
                         <button class="btn btn-warning" style="color: #000; width: auto;" onclick="openPrintQRModal()">
                             <i class="fas fa-print"></i> พิมพ์ป้าย QR
                         </button>
+                        <button class="btn btn-accent" style="width: auto;" onclick="openInspectionScheduleModal()">
+                            <i class="fas fa-calendar-alt"></i> ตั้งค่ารอบเปิดระบบ
+                        </button>
                         <button class="btn btn-primary" style="width: auto;" onclick="openAddEquipmentModal()">
                             <i class="fas fa-plus"></i> เพิ่มครุภัณฑ์ใหม่
                         </button>
@@ -696,14 +699,299 @@
         let currentAllStatusFilter = 'all';
         let lastDataSyncAt = null;
         let printCleanupTimer = null;
+        let inspectionWindowStatus = createDefaultInspectionWindowStatus();
 
         // ตัวแปรสำหรับระบบค้นหาอัตโนมัติ
         let typingTimer;                
         const doneTypingInterval = 800; 
         const INSPECTION_SKIP_STATUSES = ['ชำรุดส่งซ่อม', 'รอจำหน่าย', 'จำหน่าย', 'แทงจำหน่าย'];
+        const THAI_MONTH_NAMES = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+        const LOCAL_INSPECTION_WINDOW_KEY = 'aide_inspection_windows_v1';
+
+        function createDefaultInspectionWindowStatus() {
+            return {
+                hasConfiguredWindow: false,
+                isActive: false,
+                activeWindow: null,
+                upcomingWindow: null,
+                latestWindow: null,
+                source: 'default'
+            };
+        }
 
         function normalizeWard(value) {
             return String(value || '').trim();
+        }
+
+        function toStartOfDay(dateValue) {
+            const date = new Date(dateValue);
+            if (isNaN(date)) return null;
+            return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        }
+
+        function parseISODate(value) {
+            const text = String(value || '').trim();
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return null;
+            const date = new Date(`${text}T00:00:00`);
+            return isNaN(date) ? null : date;
+        }
+
+        function formatISODate(value) {
+            const date = value instanceof Date ? value : parseISODate(value);
+            if (!date || isNaN(date)) return '';
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function getInspectionPeriodKey(year, month) {
+            return `${year}-${String(month).padStart(2, '0')}`;
+        }
+
+        function normalizeInspectionWindowRecord(raw) {
+            if (!raw || typeof raw !== 'object') return null;
+
+            const targetYear = Number(raw.targetYear || raw.year);
+            const targetMonth = Number(raw.targetMonth || raw.month);
+            const openDate = formatISODate(raw.openDate);
+            const closeDate = formatISODate(raw.closeDate);
+
+            if (!targetYear || targetMonth < 1 || targetMonth > 12 || !openDate || !closeDate) return null;
+
+            return {
+                periodKey: raw.periodKey || getInspectionPeriodKey(targetYear, targetMonth),
+                targetYear,
+                targetMonth,
+                openDate,
+                closeDate,
+                updatedAt: raw.updatedAt ? String(raw.updatedAt) : ''
+            };
+        }
+
+        function loadLocalInspectionWindowRecords() {
+            try {
+                const raw = localStorage.getItem(LOCAL_INSPECTION_WINDOW_KEY);
+                const parsed = raw ? JSON.parse(raw) : [];
+                return Array.isArray(parsed)
+                    ? parsed.map(normalizeInspectionWindowRecord).filter(Boolean)
+                    : [];
+            } catch (error) {
+                console.warn('Unable to read local inspection windows:', error);
+                return [];
+            }
+        }
+
+        function saveLocalInspectionWindowRecord(record) {
+            const normalized = normalizeInspectionWindowRecord(record);
+            if (!normalized) return false;
+
+            const records = loadLocalInspectionWindowRecords().filter(item => item.periodKey !== normalized.periodKey);
+            records.push({
+                ...normalized,
+                updatedAt: new Date().toISOString()
+            });
+            localStorage.setItem(LOCAL_INSPECTION_WINDOW_KEY, JSON.stringify(records));
+            return true;
+        }
+
+        function evaluateInspectionWindowRecords(records, source = 'local') {
+            const normalizedRecords = records
+                .map(normalizeInspectionWindowRecord)
+                .filter(Boolean)
+                .sort((a, b) => {
+                    const openDiff = parseISODate(a.openDate) - parseISODate(b.openDate);
+                    if (openDiff !== 0) return openDiff;
+                    return a.periodKey.localeCompare(b.periodKey);
+                });
+
+            if (!normalizedRecords.length) {
+                return {
+                    hasConfiguredWindow: false,
+                    isActive: false,
+                    activeWindow: null,
+                    upcomingWindow: null,
+                    latestWindow: null,
+                    source
+                };
+            }
+
+            const today = toStartOfDay(new Date());
+            const activeWindow = normalizedRecords.find(record => {
+                const openDate = parseISODate(record.openDate);
+                const closeDate = parseISODate(record.closeDate);
+                return openDate && closeDate && openDate <= today && today <= closeDate;
+            }) || null;
+            const upcomingWindow = normalizedRecords.find(record => {
+                const openDate = parseISODate(record.openDate);
+                return openDate && today && openDate > today;
+            }) || null;
+            const latestWindow = normalizedRecords[normalizedRecords.length - 1] || null;
+
+            return {
+                hasConfiguredWindow: true,
+                isActive: Boolean(activeWindow),
+                activeWindow,
+                upcomingWindow,
+                latestWindow,
+                source
+            };
+        }
+
+        function normalizeInspectionWindowStatusPayload(payload, source = 'api') {
+            if (!payload || typeof payload !== 'object') {
+                return createDefaultInspectionWindowStatus();
+            }
+
+            if (Array.isArray(payload.windows)) {
+                return evaluateInspectionWindowRecords(payload.windows, source);
+            }
+
+            const activeWindow = normalizeInspectionWindowRecord(payload.activeWindow);
+            const upcomingWindow = normalizeInspectionWindowRecord(payload.upcomingWindow);
+            const latestWindow = normalizeInspectionWindowRecord(payload.latestWindow);
+            const hasConfiguredWindow = Boolean(activeWindow || upcomingWindow || latestWindow || payload.hasConfiguredWindow);
+
+            return {
+                hasConfiguredWindow,
+                isActive: Boolean(payload.isActive) || Boolean(activeWindow),
+                activeWindow,
+                upcomingWindow,
+                latestWindow,
+                source
+            };
+        }
+
+        function getInspectionDisplayWindow() {
+            return inspectionWindowStatus.activeWindow
+                || inspectionWindowStatus.upcomingWindow
+                || inspectionWindowStatus.latestWindow
+                || null;
+        }
+
+        function getInspectionReferenceMonthStart() {
+            const activeWindow = inspectionWindowStatus.activeWindow;
+            if (activeWindow) {
+                return new Date(activeWindow.targetYear, activeWindow.targetMonth - 1, 1);
+            }
+
+            const today = new Date();
+            return new Date(today.getFullYear(), today.getMonth(), 1);
+        }
+
+        function formatThaiDate(value) {
+            const date = value instanceof Date ? value : parseISODate(value);
+            if (!date || isNaN(date)) return '-';
+            return date.toLocaleDateString('th-TH', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+            });
+        }
+
+        function formatInspectionPeriodLabel(windowInfo) {
+            if (!windowInfo || !windowInfo.targetYear || !windowInfo.targetMonth) return '';
+            return `${THAI_MONTH_NAMES[windowInfo.targetMonth - 1]} ${windowInfo.targetYear + 543}`;
+        }
+
+        function getInspectionAvailabilityState() {
+            if (isAdminLoggedIn) {
+                return {
+                    allowed: true,
+                    message: 'แอดมินสามารถเข้าใช้งานและจัดการข้อมูลได้ตลอดเวลา',
+                    source: 'admin'
+                };
+            }
+
+            if (!inspectionWindowStatus.hasConfiguredWindow) {
+                return {
+                    allowed: true,
+                    message: 'ยังไม่ได้ตั้งรอบเปิดระบบรายเดือน ระบบจึงเปิดใช้งานตามเดือนปัจจุบันตามปกติ',
+                    source: inspectionWindowStatus.source
+                };
+            }
+
+            if (inspectionWindowStatus.activeWindow) {
+                const activeWindow = inspectionWindowStatus.activeWindow;
+                return {
+                    allowed: true,
+                    message: `ระบบเปิดสำหรับรอบ ${formatInspectionPeriodLabel(activeWindow)} วันที่ ${formatThaiDate(activeWindow.openDate)} - ${formatThaiDate(activeWindow.closeDate)}`,
+                    source: inspectionWindowStatus.source,
+                    window: activeWindow
+                };
+            }
+
+            const displayWindow = getInspectionDisplayWindow();
+            const baseMessage = displayWindow
+                ? `ระบบปิดอยู่ ขณะนี้กำหนดรอบ ${formatInspectionPeriodLabel(displayWindow)} ไว้วันที่ ${formatThaiDate(displayWindow.openDate)} - ${formatThaiDate(displayWindow.closeDate)}`
+                : 'ระบบปิดอยู่ในขณะนี้';
+
+            return {
+                allowed: false,
+                message: baseMessage,
+                source: inspectionWindowStatus.source,
+                window: displayWindow
+            };
+        }
+
+        function updateInspectionWindowNotice() {
+            const noteBox = document.getElementById('inspectionWindowNotice');
+            const scanButton = document.getElementById('btnScanQr');
+            const availability = getInspectionAvailabilityState();
+            const displayWindow = getInspectionDisplayWindow();
+
+            if (noteBox) {
+                if (!inspectionWindowStatus.hasConfiguredWindow) {
+                    noteBox.innerHTML = 'ระบบเปิดรอบตรวจพร้อมกันตั้งแต่วันที่ 1 ของเดือน โดยอิงตามเดือนครบกำหนด ไม่อิงตามวันตรวจล่าสุดของแต่ละรายการ';
+                } else if (availability.allowed && displayWindow) {
+                    noteBox.innerHTML = `<strong>รอบที่เปิดใช้งาน:</strong> ${formatInspectionPeriodLabel(displayWindow)} <strong>ช่วงวันที่:</strong> ${formatThaiDate(displayWindow.openDate)} - ${formatThaiDate(displayWindow.closeDate)}`;
+                } else if (displayWindow) {
+                    noteBox.innerHTML = `<strong>ระบบปิดอยู่</strong> แอดมินกำหนดรอบ ${formatInspectionPeriodLabel(displayWindow)} ไว้ช่วง ${formatThaiDate(displayWindow.openDate)} - ${formatThaiDate(displayWindow.closeDate)} เมื่อถึงช่วงวันดังกล่าวจึงจะบันทึกการตรวจนับได้`;
+                } else {
+                    noteBox.innerHTML = '<strong>ระบบปิดอยู่</strong> กรุณาติดต่อแอดมินเพื่อกำหนดช่วงวันเปิดระบบตรวจนับ';
+                }
+            }
+
+            if (scanButton) {
+                const shouldDisable = !availability.allowed && !isAdminLoggedIn;
+                scanButton.disabled = shouldDisable;
+                scanButton.title = shouldDisable ? availability.message : 'สแกน QR';
+            }
+        }
+
+        function ensureInspectionWindowOpenForStaff() {
+            const availability = getInspectionAvailabilityState();
+            if (availability.allowed || isAdminLoggedIn) return true;
+
+            Swal.fire({
+                icon: 'info',
+                title: 'ระบบยังไม่เปิดให้ตรวจนับ',
+                text: availability.message,
+                confirmButtonColor: '#003366'
+            });
+            return false;
+        }
+
+        async function loadInspectionWindowStatus() {
+            try {
+                const response = await fetch(`${EQUIPMENT_API}?action=getInspectionWindowStatus`);
+                const textData = await response.text();
+                const result = JSON.parse(textData);
+
+                if (result.status === 'success') {
+                    inspectionWindowStatus = normalizeInspectionWindowStatusPayload(result.data, 'api');
+                    setCurrentMonthHeading();
+                    updateInspectionWindowNotice();
+                    return inspectionWindowStatus;
+                }
+            } catch (error) {
+                console.warn('Unable to load inspection window from API, fallback to local:', error);
+            }
+
+            inspectionWindowStatus = evaluateInspectionWindowRecords(loadLocalInspectionWindowRecords(), 'local');
+            setCurrentMonthHeading();
+            updateInspectionWindowNotice();
+            return inspectionWindowStatus;
         }
 
         function formatSyncTimestamp(dateValue) {
@@ -798,8 +1086,7 @@
             const lastInspectDate = new Date(lastInspectRaw);
             if (isNaN(lastInspectDate)) return true;
 
-            const today = new Date();
-            const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+            const currentMonthStart = getInspectionReferenceMonthStart();
             const dueMonthStart = new Date(lastInspectDate.getFullYear(), lastInspectDate.getMonth() + getInspectionFrequency(item), 1);
             return currentMonthStart >= dueMonthStart;
         }
@@ -875,8 +1162,9 @@
             const borrowedOut = visibleItems.filter(item => item._ownerWard === ward && item._usageWard && item._usageWard !== ward);
             const repair = visibleItems.filter(item => item._usageWard === ward && item._isRepair);
             const awaitDisposal = visibleItems.filter(item => item._usageWard === ward && item._isAwaitDisposal);
-            const pendingOwned = ownedCurrent.filter(item => item._needsInspection);
-            const pendingBorrowedIn = borrowedIn.filter(item => item._needsInspection);
+            const canInspect = getInspectionAvailabilityState().allowed || isAdminLoggedIn;
+            const pendingOwned = canInspect ? ownedCurrent.filter(item => item._needsInspection) : [];
+            const pendingBorrowedIn = canInspect ? borrowedIn.filter(item => item._needsInspection) : [];
 
             return { visibleItems, ownedCurrent, borrowedIn, borrowedOut, repair, awaitDisposal, pendingOwned, pendingBorrowedIn };
         }
@@ -941,6 +1229,7 @@
                 didOpen: () => Swal.showLoading()
             });
 
+            await loadInspectionWindowStatus();
             if (isAdminLoggedIn) {
                 await fetchAllEquipmentForAdmin();
             } else if (currentWard) {
@@ -956,28 +1245,31 @@
         document.addEventListener('DOMContentLoaded', () => {
             setCurrentMonthHeading();
             updateWorkspaceMeta();
-            if (isAdminEntry) {
-                initializeAdminEntry();
-                fetchAllEquipmentForAdmin();
-            } else if (entryRole === 'admin' && !isAdminEntry) {
-                document.getElementById('displayWard').innerText = 'Access Restricted';
-                document.getElementById('wardSubtitle').innerText = 'กรุณาเข้าสู่ระบบแอดมินจากหน้าหลักก่อนใช้งาน';
-                document.getElementById('loadingState').classList.add('hidden');
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'สิทธิ์ไม่ถูกต้อง',
-                    text: 'ระบบไม่อนุญาตให้เข้าสู่โหมดผู้ดูแลระบบโดยตรง กรุณาเข้าสู่ระบบจากหน้าหลักของแอพ'
-                });
-            } else if (currentWard) {
-                document.getElementById('displayWard').innerText = currentWard;
-                document.getElementById('wardSubtitle').innerText = `หน่วยงาน: ${currentWard}`;
-                fetchEquipment();
-            } else {
-                document.getElementById('displayWard').innerText = 'หน้าหลัก';
-                document.getElementById('wardSubtitle').innerText = 'กรุณาเข้าสู่ระบบผ่านหน้าหลัก';
-                document.getElementById('loadingState').classList.add('hidden');
-                updateWorkspaceMeta();
-            }
+            updateInspectionWindowNotice();
+            loadInspectionWindowStatus().finally(() => {
+                if (isAdminEntry) {
+                    initializeAdminEntry();
+                    fetchAllEquipmentForAdmin();
+                } else if (entryRole === 'admin' && !isAdminEntry) {
+                    document.getElementById('displayWard').innerText = 'Access Restricted';
+                    document.getElementById('wardSubtitle').innerText = 'กรุณาเข้าสู่ระบบแอดมินจากหน้าหลักก่อนใช้งาน';
+                    document.getElementById('loadingState').classList.add('hidden');
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'สิทธิ์ไม่ถูกต้อง',
+                        text: 'ระบบไม่อนุญาตให้เข้าสู่โหมดผู้ดูแลระบบโดยตรง กรุณาเข้าสู่ระบบจากหน้าหลักของแอพ'
+                    });
+                } else if (currentWard) {
+                    document.getElementById('displayWard').innerText = currentWard;
+                    document.getElementById('wardSubtitle').innerText = `หน่วยงาน: ${currentWard}`;
+                    fetchEquipment();
+                } else {
+                    document.getElementById('displayWard').innerText = 'หน้าหลัก';
+                    document.getElementById('wardSubtitle').innerText = 'กรุณาเข้าสู่ระบบผ่านหน้าหลัก';
+                    document.getElementById('loadingState').classList.add('hidden');
+                    updateWorkspaceMeta();
+                }
+            });
 
             const searchInputObj = document.getElementById('searchInput');
             if(searchInputObj) {
@@ -1017,6 +1309,7 @@
             document.getElementById('btnAdminLogin').style.display = 'none';
             document.getElementById('tab-admin').classList.remove('hidden-tab');
             updateWorkspaceMeta();
+            updateInspectionWindowNotice();
         }
 
         // ==========================================
@@ -1062,9 +1355,14 @@
         }
 
         function setCurrentMonthHeading() {
-            const monthNames = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+            const displayWindow = getInspectionDisplayWindow();
+            if (displayWindow) {
+                document.getElementById('currentMonthText').innerText = formatInspectionPeriodLabel(displayWindow);
+                return;
+            }
+
             const d = new Date();
-            document.getElementById('currentMonthText').innerText = `${monthNames[d.getMonth()]} ${d.getFullYear() + 543}`;
+            document.getElementById('currentMonthText').innerText = `${THAI_MONTH_NAMES[d.getMonth()]} ${d.getFullYear() + 543}`;
         }
 
         async function fetchEquipment() {
@@ -1162,25 +1460,32 @@
         }
 
         function renderInspectionCards(ownedItems, borrowedItems) {
+            const availability = getInspectionAvailabilityState();
+            const closedTitle = 'ระบบยังไม่เปิดให้ตรวจนับในช่วงนี้';
+            const closedMessage = availability.message;
             document.getElementById('pendingOwnedCount').innerText = `${ownedItems.length} รายการ`;
             document.getElementById('pendingBorrowedInCount').innerText = `${borrowedItems.length} รายการ`;
             renderItemCardsIntoContainer(
                 'equipmentListOwned',
                 ownedItems,
-                'ไม่มีรายการของหน่วยงานที่ถึงรอบตรวจในเดือนนี้',
-                'ถ้าตรวจครบแล้ว รายการจะไม่แสดงในรอบเดือนนี้อีก'
+                availability.allowed ? 'ไม่มีรายการของหน่วยงานที่ถึงรอบตรวจในเดือนนี้' : closedTitle,
+                availability.allowed ? 'ถ้าตรวจครบแล้ว รายการจะไม่แสดงในรอบเดือนนี้อีก' : closedMessage
             );
             renderItemCardsIntoContainer(
                 'equipmentListBorrowedIn',
                 borrowedItems,
-                'ไม่มีรายการยืมจากหน่วยงานอื่นที่ถึงรอบตรวจ',
-                'รายการที่ถูกยืมมาใช้งานจะแสดงในส่วนนี้'
+                availability.allowed ? 'ไม่มีรายการยืมจากหน่วยงานอื่นที่ถึงรอบตรวจ' : closedTitle,
+                availability.allowed ? 'รายการที่ถูกยืมมาใช้งานจะแสดงในส่วนนี้' : closedMessage
             );
         }
 
         function renderItemCardsIntoContainer(containerId, data, emptyTitle, emptyMessage) {
             const container = document.getElementById(containerId);
             container.innerHTML = '';
+            const inspectionAvailability = getInspectionAvailabilityState();
+            const inspectionDisabled = !inspectionAvailability.allowed && !isAdminLoggedIn;
+            const disabledAttr = inspectionDisabled ? 'disabled' : '';
+            const disabledTitle = inspectionDisabled ? `title="${escapeHtml(inspectionAvailability.message)}"` : '';
 
             if (data.length === 0) {
                 container.innerHTML = createEmptyStateHtml(emptyTitle, emptyMessage);
@@ -1213,7 +1518,7 @@
                     </div>
                     <div class="item-actions">
                         <span class="status-badge ${statusClass}">${statusIcon} ${item._statusText || 'ปกติ'}</span>
-                        <button class="btn btn-primary btn-sm" onclick="openManageModal(${safeItemJson})">
+                        <button class="btn btn-primary btn-sm" onclick="openManageModal(${safeItemJson})" ${disabledAttr} ${disabledTitle}>
                             <i class="fas fa-check"></i> บันทึกการตรวจ
                         </button>
                     </div>
@@ -1297,6 +1602,7 @@
         }
 
         async function toggleScanner() {
+            if (!ensureInspectionWindowOpenForStaff()) return;
             const readerDiv = document.getElementById('qr-reader');
 
             if (scannerRunning) {
@@ -1323,19 +1629,48 @@
             html5QrcodeScanner = new Html5Qrcode("qr-reader");
 
             try {
-                const cameras = await Html5Qrcode.getCameras();
-                const preferredCamera = cameras.find(camera => /back|rear|environment/gi.test(camera.label || '')) || cameras[0];
+                const scannerOptions = { fps: 10, qrbox: { width: 250, height: 250 } };
+                let started = false;
 
-                if (!preferredCamera) {
-                    throw new Error('No camera found');
+                try {
+                    await html5QrcodeScanner.start(
+                        { facingMode: { exact: "environment" } },
+                        scannerOptions,
+                        onScanSuccess,
+                        onScanFailure
+                    );
+                    started = true;
+                } catch (environmentExactError) {
+                    try {
+                        await html5QrcodeScanner.start(
+                            { facingMode: "environment" },
+                            scannerOptions,
+                            onScanSuccess,
+                            onScanFailure
+                        );
+                        started = true;
+                    } catch (environmentFallbackError) {
+                        const cameras = await Html5Qrcode.getCameras();
+                        const preferredCamera = cameras.find(camera => /back|rear|environment/gi.test(camera.label || ''))
+                            || cameras[0];
+
+                        if (!preferredCamera) {
+                            throw environmentFallbackError;
+                        }
+
+                        await html5QrcodeScanner.start(
+                            { deviceId: { exact: preferredCamera.id } },
+                            scannerOptions,
+                            onScanSuccess,
+                            onScanFailure
+                        );
+                        started = true;
+                    }
                 }
 
-                await html5QrcodeScanner.start(
-                    { deviceId: { exact: preferredCamera.id } },
-                    { fps: 10, qrbox: { width: 250, height: 250 } },
-                    onScanSuccess,
-                    onScanFailure
-                );
+                if (!started) {
+                    throw new Error('No camera found');
+                }
                 scannerRunning = true;
             } catch (error) {
                 console.error('Error starting QR scanner:', error);
@@ -1405,6 +1740,10 @@
                     );
 
                     if (globalItem) {
+                        if (!ensureInspectionWindowOpenForStaff()) {
+                            Swal.close();
+                            return;
+                        }
                         Swal.close();
                         const freq = globalItem['ความถี่การตรวจนับ'] || globalItem['ความถี่การตรวจนับ (เดือน)'] || '1';
                         
@@ -1492,6 +1831,7 @@
         }
 
         async function openManageModal(item) {
+            if (!ensureInspectionWindowOpenForStaff()) return;
             await ensureWardOptionsLoaded();
 
             if (!item._needsInspection) {
@@ -1778,6 +2118,7 @@
                         document.getElementById('btnAdminLogin').style.display = 'none';
                         document.getElementById('tab-admin').classList.remove('hidden-tab');
                         updateWorkspaceMeta();
+                        updateInspectionWindowNotice();
                         
                         Swal.fire({
                             icon: 'success', title: 'เข้าสู่ระบบสำเร็จ', text: 'กำลังดึงข้อมูลภาพรวมทั้งโรงพยาบาล...',
@@ -1787,6 +2128,142 @@
                         Swal.fire('ข้อผิดพลาด', 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง', 'error');
                     }
                 }
+            });
+        }
+
+        async function openInspectionScheduleModal() {
+            if (!isAdminLoggedIn) {
+                Swal.fire('แจ้งเตือน', 'เฉพาะแอดมินเท่านั้นที่สามารถตั้งค่ารอบเปิดระบบได้', 'warning');
+                return;
+            }
+
+            const seedWindow = getInspectionDisplayWindow();
+            const today = new Date();
+            const defaultCloseDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 5);
+            const defaultTargetMonth = seedWindow ? seedWindow.targetMonth : (today.getMonth() + 1);
+            const defaultTargetYear = seedWindow ? (seedWindow.targetYear + 543) : (today.getFullYear() + 543);
+            const defaultOpenDate = (seedWindow && seedWindow.openDate) || formatISODate(today);
+            const defaultCloseDateText = (seedWindow && seedWindow.closeDate) || formatISODate(defaultCloseDate);
+            const availability = getInspectionAvailabilityState();
+            const monthOptionsHtml = THAI_MONTH_NAMES.map((monthName, index) => {
+                const monthValue = index + 1;
+                const selectedAttr = monthValue === defaultTargetMonth ? 'selected' : '';
+                return `<option value="${monthValue}" ${selectedAttr}>${monthName}</option>`;
+            }).join('');
+
+            const result = await Swal.fire({
+                title: 'ตั้งค่ารอบเปิดระบบตรวจนับ',
+                width: 640,
+                html: `
+                    <div style="text-align:left;">
+                        <div style="background:#f5f9ff; border:1px solid #cfe2ff; border-radius:12px; padding:12px 14px; margin-bottom:14px; color:#003366;">
+                            <div style="font-weight:600; margin-bottom:4px;"><i class="fas fa-circle-info"></i> สถานะปัจจุบัน</div>
+                            <div style="font-size:0.95rem;">${escapeHtml(availability.message)}</div>
+                        </div>
+                        <div class="swal-form-group">
+                            <label><i class="fas fa-calendar-days"></i> เดือนเป้าหมายที่ต้องการเปิดระบบ</label>
+                            <div style="display:grid; grid-template-columns: 1.2fr 0.8fr; gap:10px;">
+                                <select id="scheduleTargetMonth" class="swal-input">${monthOptionsHtml}</select>
+                                <input type="number" id="scheduleTargetYear" class="swal-input" min="2560" max="2700" step="1" value="${defaultTargetYear}" placeholder="ปี พ.ศ.">
+                            </div>
+                        </div>
+                        <div class="swal-form-group">
+                            <label><i class="fas fa-door-open"></i> วันเปิดระบบ</label>
+                            <input type="date" id="scheduleOpenDate" class="swal-input" value="${defaultOpenDate}">
+                        </div>
+                        <div class="swal-form-group">
+                            <label><i class="fas fa-door-closed"></i> วันปิดระบบ</label>
+                            <input type="date" id="scheduleCloseDate" class="swal-input" value="${defaultCloseDateText}">
+                        </div>
+                        <small style="display:block; margin-top:8px; color:#666;">ตัวอย่าง: เปิดรอบ พฤษภาคม 2569 โดยกำหนดช่วงใช้งาน 30 เมษายน 2569 - 5 พฤษภาคม 2569 ได้</small>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: '<i class="fas fa-save"></i> บันทึกรอบเปิดระบบ',
+                cancelButtonText: 'ยกเลิก',
+                confirmButtonColor: '#003366',
+                showLoaderOnConfirm: true,
+                preConfirm: async () => {
+                    const targetMonthValue = Number(document.getElementById('scheduleTargetMonth').value);
+                    const targetYearBuddhist = Number(document.getElementById('scheduleTargetYear').value);
+                    const openDate = document.getElementById('scheduleOpenDate').value;
+                    const closeDate = document.getElementById('scheduleCloseDate').value;
+
+                    if (!targetMonthValue || !targetYearBuddhist || !openDate || !closeDate) {
+                        Swal.showValidationMessage('กรุณากรอกข้อมูลให้ครบทุกช่อง');
+                        return false;
+                    }
+
+                    const targetYearGregorian = targetYearBuddhist > 2400
+                        ? targetYearBuddhist - 543
+                        : targetYearBuddhist;
+                    const record = normalizeInspectionWindowRecord({
+                        targetYear: targetYearGregorian,
+                        targetMonth: targetMonthValue,
+                        openDate,
+                        closeDate
+                    });
+
+                    if (!record) {
+                        Swal.showValidationMessage('รูปแบบเดือนหรือวันที่ไม่ถูกต้อง');
+                        return false;
+                    }
+
+                    if (parseISODate(record.openDate) > parseISODate(record.closeDate)) {
+                        Swal.showValidationMessage('วันปิดระบบต้องไม่เร็วกว่าวันเปิดระบบ');
+                        return false;
+                    }
+
+                    try {
+                        const response = await fetch(EQUIPMENT_API, {
+                            method: 'POST',
+                            redirect: 'follow',
+                            headers: { "Content-Type": "text/plain;charset=utf-8" },
+                            body: JSON.stringify({
+                                action: 'saveInspectionWindow',
+                                targetYear: record.targetYear,
+                                targetMonth: record.targetMonth,
+                                openDate: record.openDate,
+                                closeDate: record.closeDate
+                            })
+                        });
+                        const apiResult = await response.json();
+                        if (apiResult.status !== 'success') {
+                            throw new Error(apiResult.message || 'saveInspectionWindow failed');
+                        }
+
+                        saveLocalInspectionWindowRecord(record);
+                        return {
+                            savedTo: 'api',
+                            message: `บันทึกรอบ ${formatInspectionPeriodLabel(record)} เรียบร้อย`
+                        };
+                    } catch (error) {
+                        console.warn('Falling back to local inspection window storage:', error);
+                        const savedLocal = saveLocalInspectionWindowRecord(record);
+                        if (!savedLocal) {
+                            Swal.showValidationMessage('ไม่สามารถบันทึกรอบเปิดระบบได้');
+                            return false;
+                        }
+
+                        return {
+                            savedTo: 'local',
+                            message: `บันทึกรอบ ${formatInspectionPeriodLabel(record)} ไว้ในเครื่องนี้ชั่วคราวแล้ว`
+                        };
+                    }
+                },
+                allowOutsideClick: () => !Swal.isLoading()
+            });
+
+            if (!result.isConfirmed || !result.value) return;
+
+            await loadInspectionWindowStatus();
+            await fetchAllEquipmentForAdmin();
+
+            Swal.fire({
+                icon: result.value.savedTo === 'api' ? 'success' : 'info',
+                title: 'บันทึกสำเร็จ',
+                text: result.value.message,
+                confirmButtonColor: '#003366'
             });
         }
 
