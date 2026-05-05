@@ -58,6 +58,9 @@
         .section-heading { color: var(--primary); font-size: 1.2rem; font-weight: 600; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
 
         .item-card { background: var(--white); padding: 20px; border-radius: 12px; margin-bottom: 15px; border-left: 5px solid var(--primary); box-shadow: 0 3px 10px rgba(0,0,0,0.06); display: flex; flex-direction: column; gap: 15px;}
+        .item-card--interactive { cursor: pointer; transition: transform 0.18s ease, box-shadow 0.18s ease; }
+        .item-card--interactive:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0,0,0,0.1); }
+        .item-card--interactive:focus-visible { outline: 3px solid rgba(0, 51, 102, 0.2); outline-offset: 2px; }
         @media (min-width: 768px) { .item-card { flex-direction: row; justify-content: space-between; align-items: center; } }
         .item-details { flex: 1; }
         .item-details h4 { color: var(--primary); margin-bottom: 10px; font-size: 1.1rem; line-height: 1.4; }
@@ -3052,7 +3055,11 @@
             if (item) openUpdateModal(item);
         }
 
-        function showEquipmentDetails(item) {
+        async function showEquipmentDetails(item, options = {}) {
+            const {
+                showInspectionButton = false,
+                inspectionButtonText = '<i class="fas fa-check"></i> บันทึกการตรวจ'
+            } = options;
             let lastInspectStr = 'ยังไม่เคยตรวจ';
             const detailLinkButtonId = 'equipment-detail-link-btn';
             const detailLinkButtonHtml = getEquipmentDetailLink(item)
@@ -3071,7 +3078,7 @@
                 }
             }
 
-            Swal.fire({
+            const result = await Swal.fire({
                 title: 'รายละเอียดครุภัณฑ์',
                 width: 600,
                 html: `
@@ -3091,13 +3098,26 @@
                     ${detailLinkButtonHtml}
                 `,
                 confirmButtonColor: '#003366',
-                confirmButtonText: '<i class="fas fa-times"></i> ปิดหน้าต่าง',
+                confirmButtonText: showInspectionButton ? inspectionButtonText : '<i class="fas fa-times"></i> ปิดหน้าต่าง',
+                showCancelButton: showInspectionButton,
+                cancelButtonText: 'ปิดหน้าต่าง',
+                cancelButtonColor: '#adb5bd',
                 didOpen: () => wireDetailLinkButton(detailLinkButtonId, item)
             });
+
+            if (showInspectionButton && result.isConfirmed) {
+                await openUpdateModal(item);
+            }
         }
 
         function showDetailsModal(item) {
             showEquipmentDetails(prepareEquipmentItem(item));
+        }
+
+        function showInspectionDetailsModal(item) {
+            return showEquipmentDetails(prepareEquipmentItem(item), {
+                showInspectionButton: true
+            });
         }
 
         async function openUpdateModal(item) {
@@ -3352,7 +3372,10 @@
                     `;
 
                 const card = document.createElement('div');
-                card.className = 'item-card';
+                card.className = 'item-card item-card--interactive';
+                card.setAttribute('role', 'button');
+                card.setAttribute('tabindex', '0');
+                card.setAttribute('title', 'คลิกเพื่อเปิดรายละเอียดครุภัณฑ์');
                 card.innerHTML = `
                     <div class="item-details">
                         <h4>${escapeHtml(item['ชื่อครุภัณฑ์'] || 'ไม่ระบุชื่อ')} ${getRiskHtml(item)}</h4>
@@ -3369,11 +3392,19 @@
                     </div>
                     <div class="item-actions">
                         <span class="status-badge ${statusClass}">${statusIcon} ${escapeHtml(item._statusText || 'ปกติ')}</span>
-                        <button class="btn btn-primary btn-sm" onclick="openManageModal(${safeItemJson})" ${disabledAttr} ${disabledTitle}>
+                        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); openManageModal(${safeItemJson})" ${disabledAttr} ${disabledTitle}>
                             <i class="fas fa-check"></i> บันทึกการตรวจ
                         </button>
                     </div>
                 `;
+                const openItemForm = () => showInspectionDetailsModal(item);
+                card.addEventListener('click', openItemForm);
+                card.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        openItemForm();
+                    }
+                });
                 container.appendChild(card);
             });
         }
