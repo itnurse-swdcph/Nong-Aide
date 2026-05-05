@@ -709,8 +709,10 @@
         const THAI_MONTH_NAMES = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
         const LOCAL_INSPECTION_WINDOW_KEY = 'aide_inspection_windows_v1';
         const API_TIMEOUT_MS = 30000;
-        const EXPECTED_EQUIPMENT_API_VERSION = '2026-05-05-rmc-primary-verified-save';
+        const EXPECTED_EQUIPMENT_API_VERSION = '2026-05-05-cross-ward-pull-v2';
         let verifiedApiVersion = '';
+        let allEquipmentUniverse = [];
+        let crossWardSearchSeq = 0;
 
         function buildApiUrl(action, params = {}) {
             const url = new URL(EQUIPMENT_API);
@@ -1019,10 +1021,11 @@
             wireEquipmentEvents();
 
             setLoadingState(true);
-            await loadInspectionWindowStatus();
+            const inspectionWindowPromise = loadInspectionWindowStatus();
 
             if (isAdminLoggedIn) {
                 await fetchAllEquipmentForAdmin();
+                await inspectionWindowPromise;
                 return;
             }
 
@@ -1032,6 +1035,7 @@
             }
 
             await fetchEquipment();
+            await inspectionWindowPromise;
         }
 
         function wireEquipmentEvents() {
@@ -1040,19 +1044,29 @@
                 searchInput.dataset.wired = '1';
                 searchInput.addEventListener('input', () => {
                     clearTimeout(typingTimer);
-                    typingTimer = setTimeout(() => processSearchOrScan(searchInput.value), doneTypingInterval);
+                    typingTimer = setTimeout(() => {
+                        processSearchOrScan(searchInput.value);
+                    }, doneTypingInterval);
+                });
+                searchInput.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        clearTimeout(typingTimer);
+                        processSearchOrScan(searchInput.value, { forceCrossWard: true });
+                    }
                 });
             }
         }
 
         async function refreshCurrentData() {
             setLoadingState(true, 'กำลังรีเฟรชข้อมูล...');
-            await loadInspectionWindowStatus();
+            const inspectionWindowPromise = loadInspectionWindowStatus();
             if (isAdminLoggedIn && currentActiveTab === 'admin') {
                 await fetchAllEquipmentForAdmin();
             } else {
                 await fetchEquipment();
             }
+            await inspectionWindowPromise;
         }
 
         function handleAllStatusFilterChange() {
@@ -1123,10 +1137,9 @@
                     async (decodedText) => {
                         const value = String(decodedText || '').trim();
                         document.getElementById('searchInput').value = value;
-                        processSearchOrScan(value);
+                        const matchedItem = await processSearchOrScan(value, { forceCrossWard: true, openPulledItem: true });
                         await toggleScanner();
-                        const item = getEquipmentById(value);
-                        if (item) openUpdateModal(item);
+                        if (matchedItem) openUpdateModal(matchedItem);
                     }
                 );
                 scannerRunning = true;
@@ -1326,6 +1339,7 @@
                 if (result.status === 'success') {
                     allEquipment = (result.data || []).map(prepareEquipmentItem);
                     filteredEquipment = [...allEquipment];
+                    allEquipmentUniverse = [...allEquipment];
                     wardOptions = getWardOptionsFromItems(allEquipment);
 
                     const wards = getWardOptionsFromItems(allEquipment);
@@ -2335,6 +2349,7 @@
                 if (result.status === 'success') {
                     allEquipment = (result.data || []).map(prepareEquipmentItem);
                     filteredEquipment = [...allEquipment];
+                    allEquipmentUniverse = [];
                     mergeWardOptions(getWardOptionsFromItems(allEquipment));
                     updateDashboardStats();
                     switchTab(currentActiveTab);
@@ -2372,11 +2387,197 @@
         }
 
         function getEquipmentById(itemId) {
-            return allEquipment.find(item => String(item['เลขครุภัณฑ์'] || '').trim() === String(itemId || '').trim()) || null;
+            const target = String(itemId || '').trim();
+            if (!target) return null;
+            return allEquipment.find(item => {
+                const itemKey = String(item['เลขครุภัณฑ์'] || '').trim();
+                const rmcKey = String(item['RMC No'] || '').trim();
+                return itemKey === target || rmcKey === target;
+            }) || null;
         }
 
         function getEquipmentPrimaryKey(item) {
             return String((item && (item['RMC No'] || item['เลขครุภัณฑ์'])) || '').trim();
+        }
+
+        function isItemVisibleToCurrentWard(item) {
+            const ward = normalizeWard(currentWard);
+            if (!ward) return false;
+            const prepared = item && item._usageWard ? item : prepareEquipmentItem(item);
+            return prepared._ownerWard === ward || prepared._usageWard === ward;
+        }
+
+        function scoreSearchMatch(item, searchTerm) {
+            const term = String(searchTerm || '').trim().toLowerCase();
+            if (!term) return -1;
+
+            const exactFields = [
+                item['เลขครุภัณฑ์'],
+                item['RMC No'],
+                item['รายละเอียดครุภัณฑ์'],
+                item.detailLink
+            ].map(value => String(value || '').trim().toLowerCase()).filter(Boolean);
+            if (exactFields.some(value => value === term)) return 100;
+            if (exactFields.some(value => value.includes(term))) return 80;
+
+            const secondaryFields = [
+                item['ชื่อครุภัณฑ์'],
+                item['ยี่ห้อ'],
+                item['ชื่อรุ่น'],
+                item['ตำแหน่งย่อย (Sub-location)'],
+                item._ownerWard,
+                item._usageWard
+            ].map(value => String(value || '').trim().toLowerCase()).filter(Boolean);
+            if (secondaryFields.some(value => value === term)) return 70;
+            if (secondaryFields.some(value => value.startsWith(term))) return 60;
+            if (secondaryFields.some(value => value.includes(term))) return 40;
+            return -1;
+        }
+
+        function findBestMatchingEquipment(items, searchTerm) {
+            let bestItem = null;
+            let bestScore = -1;
+            (items || []).forEach(item => {
+                const score = scoreSearchMatch(item, searchTerm);
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestItem = item;
+                }
+            });
+            return bestItem;
+        }
+
+        function shouldAutoLookupAcrossWards(searchTerm) {
+            const term = String(searchTerm || '').trim();
+            if (!term) return false;
+            if (/^https?:\/\//i.test(term)) return true;
+            if (/[?=&/%]/.test(term)) return true;
+            if (/^[A-Za-z0-9._\-\/]{6,}$/.test(term)) return true;
+            return term.length >= 10;
+        }
+
+        async function ensureGlobalEquipmentLoaded(forceReload = false) {
+            if (!forceReload && allEquipmentUniverse.length) return allEquipmentUniverse;
+            const result = await apiGetJson('getAllItems');
+            if (result.status !== 'success' || !Array.isArray(result.data)) {
+                throw new Error(result.message || 'ไม่สามารถค้นหารายการข้ามหน่วยงานได้');
+            }
+            allEquipmentUniverse = result.data.map(prepareEquipmentItem);
+            return allEquipmentUniverse;
+        }
+
+        async function promptCrossWardPullSelection(matches, searchTerm) {
+            if (!matches.length) return null;
+            if (matches.length === 1) {
+                const item = matches[0];
+                const confirm = await Swal.fire({
+                    icon: 'question',
+                    title: 'พบรายการจากหน่วยงานอื่น',
+                    html: `
+                        <div style="text-align:left; line-height:1.7;">
+                            <div><b>ชื่อครุภัณฑ์:</b> ${escapeHtml(item['ชื่อครุภัณฑ์'] || '-')}</div>
+                            <div><b>RMC No:</b> ${escapeHtml(item['RMC No'] || '-')}</div>
+                            <div><b>เลขครุภัณฑ์:</b> ${escapeHtml(item['เลขครุภัณฑ์'] || '-')}</div>
+                            <div><b>เจ้าของ:</b> ${escapeHtml(item._ownerWard || '-')}</div>
+                            <div><b>ใช้งานที่ปัจจุบัน:</b> ${escapeHtml(item._usageWard || '-')}</div>
+                            <div style="margin-top:10px; color:#0b5394;">ต้องการดึงรายการนี้มาใช้งานที่ <b>${escapeHtml(currentWard || '-')}</b> หรือไม่</div>
+                        </div>
+                    `,
+                    showCancelButton: true,
+                    confirmButtonText: 'ดึงมาใช้งาน',
+                    cancelButtonText: 'ยกเลิก',
+                    confirmButtonColor: '#003366'
+                });
+                return confirm.isConfirmed ? item : null;
+            }
+
+            const optionsHtml = matches.slice(0, 20).map((item, index) => `
+                <option value="${index}">
+                    ${escapeHtml(item['ชื่อครุภัณฑ์'] || '-')} | RMC ${escapeHtml(item['RMC No'] || '-')} | ใช้งานที่ ${escapeHtml(item._usageWard || '-')}
+                </option>
+            `).join('');
+
+            const result = await Swal.fire({
+                title: 'พบหลายรายการจากหน่วยงานอื่น',
+                html: `
+                    <div style="text-align:left; margin-bottom:10px;">คำค้นหา: <b>${escapeHtml(searchTerm)}</b></div>
+                    <select id="crossWardSelect" class="swal-input">${optionsHtml}</select>
+                    <small style="display:block; margin-top:8px; color:#666;">เลือก 1 รายการเพื่อดึงมาใช้งานที่ ${escapeHtml(currentWard || '-')}</small>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'ดึงรายการที่เลือก',
+                cancelButtonText: 'ยกเลิก',
+                confirmButtonColor: '#003366',
+                preConfirm: () => {
+                    const select = document.getElementById('crossWardSelect');
+                    if (!select || select.value === '') {
+                        Swal.showValidationMessage('กรุณาเลือกรายการที่ต้องการดึงมาใช้งาน');
+                        return false;
+                    }
+                    return matches[Number(select.value)] || null;
+                }
+            });
+
+            return result.isConfirmed ? result.value : null;
+        }
+
+        async function pullEquipmentIntoCurrentWard(item) {
+            const payload = {
+                action: 'pullEquipment',
+                itemId: getEquipmentPrimaryKey(item),
+                originalItemId: item['เลขครุภัณฑ์'] || '',
+                rmcNo: item['RMC No'] || '',
+                newWard: currentWard
+            };
+            await ensureEquipmentApiVersionCurrent();
+            const result = await apiPostJson(payload);
+            if (result.status !== 'success') {
+                throw new Error(result.message || 'ไม่สามารถดึงรายการมาใช้งานได้');
+            }
+
+            const latestItem = result.data && result.data.updatedItem
+                ? normalizeEquipmentItemFromApi(result.data.updatedItem)
+                : await fetchLatestEquipmentItem(item);
+            const latestWard = normalizeWard((latestItem && (latestItem['ใช้งานที่'] || latestItem._usageWard)) || '');
+            if (!latestItem || latestWard !== normalizeWard(currentWard)) {
+                throw new Error('ระบบดึงรายการมาใช้งานไม่สมบูรณ์ กรุณาลองอีกครั้ง');
+            }
+
+            upsertLocalEquipmentItem(latestItem);
+            const universeIndex = allEquipmentUniverse.findIndex(entry => getEquipmentPrimaryKey(entry) === getEquipmentPrimaryKey(latestItem));
+            if (universeIndex >= 0) allEquipmentUniverse[universeIndex] = latestItem;
+            else allEquipmentUniverse.push(latestItem);
+            return latestItem;
+        }
+
+        async function searchAcrossWardsAndPull(searchTerm) {
+            const seq = ++crossWardSearchSeq;
+            setLoadingState(true, 'กำลังค้นหารายการจากทุกหน่วยงาน...');
+            try {
+                const universe = await ensureGlobalEquipmentLoaded();
+                if (seq !== crossWardSearchSeq) return null;
+
+                const matches = universe
+                    .filter(item => matchesSearchTerm(item, searchTerm) && !isItemVisibleToCurrentWard(item))
+                    .sort((a, b) => scoreSearchMatch(b, searchTerm) - scoreSearchMatch(a, searchTerm));
+                if (!matches.length) return null;
+
+                const selectedItem = await promptCrossWardPullSelection(matches, searchTerm);
+                if (!selectedItem) return null;
+
+                setLoadingState(true, 'กำลังดึงรายการมาใช้งานในหน่วยงานนี้...');
+                const pulledItem = await pullEquipmentIntoCurrentWard(selectedItem);
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ดึงรายการสำเร็จ',
+                    text: `ย้ายการใช้งานมาที่ ${currentWard} เรียบร้อยแล้ว`,
+                    timer: 1600,
+                    showConfirmButton: false
+                });
+                return pulledItem;
+            } finally {
+                setLoadingState(false);
+            }
         }
 
         function upsertLocalEquipmentItem(updatedItem) {
@@ -2393,7 +2594,9 @@
             const index = allEquipment.findIndex(matches);
             if (index >= 0) allEquipment[index] = prepared;
             else allEquipment.push(prepared);
-            filteredEquipment = filteredEquipment.map(item => matches(item) ? prepared : item);
+            const filteredIndex = filteredEquipment.findIndex(matches);
+            if (filteredIndex >= 0) filteredEquipment[filteredIndex] = prepared;
+            else filteredEquipment.push(prepared);
             updateDashboardStats();
             switchTab(currentActiveTab);
         }
@@ -2793,13 +2996,37 @@
             renderActiveView();
         }
 
-        function processSearchOrScan(searchValue) {
+        async function processSearchOrScan(searchValue, options = {}) {
+            const { forceCrossWard = false } = options;
             currentSearchTerm = String(searchValue || '').trim();
             if (isAdminLoggedIn && currentActiveTab === 'admin') {
                 filterAdminByWard();
-                return;
+                return null;
             }
+
             renderActiveView();
+            if (!currentSearchTerm || isAdminLoggedIn || !currentWard) {
+                return findBestMatchingEquipment(allEquipment, currentSearchTerm);
+            }
+
+            const localMatches = getCurrentWardVisibleItems(currentSearchTerm, 'all');
+            const localItem = findBestMatchingEquipment(localMatches, currentSearchTerm);
+            if (localItem) return localItem;
+
+            if (!forceCrossWard && !shouldAutoLookupAcrossWards(currentSearchTerm)) {
+                return null;
+            }
+
+            try {
+                const pulledItem = await searchAcrossWardsAndPull(currentSearchTerm);
+                if (pulledItem) {
+                    renderActiveView();
+                    return pulledItem;
+                }
+            } catch (error) {
+                Swal.fire('ค้นหาข้ามหน่วยงานไม่สำเร็จ', String(error), 'error');
+            }
+            return null;
         }
 
         function getWardOwnedItemsForPrint() {
@@ -2811,5 +3038,3 @@
     </script>
 </body>
 </html>
-
-
