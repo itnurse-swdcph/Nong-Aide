@@ -700,13 +700,130 @@
         let lastDataSyncAt = null;
         let printCleanupTimer = null;
         let inspectionWindowStatus = createDefaultInspectionWindowStatus();
+        let pageBootstrapped = false;
 
         // ตัวแปรสำหรับระบบค้นหาอัตโนมัติ
         let typingTimer;                
         const doneTypingInterval = 800; 
-        const INSPECTION_SKIP_STATUSES = ['ชำรุดส่งซ่อม', 'รอจำหน่าย', 'จำหน่าย', 'แทงจำหน่าย'];
+        const INSPECTION_SKIP_STATUSES = ['ชำรุดส่งซ่อม', 'อยู่ระหว่างซ่อม', 'รอจำหน่าย', 'จำหน่าย', 'แทงจำหน่าย'];
         const THAI_MONTH_NAMES = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
         const LOCAL_INSPECTION_WINDOW_KEY = 'aide_inspection_windows_v1';
+        const API_TIMEOUT_MS = 30000;
+        const EXPECTED_EQUIPMENT_API_VERSION = '2026-05-05-commit-verified-status-map';
+        let verifiedApiVersion = '';
+
+        function buildApiUrl(action, params = {}) {
+            const url = new URL(EQUIPMENT_API);
+            url.searchParams.set('action', action);
+            Object.entries(params || {}).forEach(([key, value]) => {
+                if (value !== undefined && value !== null && value !== '') {
+                    url.searchParams.set(key, value);
+                }
+            });
+            url.searchParams.set('_ts', String(Date.now()));
+            return url.toString();
+        }
+
+        async function apiGetJson(action, params = {}) {
+            return fetchJsonWithTimeout(buildApiUrl(action, params), { cache: 'no-store' });
+        }
+
+        async function apiPostJson(payload) {
+            return fetchJsonWithTimeout(`${EQUIPMENT_API}?_ts=${Date.now()}`, {
+                method: 'POST',
+                redirect: 'follow',
+                cache: 'no-store',
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify(payload)
+            });
+        }
+
+        async function ensureEquipmentApiVersionCurrent() {
+            if (verifiedApiVersion === EXPECTED_EQUIPMENT_API_VERSION) return true;
+            const result = await apiGetJson('getApiInfo');
+            const apiVersion = result && result.data && result.data.version;
+            if (result.status !== 'success' || apiVersion !== EXPECTED_EQUIPMENT_API_VERSION) {
+                throw new Error(`Apps Script ยังไม่ใช่เวอร์ชันที่แก้ไขล่าสุด (${apiVersion || 'ไม่พบเวอร์ชัน'}) กรุณา Deploy Web App ใหม่ก่อนบันทึก`);
+            }
+            verifiedApiVersion = apiVersion;
+            return true;
+        }
+
+        async function fetchJsonWithTimeout(url, options = {}, timeoutMs = API_TIMEOUT_MS) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+            try {
+                const response = await fetch(url, { ...options, signal: controller.signal });
+                const textData = await response.text();
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return JSON.parse(textData);
+            } catch (error) {
+                if (error.name === 'AbortError') throw new Error('การเชื่อมต่อใช้เวลานานเกินไป กรุณาลองใหม่อีกครั้ง');
+                throw error;
+            } finally {
+                clearTimeout(timeoutId);
+            }
+        }
+
+        function parseInspectionDateValue(value) {
+            if (!value) return null;
+            const date = value instanceof Date ? value : new Date(value);
+            return isNaN(date) ? null : date;
+        }
+
+        async function fetchLatestEquipmentItem(itemId) {
+            const result = await apiGetJson('getAllItems');
+            if (result.status !== 'success' || !Array.isArray(result.data)) {
+                throw new Error('ไม่สามารถตรวจสอบข้อมูลหลังบันทึกได้');
+            }
+            return result.data.find(entry => String(entry['เลขครุภัณฑ์'] || '').trim() === String(itemId || '').trim()) || null;
+        }
+
+        function normalizeEquipmentItemFromApi(item) {
+            return prepareEquipmentItem(item || {});
+        }
+
+        function wasInspectionPersisted(latestItem, expected) {
+            if (!latestItem) return false;
+
+            const latestStatus = String(latestItem['สถานะ'] || '').trim();
+            const latestInspectionDate = parseInspectionDateValue(latestItem['วันที่ตรวจล่าสุด']);
+            const previousInspectionDate = parseInspectionDateValue(expected.previousInspectionDate);
+            const submittedAt = parseInspectionDateValue(expected.submittedAt);
+
+            if (normalizeStatusForFilter(latestStatus) !== normalizeStatusForFilter(expected.status)) return false;
+            if (!latestInspectionDate) return false;
+            if (submittedAt && latestInspectionDate.getTime() + 60000 < submittedAt.getTime()) return false;
+            if (previousInspectionDate && latestInspectionDate.getTime() === previousInspectionDate.getTime()) return false;
+            if (expected.status === 'ถูกยืม' && expected.borrowedWard) {
+                const latestUsageWard = String(latestItem['ใช้งานที่'] || '').trim();
+                if (latestUsageWard !== String(expected.borrowedWard).trim()) return false;
+            }
+            return true;
+        }
+
+        async function verifyInspectionSaved(item, status, borrowedWard = '', submittedAt = new Date(), updatedItem = null) {
+            const latestItem = updatedItem ? normalizeEquipmentItemFromApi(updatedItem) : await fetchLatestEquipmentItem(item['เลขครุภัณฑ์']);
+            const persisted = wasInspectionPersisted(latestItem, {
+                status,
+                borrowedWard,
+                submittedAt,
+                previousInspectionDate: item['วันที่ตรวจล่าสุด']
+            });
+
+            if (!persisted) {
+                throw new Error(`API ตอบว่าสำเร็จ แต่ข้อมูลครุภัณฑ์เลข ${item['เลขครุภัณฑ์']} ยังไม่ถูกอัปเดตในฐานข้อมูลจริง กรุณาตรวจสอบว่า Apps Script ถูก Deploy เป็นเวอร์ชันล่าสุด และ URL ในหน้าเว็บชี้ไปยัง deployment เดียวกัน`);
+            }
+
+            return latestItem;
+        }
+
+        function assertSaveCommittedByApi(result) {
+            const data = result && result.data;
+            if (!data || data.masterVerified !== true || data.historyVerified !== true) {
+                throw new Error('API ยังไม่ได้ยืนยันการเขียนลง MasterData และ HistoryLog กรุณาอัปเดต/Deploy Apps Script เวอร์ชันล่าสุดก่อนใช้งาน');
+            }
+        }
 
         function createDefaultInspectionWindowStatus() {
             return {
@@ -772,1250 +889,14 @@
         function loadLocalInspectionWindowRecords() {
             try {
                 const raw = localStorage.getItem(LOCAL_INSPECTION_WINDOW_KEY);
-                const parsed = raw ? JSON.parse(raw) : [];
-                return Array.isArray(parsed)
-                    ? parsed.map(normalizeInspectionWindowRecord).filter(Boolean)
-                    : [];
+                if (!raw) return [];
+                const parsed = JSON.parse(raw);
+                if (!Array.isArray(parsed)) return [];
+                return parsed.map(normalizeInspectionWindowRecord).filter(Boolean);
             } catch (error) {
-                console.warn('Unable to read local inspection windows:', error);
+                console.warn('Unable to load local inspection windows:', error);
                 return [];
             }
-        }
-
-        function saveLocalInspectionWindowRecord(record) {
-            const normalized = normalizeInspectionWindowRecord(record);
-            if (!normalized) return false;
-
-            const records = loadLocalInspectionWindowRecords().filter(item => item.periodKey !== normalized.periodKey);
-            records.push({
-                ...normalized,
-                updatedAt: new Date().toISOString()
-            });
-            localStorage.setItem(LOCAL_INSPECTION_WINDOW_KEY, JSON.stringify(records));
-            return true;
-        }
-
-        function evaluateInspectionWindowRecords(records, source = 'local') {
-            const normalizedRecords = records
-                .map(normalizeInspectionWindowRecord)
-                .filter(Boolean)
-                .sort((a, b) => {
-                    const openDiff = parseISODate(a.openDate) - parseISODate(b.openDate);
-                    if (openDiff !== 0) return openDiff;
-                    return a.periodKey.localeCompare(b.periodKey);
-                });
-
-            if (!normalizedRecords.length) {
-                return {
-                    hasConfiguredWindow: false,
-                    isActive: false,
-                    activeWindow: null,
-                    upcomingWindow: null,
-                    latestWindow: null,
-                    source
-                };
-            }
-
-            const today = toStartOfDay(new Date());
-            const activeWindow = normalizedRecords.find(record => {
-                const openDate = parseISODate(record.openDate);
-                const closeDate = parseISODate(record.closeDate);
-                return openDate && closeDate && openDate <= today && today <= closeDate;
-            }) || null;
-            const upcomingWindow = normalizedRecords.find(record => {
-                const openDate = parseISODate(record.openDate);
-                return openDate && today && openDate > today;
-            }) || null;
-            const latestWindow = normalizedRecords[normalizedRecords.length - 1] || null;
-
-            return {
-                hasConfiguredWindow: true,
-                isActive: Boolean(activeWindow),
-                activeWindow,
-                upcomingWindow,
-                latestWindow,
-                source
-            };
-        }
-
-        function normalizeInspectionWindowStatusPayload(payload, source = 'api') {
-            if (!payload || typeof payload !== 'object') {
-                return createDefaultInspectionWindowStatus();
-            }
-
-            if (Array.isArray(payload.windows)) {
-                return evaluateInspectionWindowRecords(payload.windows, source);
-            }
-
-            const activeWindow = normalizeInspectionWindowRecord(payload.activeWindow);
-            const upcomingWindow = normalizeInspectionWindowRecord(payload.upcomingWindow);
-            const latestWindow = normalizeInspectionWindowRecord(payload.latestWindow);
-            const hasConfiguredWindow = Boolean(activeWindow || upcomingWindow || latestWindow || payload.hasConfiguredWindow);
-
-            return {
-                hasConfiguredWindow,
-                isActive: Boolean(payload.isActive) || Boolean(activeWindow),
-                activeWindow,
-                upcomingWindow,
-                latestWindow,
-                source
-            };
-        }
-
-        function getInspectionDisplayWindow() {
-            return inspectionWindowStatus.activeWindow
-                || inspectionWindowStatus.upcomingWindow
-                || inspectionWindowStatus.latestWindow
-                || null;
-        }
-
-        function getInspectionReferenceMonthStart() {
-            const activeWindow = inspectionWindowStatus.activeWindow;
-            if (activeWindow) {
-                return new Date(activeWindow.targetYear, activeWindow.targetMonth - 1, 1);
-            }
-
-            const today = new Date();
-            return new Date(today.getFullYear(), today.getMonth(), 1);
-        }
-
-        function formatThaiDate(value) {
-            const date = value instanceof Date ? value : parseISODate(value);
-            if (!date || isNaN(date)) return '-';
-            return date.toLocaleDateString('th-TH', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric'
-            });
-        }
-
-        function formatInspectionPeriodLabel(windowInfo) {
-            if (!windowInfo || !windowInfo.targetYear || !windowInfo.targetMonth) return '';
-            return `${THAI_MONTH_NAMES[windowInfo.targetMonth - 1]} ${windowInfo.targetYear + 543}`;
-        }
-
-        function getInspectionAvailabilityState() {
-            if (isAdminLoggedIn) {
-                return {
-                    allowed: true,
-                    message: 'แอดมินสามารถเข้าใช้งานและจัดการข้อมูลได้ตลอดเวลา',
-                    source: 'admin'
-                };
-            }
-
-            if (!inspectionWindowStatus.hasConfiguredWindow) {
-                return {
-                    allowed: true,
-                    message: 'ยังไม่ได้ตั้งรอบเปิดระบบรายเดือน ระบบจึงเปิดใช้งานตามเดือนปัจจุบันตามปกติ',
-                    source: inspectionWindowStatus.source
-                };
-            }
-
-            if (inspectionWindowStatus.activeWindow) {
-                const activeWindow = inspectionWindowStatus.activeWindow;
-                return {
-                    allowed: true,
-                    message: `ระบบเปิดสำหรับรอบ ${formatInspectionPeriodLabel(activeWindow)} วันที่ ${formatThaiDate(activeWindow.openDate)} - ${formatThaiDate(activeWindow.closeDate)}`,
-                    source: inspectionWindowStatus.source,
-                    window: activeWindow
-                };
-            }
-
-            const displayWindow = getInspectionDisplayWindow();
-            const baseMessage = displayWindow
-                ? `ระบบปิดอยู่ ขณะนี้กำหนดรอบ ${formatInspectionPeriodLabel(displayWindow)} ไว้วันที่ ${formatThaiDate(displayWindow.openDate)} - ${formatThaiDate(displayWindow.closeDate)}`
-                : 'ระบบปิดอยู่ในขณะนี้';
-
-            return {
-                allowed: false,
-                message: baseMessage,
-                source: inspectionWindowStatus.source,
-                window: displayWindow
-            };
-        }
-
-        function updateInspectionWindowNotice() {
-            const noteBox = document.getElementById('inspectionWindowNotice');
-            const scanButton = document.getElementById('btnScanQr');
-            const availability = getInspectionAvailabilityState();
-            const displayWindow = getInspectionDisplayWindow();
-
-            if (noteBox) {
-                if (!inspectionWindowStatus.hasConfiguredWindow) {
-                    noteBox.innerHTML = 'ระบบเปิดรอบตรวจพร้อมกันตั้งแต่วันที่ 1 ของเดือน โดยอิงตามเดือนครบกำหนด ไม่อิงตามวันตรวจล่าสุดของแต่ละรายการ';
-                } else if (availability.allowed && displayWindow) {
-                    noteBox.innerHTML = `<strong>รอบที่เปิดใช้งาน:</strong> ${formatInspectionPeriodLabel(displayWindow)} <strong>ช่วงวันที่:</strong> ${formatThaiDate(displayWindow.openDate)} - ${formatThaiDate(displayWindow.closeDate)}`;
-                } else if (displayWindow) {
-                    noteBox.innerHTML = `<strong>ระบบปิดอยู่</strong> แอดมินกำหนดรอบ ${formatInspectionPeriodLabel(displayWindow)} ไว้ช่วง ${formatThaiDate(displayWindow.openDate)} - ${formatThaiDate(displayWindow.closeDate)} เมื่อถึงช่วงวันดังกล่าวจึงจะบันทึกการตรวจนับได้`;
-                } else {
-                    noteBox.innerHTML = '<strong>ระบบปิดอยู่</strong> กรุณาติดต่อแอดมินเพื่อกำหนดช่วงวันเปิดระบบตรวจนับ';
-                }
-            }
-
-            if (scanButton) {
-                const shouldDisable = !availability.allowed && !isAdminLoggedIn;
-                scanButton.disabled = shouldDisable;
-                scanButton.title = shouldDisable ? availability.message : 'สแกน QR';
-            }
-        }
-
-        function ensureInspectionWindowOpenForStaff() {
-            const availability = getInspectionAvailabilityState();
-            if (availability.allowed || isAdminLoggedIn) return true;
-
-            Swal.fire({
-                icon: 'info',
-                title: 'ระบบยังไม่เปิดให้ตรวจนับ',
-                text: availability.message,
-                confirmButtonColor: '#003366'
-            });
-            return false;
-        }
-
-        async function loadInspectionWindowStatus() {
-            try {
-                const response = await fetch(`${EQUIPMENT_API}?action=getInspectionWindowStatus`);
-                const textData = await response.text();
-                const result = JSON.parse(textData);
-
-                if (result.status === 'success') {
-                    inspectionWindowStatus = normalizeInspectionWindowStatusPayload(result.data, 'api');
-                    setCurrentMonthHeading();
-                    updateInspectionWindowNotice();
-                    return inspectionWindowStatus;
-                }
-            } catch (error) {
-                console.warn('Unable to load inspection window from API, fallback to local:', error);
-            }
-
-            inspectionWindowStatus = evaluateInspectionWindowRecords(loadLocalInspectionWindowRecords(), 'local');
-            setCurrentMonthHeading();
-            updateInspectionWindowNotice();
-            return inspectionWindowStatus;
-        }
-
-        function formatSyncTimestamp(dateValue) {
-            if (!dateValue) return 'ยังไม่ซิงก์';
-            const date = new Date(dateValue);
-            if (isNaN(date)) return 'ยังไม่ซิงก์';
-            return date.toLocaleString('th-TH', {
-                day: 'numeric',
-                month: 'short',
-                year: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-        }
-
-        function updateWorkspaceMeta() {
-            const scopeLabel = document.getElementById('heroScopeLabel');
-            const roleLabel = document.getElementById('heroRoleLabel');
-            const syncLabel = document.getElementById('heroSyncLabel');
-            const accessNotice = document.getElementById('roleAccessNotice');
-            const wardPrintButton = document.getElementById('btnWardPrint');
-
-            if (scopeLabel) {
-                scopeLabel.textContent = isAdminLoggedIn ? 'ภาพรวมทั้งโรงพยาบาล' : (currentWard || 'กรุณาเข้าสู่ระบบ');
-            }
-            if (roleLabel) {
-                roleLabel.textContent = isAdminLoggedIn ? 'ผู้ดูแลระบบ' : (currentWard ? 'ระดับหน่วยงาน' : 'ยังไม่ยืนยันตัวตน');
-            }
-            if (syncLabel) {
-                syncLabel.textContent = formatSyncTimestamp(lastDataSyncAt);
-            }
-            if (wardPrintButton) {
-                wardPrintButton.classList.toggle('hidden', isAdminLoggedIn || !currentWard);
-            }
-            if (accessNotice) {
-                if (isAdminLoggedIn) {
-                    accessNotice.innerHTML = '<i class="fas fa-user-shield"></i><span>โหมดผู้ดูแลระบบสามารถดูข้อมูลภาพรวมทั้งโรงพยาบาล จัดการข้อมูลหลัก และพิมพ์ป้าย QR ได้จากรายการที่เลือกในตารางกลาง</span>';
-                } else if (currentWard) {
-                    accessNotice.innerHTML = `<i class="fas fa-building-lock"></i><span>สิทธิ์ระดับหน่วยงานถูกจำกัดไว้เฉพาะข้อมูลของ <strong>${currentWard}</strong> และการพิมพ์ป้าย QR จะเลือกได้เฉพาะครุภัณฑ์ที่เป็นเจ้าของของหน่วยงานนี้เท่านั้น</span>`;
-                } else {
-                    accessNotice.innerHTML = '<i class="fas fa-lock"></i><span>กรุณาเข้าสู่ระบบจากหน้าหลักก่อนใช้งาน เพื่อให้ระบบกำหนดขอบเขตข้อมูลและสิทธิ์การพิมพ์อย่างถูกต้อง</span>';
-                }
-            }
-        }
-
-        function markDataSynced() {
-            lastDataSyncAt = new Date();
-            updateWorkspaceMeta();
-        }
-
-        function getWardOwnedItemsForPrint() {
-            const ward = normalizeWard(currentWard);
-            return allEquipment.filter(item => !item._isDisposed && item._ownerWard === ward);
-        }
-
-        function escapeHtml(value) {
-            return String(value || '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
-        }
-
-        function getItemStatusText(item) {
-            return String(item['สถานะ'] || 'ปกติ').trim();
-        }
-
-        function isDisposedStatus(status) {
-            return status === 'จำหน่าย' || status === 'แทงจำหน่าย';
-        }
-
-        function getOwnerWard(item) {
-            return normalizeWard(item['หน่วยงาน']);
-        }
-
-        function getUsageWard(item) {
-            return normalizeWard(item['ใช้งานที่']) || getOwnerWard(item);
-        }
-
-        function getInspectionFrequency(item) {
-            return parseInt(item['ความถี่การตรวจนับ (เดือน)']) || parseInt(item['ความถี่การตรวจนับ']) || 1;
-        }
-
-        function shouldItemBeInspectableThisMonth(item) {
-            const status = getItemStatusText(item);
-            if (INSPECTION_SKIP_STATUSES.includes(status)) return false;
-
-            const lastInspectRaw = item['วันที่ตรวจล่าสุด'];
-            if (!lastInspectRaw) return true;
-
-            const lastInspectDate = new Date(lastInspectRaw);
-            if (isNaN(lastInspectDate)) return true;
-
-            const currentMonthStart = getInspectionReferenceMonthStart();
-            const dueMonthStart = new Date(lastInspectDate.getFullYear(), lastInspectDate.getMonth() + getInspectionFrequency(item), 1);
-            return currentMonthStart >= dueMonthStart;
-        }
-
-        function prepareEquipmentItem(item) {
-            const prepared = { ...item };
-            prepared._ownerWard = getOwnerWard(prepared);
-            prepared._usageWard = getUsageWard(prepared);
-            prepared._statusText = getItemStatusText(prepared);
-            prepared._isDisposed = isDisposedStatus(prepared._statusText);
-            prepared._isRepair = prepared._statusText === 'ชำรุดส่งซ่อม';
-            prepared._isAwaitDisposal = prepared._statusText === 'รอจำหน่าย';
-            prepared._needsInspection = shouldItemBeInspectableThisMonth(prepared);
-            return prepared;
-        }
-
-        function getWardOptionsFromItems(items) {
-            return [...new Set(
-                items.flatMap(item => [item._ownerWard, item._usageWard]).filter(Boolean)
-            )].sort((a, b) => a.localeCompare(b, 'th'));
-        }
-
-        function mergeWardOptions(newWards = []) {
-            const merged = [...new Set([
-                ...wardOptions.map(normalizeWard),
-                ...newWards.map(normalizeWard)
-            ].filter(Boolean))];
-            wardOptions = merged.sort((a, b) => a.localeCompare(b, 'th'));
-        }
-
-        async function ensureWardOptionsLoaded() {
-            if (wardOptions.length > 1) return;
-            if (!WARD_API || WARD_API === "YOUR_WEB_APP_URL_FROM_GAS_HERE") return;
-
-            try {
-                const response = await fetch(WARD_API);
-                const result = await response.json();
-                if (result.status === 'success' && Array.isArray(result.data)) {
-                    mergeWardOptions(result.data);
-                }
-            } catch (error) {
-                console.error('Error fetching ward master:', error);
-            }
-        }
-
-        function matchesSearchTerm(item, searchTerm) {
-            if (!searchTerm) return true;
-            const term = searchTerm.toLowerCase();
-            return String(item['ชื่อครุภัณฑ์'] || '').toLowerCase().includes(term) ||
-                String(item['เลขครุภัณฑ์'] || '').toLowerCase().includes(term) ||
-                String(item['RMC No'] || '').toLowerCase().includes(term) ||
-                String(item['ยี่ห้อ'] || '').toLowerCase().includes(term) ||
-                String(item['ตำแหน่งย่อย (Sub-location)'] || '').toLowerCase().includes(term) ||
-                String(item._ownerWard || '').toLowerCase().includes(term) ||
-                String(item._usageWard || '').toLowerCase().includes(term);
-        }
-
-        function getCurrentWardVisibleItems(searchTerm = currentSearchTerm, statusFilter = 'all') {
-            const ward = normalizeWard(currentWard);
-            return allEquipment.filter(item =>
-                !item._isDisposed &&
-                matchesSearchTerm(item, searchTerm) &&
-                matchesStatusFilter(item, statusFilter) &&
-                (item._ownerWard === ward || item._usageWard === ward)
-            );
-        }
-
-        function getWardScopedData(searchTerm = currentSearchTerm, statusFilter = 'all') {
-            const ward = normalizeWard(currentWard);
-            const visibleItems = getCurrentWardVisibleItems(searchTerm, statusFilter);
-            const ownedCurrent = visibleItems.filter(item => item._ownerWard === ward && item._usageWard === ward);
-            const borrowedIn = visibleItems.filter(item => item._ownerWard !== ward && item._usageWard === ward);
-            const borrowedOut = visibleItems.filter(item => item._ownerWard === ward && item._usageWard && item._usageWard !== ward);
-            const repair = visibleItems.filter(item => item._usageWard === ward && item._isRepair);
-            const awaitDisposal = visibleItems.filter(item => item._usageWard === ward && item._isAwaitDisposal);
-            const canInspect = getInspectionAvailabilityState().allowed || isAdminLoggedIn;
-            const pendingOwned = canInspect ? ownedCurrent.filter(item => item._needsInspection) : [];
-            const pendingBorrowedIn = canInspect ? borrowedIn.filter(item => item._needsInspection) : [];
-
-            return { visibleItems, ownedCurrent, borrowedIn, borrowedOut, repair, awaitDisposal, pendingOwned, pendingBorrowedIn };
-        }
-
-        function getLastInspectionText(item, emptyText = "-") {
-            if (item['วันที่ตรวจล่าสุด']) {
-                const d = new Date(item['วันที่ตรวจล่าสุด']);
-                if (!isNaN(d)) {
-                    return d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
-                }
-            }
-            return emptyText;
-        }
-
-        function getRiskHtml(item) {
-            const riskLevel = item['RISK LEVEL'] ? String(item['RISK LEVEL']).trim().toLowerCase() : '';
-            if (riskLevel === 'high') return `<span class="risk-badge risk-high"><i class="fas fa-exclamation-triangle"></i> High Risk</span>`;
-            if (riskLevel === 'medium') return `<span class="risk-badge risk-medium"><i class="fas fa-exclamation-circle"></i> Medium Risk</span>`;
-            if (riskLevel === 'low') return `<span class="risk-badge risk-low"><i class="fas fa-info-circle"></i> Low Risk</span>`;
-            return '';
-        }
-
-        function createEmptyStateHtml(title, message) {
-            return `
-                <div class="empty-state-box">
-                    <i class="fas fa-box-open fa-2x" style="margin-bottom: 12px; color: #c0cad5;"></i>
-                    <h4 style="margin-bottom: 6px; color: var(--primary);">${title}</h4>
-                    <p>${message}</p>
-                </div>
-            `;
-        }
-
-        function buildWardOptionsHtml(selectedWard = '', excludedWard = '') {
-            const normalizedSelectedWard = normalizeWard(selectedWard);
-            const normalizedExcludedWard = normalizeWard(excludedWard);
-            const options = wardOptions.map(ward => {
-                if (normalizedExcludedWard && ward === normalizedExcludedWard) return '';
-                const selectedAttr = ward === normalizedSelectedWard ? 'selected' : '';
-                return `<option value="${ward}" ${selectedAttr}>${ward}</option>`;
-            });
-            return `<option value="">-- กรุณาเลือกหน่วยงาน --</option>${options.join('')}`;
-        }
-
-        function normalizeStatusForFilter(status) {
-            const statusText = String(status || '').trim();
-            if (statusText.includes('ยืม')) return 'ถูกยืม';
-            if (statusText.includes('ชำรุด')) return 'ชำรุดส่งซ่อม';
-            if (statusText.includes('รอจำหน่าย')) return 'รอจำหน่าย';
-            if (statusText.includes('จำหน่าย')) return 'แทงจำหน่าย';
-            return 'ปกติ';
-        }
-
-        function matchesStatusFilter(item, statusFilter = 'all') {
-            if (!statusFilter || statusFilter === 'all') return true;
-            return normalizeStatusForFilter(item._statusText || item['สถานะ']) === statusFilter;
-        }
-
-        async function refreshCurrentData() {
-            Swal.fire({
-                title: 'กำลังรีเฟรชข้อมูล...',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
-
-            await loadInspectionWindowStatus();
-            if (isAdminLoggedIn) {
-                await fetchAllEquipmentForAdmin();
-            } else if (currentWard) {
-                await fetchEquipment();
-            }
-
-            Swal.close();
-        }
-
-        // ==========================================
-        // Initialization (ทำงานเมื่อโหลดหน้าเว็บเสร็จ)
-        // ==========================================
-        document.addEventListener('DOMContentLoaded', () => {
-            setCurrentMonthHeading();
-            updateWorkspaceMeta();
-            updateInspectionWindowNotice();
-            loadInspectionWindowStatus().finally(() => {
-                if (isAdminEntry) {
-                    initializeAdminEntry();
-                    fetchAllEquipmentForAdmin();
-                } else if (entryRole === 'admin' && !isAdminEntry) {
-                    document.getElementById('displayWard').innerText = 'Access Restricted';
-                    document.getElementById('wardSubtitle').innerText = 'กรุณาเข้าสู่ระบบแอดมินจากหน้าหลักก่อนใช้งาน';
-                    document.getElementById('loadingState').classList.add('hidden');
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'สิทธิ์ไม่ถูกต้อง',
-                        text: 'ระบบไม่อนุญาตให้เข้าสู่โหมดผู้ดูแลระบบโดยตรง กรุณาเข้าสู่ระบบจากหน้าหลักของแอพ'
-                    });
-                } else if (currentWard) {
-                    document.getElementById('displayWard').innerText = currentWard;
-                    document.getElementById('wardSubtitle').innerText = `หน่วยงาน: ${currentWard}`;
-                    fetchEquipment();
-                } else {
-                    document.getElementById('displayWard').innerText = 'หน้าหลัก';
-                    document.getElementById('wardSubtitle').innerText = 'กรุณาเข้าสู่ระบบผ่านหน้าหลัก';
-                    document.getElementById('loadingState').classList.add('hidden');
-                    updateWorkspaceMeta();
-                }
-            });
-
-            const searchInputObj = document.getElementById('searchInput');
-            if(searchInputObj) {
-                // Event 1: ดักจับการพิมพ์เพื่อกรองตาราง / ค้นหาข้ามตึก
-                searchInputObj.addEventListener('input', function(e) {
-                    clearTimeout(typingTimer);
-                    const searchTerm = e.target.value.toLowerCase().trim();
-
-                    if (isAdminLoggedIn) {
-                        filterAdminByWard(); 
-                    } else {
-                        currentSearchTerm = searchTerm;
-                        renderActiveView(); 
-
-                        if (getCurrentWardVisibleItems(searchTerm).length === 0 && searchTerm.length > 0) {
-                            typingTimer = setTimeout(() => {
-                                processSearchOrScan(searchTerm);
-                            }, doneTypingInterval);
-                        }
-                    }
-                });
-
-                // Event 2: ดักจับการกด Enter
-                searchInputObj.addEventListener('keypress', function(e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        processSearchOrScan(e.target.value);
-                    }
-                });
-            }
-        }); // 🟢 สิ้นสุด DOMContentLoaded อย่างถูกต้องตรงนี้
-
-        function initializeAdminEntry() {
-            isAdminLoggedIn = true;
-            document.getElementById('displayWard').innerText = 'ADMIN MODE';
-            document.getElementById('wardSubtitle').innerHTML = '<span style="color:#d32f2f; font-weight:bold;"><i class="fas fa-user-shield"></i> ผู้ดูแลระบบ</span>';
-            document.getElementById('btnAdminLogin').style.display = 'none';
-            document.getElementById('tab-admin').classList.remove('hidden-tab');
-            updateWorkspaceMeta();
-            updateInspectionWindowNotice();
-        }
-
-        // ==========================================
-        // ฟังก์ชันระบบทั่วไป
-        // ==========================================
-        function showHelpModal() {
-            Swal.fire({
-                title: '<i class="fas fa-book-open" style="color:var(--primary);"></i> คู่มือการใช้งานระบบ',
-                html: `
-                    <div class="help-content">
-                        <h4><i class="fas fa-search" style="color:var(--secondary);"></i> 1. การค้นหาและการสแกน QR</h4>
-                        <ul>
-                            <li>ใช้ช่องค้นหาเพื่อพิมพ์ <b>ชื่อเครื่องมือ</b>, <b>เลขครุภัณฑ์</b>, หรือ <b>ตำแหน่งย่อย</b></li>
-                            <li>หากไม่ต้องการพิมพ์ สามารถกดปุ่ม <b style="color:var(--accent); background:var(--primary); padding:2px 6px; border-radius:4px;"><i class="fas fa-qrcode"></i> สแกน QR</b> เพื่อเปิดกล้องสแกนบาร์โค้ดที่ตัวเครื่องมือ ระบบจะค้นหารายการให้ทันที</li>
-                        </ul>
-                        
-                        <h4><i class="fas fa-check-square" style="color:var(--secondary);"></i> 2. วิธีการตรวจนับครุภัณฑ์</h4>
-                        <ul>
-                            <li>ในแท็บ <b>"รายการที่รอตรวจนับ"</b> จะแสดงเฉพาะรายการที่ "ถึงรอบที่ต้องตรวจ" ในเดือนปัจจุบันเท่านั้น</li>
-                            <li>กดปุ่ม <b style="color:white; background:var(--primary); padding:2px 6px; border-radius:4px;"><i class="fas fa-check"></i> บันทึกการตรวจ</b> ที่รายการนั้นๆ</li>
-                            <li>อัปเดตสถานะให้ตรงกับความจริง: 
-                                <br>- <b>ปกติ</b>: พร้อมใช้งาน
-                                <br>- <b style="color:#dc3545;">ชำรุดส่งซ่อม</b>: สามารถแนบภาพจุดที่ชำรุดได้
-                                <br>- <b style="color:#f57f17;">ถูกยืม</b>: ต้องเลือกหน่วยงานปลายทางจากดรอปดาวน์
-                                <br>- <b style="color:#ef6c00;">รอจำหน่าย</b>: ต้องแนบใบสรุปส่งซ่อมจากศูนย์เครื่องมือแพทย์
-                                <br>- <b>แทงจำหน่าย</b>: ต้องแนบใบส่งคืนพัสดุ และรายการจะถูกลบออกจากระบบ
-                            </li>
-                            <li>เมื่อกดบันทึกสำเร็จ รายการนั้นจะ <b>หายไปจากหน้าจอ "รอตรวจ"</b> อัตโนมัติ</li>
-                        </ul>
-
-                        <h4><i class="fas fa-list-ul" style="color:var(--secondary);"></i> 3. การดูภาพรวม และ Export</h4>
-                        <ul>
-                            <li>สามารถกดเปลี่ยนไปแท็บ <b>"รายการทั้งหมด"</b> เพื่อเช็คประวัติการตรวจครั้งล่าสุดของครุภัณฑ์ทุกชิ้นในตึกได้</li>
-                            <li>กดปุ่ม <b style="color:white; background:#28a745; padding:2px 6px; border-radius:4px;"><i class="fas fa-file-excel"></i> ส่งออกไฟล์</b> เพื่อดาวน์โหลดข้อมูลที่แสดงผลอยู่เป็นไฟล์ .csv สำหรับนำไปทำรายงาน</li>
-                        </ul>
-                    </div>
-                `,
-                confirmButtonColor: '#003366',
-                confirmButtonText: 'เข้าใจแล้ว',
-                width: 600,
-                customClass: { htmlContainer: 'text-left' }
-            });
-        }
-
-        function setCurrentMonthHeading() {
-            const displayWindow = getInspectionDisplayWindow();
-            if (displayWindow) {
-                document.getElementById('currentMonthText').innerText = formatInspectionPeriodLabel(displayWindow);
-                return;
-            }
-
-            const d = new Date();
-            document.getElementById('currentMonthText').innerText = `${THAI_MONTH_NAMES[d.getMonth()]} ${d.getFullYear() + 543}`;
-        }
-
-        async function fetchEquipment() {
-            try {
-                const response = await fetch(`${EQUIPMENT_API}?action=getItemsByWard&ward=${encodeURIComponent(currentWard)}`);
-                const textData = await response.text(); 
-                document.getElementById('loadingState').classList.add('hidden');
-                
-                try {
-                    const result = JSON.parse(textData); 
-                    if (result.status === 'success') {
-                        allEquipment = (result.data || []).map(prepareEquipmentItem);
-                        filteredEquipment = [...allEquipment];
-                        mergeWardOptions(getWardOptionsFromItems(allEquipment));
-                        updateDashboardStats(); 
-                        switchTab(currentActiveTab); 
-                        ensureWardOptionsLoaded();
-                        markDataSynced();
-                    } else {
-                        allEquipment = [];
-                        filteredEquipment = [];
-                        wardOptions = [];
-                        updateDashboardStats();
-                        switchTab(currentActiveTab);
-                        updateWorkspaceMeta();
-                    }
-                } catch (jsonError) {
-                    document.getElementById('loadingState').innerHTML = '<div style="text-align: center; color: red;">เกิดข้อผิดพลาดจากฐานข้อมูล</div>';
-                    document.getElementById('loadingState').classList.remove('hidden');
-                }
-            } catch (error) {
-                document.getElementById('loadingState').innerHTML = '<div style="text-align: center; color: red;">ข้อผิดพลาดในการเชื่อมต่ออินเทอร์เน็ต</div>';
-                document.getElementById('loadingState').classList.remove('hidden');
-            }
-        }
-
-        function updateDashboardStats() {
-            const scoped = getWardScopedData();
-            const statItems = isAdminLoggedIn ? filteredEquipment : scoped.visibleItems;
-            let normalCount = 0, brokenCount = 0, disposedCount = 0;
-            statItems.forEach(item => {
-                const status = item._statusText;
-                if (status === 'ปกติ' || status === 'ปกติ/พร้อมใช้งาน') normalCount++;
-                else if (status === 'ชำรุดส่งซ่อม' || status === 'รอจำหน่าย') brokenCount++;
-                else if (status === 'จำหน่าย' || status === 'แทงจำหน่าย') disposedCount++;
-            });
-            document.getElementById('stat-total').innerText = statItems.length;
-            document.getElementById('stat-normal').innerText = normalCount;
-            document.getElementById('stat-broken').innerText = brokenCount;
-            document.getElementById('stat-disposed').innerText = disposedCount;
-        }
-
-        // 🟢 รวมฟังก์ชัน switchTab เป็นตัวเดียว
-        function switchTab(tabId) {
-            currentActiveTab = tabId;
-            document.getElementById('tab-inspection').classList.remove('active');
-            document.getElementById('tab-all').classList.remove('active');
-            document.getElementById('tab-borrowed-out').classList.remove('active');
-            document.getElementById('tab-repair').classList.remove('active');
-            if(document.getElementById('tab-admin')) document.getElementById('tab-admin').classList.remove('active');
-
-            document.getElementById(`tab-${tabId}`).classList.add('active');
-
-            document.getElementById('view-inspection').classList.add('hidden');
-            document.getElementById('view-all').classList.add('hidden');
-            document.getElementById('view-borrowed-out').classList.add('hidden');
-            document.getElementById('view-repair').classList.add('hidden');
-            if(document.getElementById('view-admin')) document.getElementById('view-admin').classList.add('hidden');
-
-            document.getElementById(`view-${tabId}`).classList.remove('hidden');
-            renderActiveView();
-        }
-
-        // 🟢 รวมฟังก์ชัน renderActiveView เป็นตัวเดียว
-        function renderActiveView() {
-            const scoped = getWardScopedData();
-            document.getElementById('pendingBadge').innerText = scoped.pendingOwned.length + scoped.pendingBorrowedIn.length;
-            document.getElementById('borrowedOutCountTab').innerText = scoped.borrowedOut.length;
-            document.getElementById('repairCountTab').innerText = scoped.repair.length + scoped.awaitDisposal.length;
-            document.getElementById('allCountTab').innerText = scoped.visibleItems.length;
-
-            if (currentActiveTab === 'inspection') {
-                renderInspectionCards(scoped.pendingOwned, scoped.pendingBorrowedIn); 
-            } else if (currentActiveTab === 'all') {
-                const filteredScoped = getWardScopedData(currentSearchTerm, currentAllStatusFilter);
-                renderAllItemsTable(filteredScoped);
-            } else if (currentActiveTab === 'borrowed-out') {
-                renderBorrowedOutTable(scoped.borrowedOut);
-            } else if (currentActiveTab === 'repair') {
-                renderRepairTables(scoped.repair, scoped.awaitDisposal);
-            } else if (currentActiveTab === 'admin') {
-                renderAdminTable(filteredEquipment);   
-                renderAdminDashboard(filteredEquipment); 
-            }
-        }
-
-        function renderInspectionCards(ownedItems, borrowedItems) {
-            const availability = getInspectionAvailabilityState();
-            const closedTitle = 'ระบบยังไม่เปิดให้ตรวจนับในช่วงนี้';
-            const closedMessage = availability.message;
-            document.getElementById('pendingOwnedCount').innerText = `${ownedItems.length} รายการ`;
-            document.getElementById('pendingBorrowedInCount').innerText = `${borrowedItems.length} รายการ`;
-            renderItemCardsIntoContainer(
-                'equipmentListOwned',
-                ownedItems,
-                availability.allowed ? 'ไม่มีรายการของหน่วยงานที่ถึงรอบตรวจในเดือนนี้' : closedTitle,
-                availability.allowed ? 'ถ้าตรวจครบแล้ว รายการจะไม่แสดงในรอบเดือนนี้อีก' : closedMessage
-            );
-            renderItemCardsIntoContainer(
-                'equipmentListBorrowedIn',
-                borrowedItems,
-                availability.allowed ? 'ไม่มีรายการยืมจากหน่วยงานอื่นที่ถึงรอบตรวจ' : closedTitle,
-                availability.allowed ? 'รายการที่ถูกยืมมาใช้งานจะแสดงในส่วนนี้' : closedMessage
-            );
-        }
-
-        function renderItemCardsIntoContainer(containerId, data, emptyTitle, emptyMessage) {
-            const container = document.getElementById(containerId);
-            container.innerHTML = '';
-            const inspectionAvailability = getInspectionAvailabilityState();
-            const inspectionDisabled = !inspectionAvailability.allowed && !isAdminLoggedIn;
-            const disabledAttr = inspectionDisabled ? 'disabled' : '';
-            const disabledTitle = inspectionDisabled ? `title="${escapeHtml(inspectionAvailability.message)}"` : '';
-
-            if (data.length === 0) {
-                container.innerHTML = createEmptyStateHtml(emptyTitle, emptyMessage);
-                return;
-            }
-
-            data.forEach((item) => {
-                const statusClass = getStatusClass(item._statusText);
-                const statusIcon = getStatusIcon(item._statusText);
-                const safeItemJson = JSON.stringify(item).replace(/"/g, '&quot;');
-                const brandText = item['ยี่ห้อ'] || item['เธขเธตเนเธซเนเธญ'] || '-';
-                const modelText = item['ชื่อรุ่น'] || item['เธเธทเนเธญเธฃเธธเนเธ'] || '-';
-                const ownerUsageInfo = item._ownerWard === item._usageWard
-                    ? `<span class="info-item"><i class="fas fa-building"></i> หน่วยงาน: <strong>${item._usageWard || '-'}</strong></span>`
-                    : `
-                        <span class="info-item"><i class="fas fa-warehouse"></i> เจ้าของ: <strong>${item._ownerWard || '-'}</strong></span>
-                        <span class="info-item"><i class="fas fa-right-left"></i> ใช้งานที่: <strong>${item._usageWard || '-'}</strong></span>
-                    `;
-
-                const card = document.createElement('div');
-                card.className = 'item-card';
-                card.innerHTML = `
-                    <div class="item-details">
-                        <h4>${item['ชื่อครุภัณฑ์'] || 'ไม่ระบุชื่อ'} ${getRiskHtml(item)}</h4>
-                        <div style="font-size: 0.95rem; font-weight: 400; color: #5f6b7a; margin-top: -4px; margin-bottom: 8px;">
-                            ยี่ห้อ: ${brandText} / รุ่น: ${modelText}
-                        </div>
-                        <div class="info-row">
-                            <span class="info-item"><i class="fas fa-fingerprint"></i> RMC: <strong>${item['RMC No'] || '-'}</strong></span>
-                            <span class="info-item"><i class="fas fa-barcode"></i> ID: <strong>${item['เลขครุภัณฑ์'] || '-'}</strong></span>
-                            ${ownerUsageInfo}
-                            <span class="info-item"><i class="fas fa-map-marker-alt"></i> จุด: <strong>${item['ตำแหน่งย่อย (Sub-location)'] || '-'}</strong></span>
-                            <span class="info-item"><i class="fas fa-clock"></i> ตรวจทุก: <strong>${getInspectionFrequency(item)} เดือน</strong></span>
-                        </div>
-                    </div>
-                    <div class="item-actions">
-                        <span class="status-badge ${statusClass}">${statusIcon} ${item._statusText || 'ปกติ'}</span>
-                        <button class="btn btn-primary btn-sm" onclick="openManageModal(${safeItemJson})" ${disabledAttr} ${disabledTitle}>
-                            <i class="fas fa-check"></i> บันทึกการตรวจ
-                        </button>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-        }
-
-        function renderAllItemsTable(scopedData) {
-            document.getElementById('allOwnedCount').innerText = `${scopedData.ownedCurrent.length} รายการ`;
-            document.getElementById('allBorrowedInCount').innerText = `${scopedData.borrowedIn.length} รายการ`;
-            renderTableRows('allEquipmentTableBodyOwned', scopedData.ownedCurrent, 'ไม่มีรายการของหน่วยงานตามเงื่อนไขที่เลือก');
-            renderTableRows('allEquipmentTableBodyBorrowedIn', scopedData.borrowedIn, 'ไม่มีรายการยืมจากหน่วยงานอื่นตามเงื่อนไขที่เลือก');
-        }
-
-        function renderBorrowedOutTable(data) {
-            document.getElementById('borrowedOutCount').innerText = `${data.length} รายการ`;
-            renderTableRows('borrowedOutTableBody', data, 'ไม่มีรายการที่ถูกยืมไปใช้หน่วยงานอื่น');
-        }
-
-        function renderRepairTables(repairItems, awaitDisposalItems) {
-            document.getElementById('repairCount').innerText = `${repairItems.length} รายการ`;
-            document.getElementById('awaitDisposalCount').innerText = `${awaitDisposalItems.length} รายการ`;
-            renderTableRows('repairTableBody', repairItems, 'ไม่มีรายการสถานะส่งซ่อม');
-            renderTableRows('awaitDisposalTableBody', awaitDisposalItems, 'ไม่มีรายการสถานะรอจำหน่าย');
-        }
-
-        function renderTableRows(tbodyId, data, emptyMessage) {
-            const tbody = document.getElementById(tbodyId);
-            tbody.innerHTML = '';
-
-            if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px;">${emptyMessage}</td></tr>`;
-                return;
-            }
-
-            data.forEach((item) => {
-                const statusClass = getStatusClass(item._statusText);
-                const safeItemJson = JSON.stringify(item).replace(/"/g, '&quot;');
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td style="color: #666; font-size: 0.9rem;">${item['RMC No'] || '-'}</td>
-                    <td><strong>${item['เลขครุภัณฑ์'] || '-'}</strong></td>
-                    <td>
-                        ${item['ชื่อครุภัณฑ์'] || '-'}<br>
-                        <small style="color:#666;">ยี่ห้อ/รุ่น: ${item['ยี่ห้อ'] || '-'} / ${item['ชื่อรุ่น'] || '-'}</small>
-                    </td>
-                    <td>${item._ownerWard || '-'}</td>
-                    <td>${item._usageWard || '-'}</td>
-                    <td>${getInspectionFrequency(item)} เดือน</td>
-                    <td style="color:#28a745; font-size:0.9rem;">${getLastInspectionText(item, 'ยังไม่เคยตรวจ')}</td>
-                    <td><span class="status-badge ${statusClass}" style="font-size:0.75rem;">${item._statusText || 'ปกติ'}</span></td>
-                    <td>
-                        <button class="btn btn-outline btn-sm" onclick="showDetailsModal(${safeItemJson})">
-                            <i class="fas fa-search"></i> ดูข้อมูล
-                        </button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        function handleAllStatusFilterChange() {
-            currentAllStatusFilter = document.getElementById('allStatusFilter').value;
-            if (currentActiveTab === 'all') renderActiveView();
-        }
-
-        function getStatusClass(status) {
-            if(status === 'ชำรุดส่งซ่อม') return 'status-broken';
-            if(status === 'ถูกยืม') return 'status-borrowed';
-            if(status === 'รอจำหน่าย') return 'status-await-disposal';
-            if(status === 'จำหน่าย' || status === 'แทงจำหน่าย') return 'status-disposed';
-            return 'status-normal';
-        }
-        function getStatusIcon(status) {
-            if(status === 'ชำรุดส่งซ่อม') return '<i class="fas fa-wrench"></i>';
-            if(status === 'ถูกยืม') return '<i class="fas fa-exchange-alt"></i>';
-            if(status === 'รอจำหน่าย') return '<i class="fas fa-file-circle-xmark"></i>';
-            if(status === 'จำหน่าย' || status === 'แทงจำหน่าย') return '<i class="fas fa-trash-alt"></i>';
-            return '<i class="fas fa-check-circle"></i>';
-        }
-
-        async function toggleScanner() {
-            if (!ensureInspectionWindowOpenForStaff()) return;
-            const readerDiv = document.getElementById('qr-reader');
-
-            if (scannerRunning) {
-                try {
-                    if (html5QrcodeScanner && typeof html5QrcodeScanner.stop === 'function') {
-                        await html5QrcodeScanner.stop();
-                    }
-                    if (html5QrcodeScanner && typeof html5QrcodeScanner.clear === 'function') {
-                        await html5QrcodeScanner.clear();
-                    }
-                } catch (error) {
-                    console.error('Error stopping QR scanner:', error);
-                } finally {
-                    html5QrcodeScanner = null;
-                    scannerRunning = false;
-                    readerDiv.style.display = 'none';
-                    readerDiv.innerHTML = '';
-                }
-                return;
-            }
-
-            readerDiv.style.display = 'block';
-            readerDiv.innerHTML = '';
-            html5QrcodeScanner = new Html5Qrcode("qr-reader");
-
-            try {
-                const scannerOptions = { fps: 10, qrbox: { width: 250, height: 250 } };
-                let started = false;
-
-                try {
-                    await html5QrcodeScanner.start(
-                        { facingMode: { exact: "environment" } },
-                        scannerOptions,
-                        onScanSuccess,
-                        onScanFailure
-                    );
-                    started = true;
-                } catch (environmentExactError) {
-                    try {
-                        await html5QrcodeScanner.start(
-                            { facingMode: "environment" },
-                            scannerOptions,
-                            onScanSuccess,
-                            onScanFailure
-                        );
-                        started = true;
-                    } catch (environmentFallbackError) {
-                        const cameras = await Html5Qrcode.getCameras();
-                        const preferredCamera = cameras.find(camera => /back|rear|environment/gi.test(camera.label || ''))
-                            || cameras[0];
-
-                        if (!preferredCamera) {
-                            throw environmentFallbackError;
-                        }
-
-                        await html5QrcodeScanner.start(
-                            { deviceId: { exact: preferredCamera.id } },
-                            scannerOptions,
-                            onScanSuccess,
-                            onScanFailure
-                        );
-                        started = true;
-                    }
-                }
-
-                if (!started) {
-                    throw new Error('No camera found');
-                }
-                scannerRunning = true;
-            } catch (error) {
-                console.error('Error starting QR scanner:', error);
-                readerDiv.style.display = 'none';
-                readerDiv.innerHTML = '';
-                html5QrcodeScanner = null;
-                scannerRunning = false;
-                Swal.fire(
-                    'ไม่สามารถเปิดกล้องได้',
-                    'หากใช้งานผ่าน Desktop App ระบบควรเปิดกล้องได้ทันที แต่ถ้าเป็นเบราว์เซอร์ทั่วไปยังอาจมีข้อจำกัดจากสิทธิ์ของเบราว์เซอร์',
-                    'error'
-                );
-            }
-        }
-        
-        async function onScanSuccess(decodedText) {
-            if (html5QrcodeScanner) {
-                try {
-                    if (typeof html5QrcodeScanner.stop === 'function') {
-                        await html5QrcodeScanner.stop();
-                    }
-                    if (typeof html5QrcodeScanner.clear === 'function') {
-                        await html5QrcodeScanner.clear();
-                    }
-                } catch (error) {
-                    console.error('Error clearing QR scanner:', error);
-                }
-            }
-            html5QrcodeScanner = null;
-            scannerRunning = false;
-            document.getElementById('qr-reader').style.display = 'none';
-            document.getElementById('qr-reader').innerHTML = '';
-            document.getElementById('searchInput').value = decodedText;
-            processSearchOrScan(decodedText);
-        }
-        function onScanFailure(error) {}
-
-        async function processSearchOrScan(decodedText) {
-            const searchTerm = decodedText.toLowerCase().trim();
-            if(!searchTerm) return;
-
-            const localItem = allEquipment.find(item => 
-                String(item['เลขครุภัณฑ์']).toLowerCase() === searchTerm ||
-                String(item['RMC No']).toLowerCase() === searchTerm
-            );
-
-            if (localItem) {
-                openManageModal(localItem);
-                return;
-            }
-
-            Swal.fire({
-                title: 'กำลังค้นหาข้อมูลข้ามหน่วยงาน...',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
-
-            try {
-                const response = await fetch(`${EQUIPMENT_API}?action=getAllItems`);
-                const textData = await response.text();
-                const result = JSON.parse(textData);
-                
-                if (result.status === 'success') {
-                    const globalItem = result.data.find(item => 
-                        String(item['เลขครุภัณฑ์']).toLowerCase() === searchTerm ||
-                        String(item['RMC No']).toLowerCase() === searchTerm
-                    );
-
-                    if (globalItem) {
-                        if (!ensureInspectionWindowOpenForStaff()) {
-                            Swal.close();
-                            return;
-                        }
-                        Swal.close();
-                        const freq = globalItem['ความถี่การตรวจนับ'] || globalItem['ความถี่การตรวจนับ (เดือน)'] || '1';
-                        
-                        const proceed = await Swal.fire({
-                            title: '<span style="color:#1976d2;">พบครุภัณฑ์ของหน่วยงานอื่น</span>',
-                            icon: 'info',
-                            html: `
-                                <div style="text-align: left; background: #e3f2fd; padding: 15px; border-radius: 10px; border: 1px solid #90caf9; font-size: 0.95rem;">
-                                    <div style="margin-bottom: 8px;"><b>ชื่อ:</b> ${globalItem['ชื่อครุภัณฑ์'] || '-'}</div>
-                                    <div style="margin-bottom: 8px;"><b>ยี่ห้อ:</b> ${globalItem['ยี่ห้อ'] || '-'}</div>
-                                    <div style="margin-bottom: 8px;"><b>RMC No:</b> <span style="color:#d32f2f; font-weight:bold;">${globalItem['RMC No'] || '-'}</span></div>
-                                    <div style="margin-bottom: 8px;"><b>เลขครุภัณฑ์:</b> <span style="color:#d32f2f; font-weight:bold;">${globalItem['เลขครุภัณฑ์'] || '-'}</span></div>
-                                    <div style="margin-bottom: 8px;"><b>ความถี่ตรวจนับ:</b> ทุก ${freq} เดือน</div>
-                                    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #64b5f6;">
-                                        <i class="fas fa-hospital-user"></i> เจ้าของเดิม: <b>${globalItem['หน่วยงาน'] || '-'}</b>
-                                    </div>
-                                </div>
-                                <p style="margin-top: 15px; font-size: 0.95rem;">ต้องการดึงมาใช้งานและบันทึกการตรวจนับหรือไม่?<br><small>(ระบบจะเปลี่ยนจุดใช้งานมาที่ <b>${currentWard}</b>)</small></p>
-                            `,
-                            showCancelButton: true,
-                            confirmButtonColor: '#28a745',
-                            cancelButtonColor: '#6c757d',
-                            confirmButtonText: '<i class="fas fa-download"></i> ใช่, ดึงมาใช้งาน',
-                            cancelButtonText: 'ยกเลิก'
-                        });
-
-                        if (proceed.isConfirmed) {
-                            Swal.fire({ title: 'กำลังดึงข้อมูลเข้าหน่วยงาน...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-                            
-                            const pullResponse = await fetch(EQUIPMENT_API, {
-                                method: 'POST',
-                                redirect: 'follow',
-                                headers: { "Content-Type": "text/plain;charset=utf-8" },
-                                body: JSON.stringify({ action: 'pullEquipment', itemId: globalItem['เลขครุภัณฑ์'], newWard: currentWard })
-                            });
-                            const pullResult = await pullResponse.json();
-                            
-                            if (pullResult.status === 'success') {
-                                Swal.fire({ icon: 'success', title: 'ดึงข้อมูลสำเร็จ', text: 'เพิ่มเข้าสู่ตารางของคุณแล้ว', timer: 1500, showConfirmButton: false });
-                                
-                                await fetchEquipment();
-                                setTimeout(() => {
-                                    const newlyPulledItem = allEquipment.find(item => item['เลขครุภัณฑ์'] === globalItem['เลขครุภัณฑ์']);
-                                    if(newlyPulledItem) openManageModal(newlyPulledItem);
-                                }, 1000);
-                            }
-                        }
-                    } else {
-                        Swal.fire('ไม่พบข้อมูล', `ไม่พบรหัส "${decodedText}" ในระบบของโรงพยาบาลเลย`, 'error');
-                    }
-                }
-            } catch (error) {
-                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้', 'error');
-            }
-        }
-
-        function showDetailsModal(item) {
-            let lastInspectStr = "ยังไม่เคยตรวจ";
-            if(item['วันที่ตรวจล่าสุด']) {
-                const d = new Date(item['วันที่ตรวจล่าสุด']);
-                if(!isNaN(d)) lastInspectStr = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' }) + " เวลา " + d.toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'});
-            }
-
-            Swal.fire({
-                title: 'รายละเอียดครุภัณฑ์',
-                width: 600,
-                html: `
-                    <table class="details-table">
-                        <tbody>
-                            <tr><th><i class="fas fa-fingerprint"></i> RMC No</th><td>${item['RMC No'] || '-'}</td></tr>
-                            <tr><th><i class="fas fa-barcode"></i> เลขครุภัณฑ์</th><td>${item['เลขครุภัณฑ์'] || '-'}</td></tr>
-                            <tr><th><i class="fas fa-box"></i> ชื่อครุภัณฑ์</th><td>${item['ชื่อครุภัณฑ์'] || '-'}</td></tr>
-                            <tr><th><i class="fas fa-tag"></i> ยี่ห้อ / รุ่น</th><td>${item['ยี่ห้อ'] || '-'} / ${item['ชื่อรุ่น'] || '-'}</td></tr>
-                            <tr><th><i class="fas fa-list"></i> ประเภท</th><td>${item['ประเภทครุภัณฑ์'] || '-'}</td></tr>
-                            <tr><th><i class="fas fa-hospital"></i> ใช้งานที่</th><td>${item['ใช้งานที่'] || '-'} (เจ้าของ: ${item['หน่วยงาน']})</td></tr>
-                            <tr><th><i class="fas fa-map-pin"></i> ตำแหน่งย่อย</th><td>${item['ตำแหน่งย่อย (Sub-location)'] || '-'}</td></tr>
-                            <tr><th><i class="fas fa-history"></i> ความถี่การตรวจ</th><td>${item['ความถี่การตรวจนับ'] || item['ความถี่การตรวจนับ (เดือน)'] || '-'} เดือน/ครั้ง</td></tr>
-                            <tr><th style="color:#28a745;"><i class="fas fa-calendar-check"></i> ตรวจล่าสุด</th><td style="color:#28a745; font-weight:bold;">${lastInspectStr}</td></tr>
-                        </tbody>
-                    </table>
-                `,
-                confirmButtonColor: '#003366',
-                confirmButtonText: '<i class="fas fa-times"></i> ปิดหน้าต่าง'
-            });
-        }
-
-        async function openManageModal(item) {
-            if (!ensureInspectionWindowOpenForStaff()) return;
-            await ensureWardOptionsLoaded();
-
-            if (!item._needsInspection) {
-                let lastInspectStr = "ยังไม่เคยตรวจ";
-                if (item['วันที่ตรวจล่าสุด']) {
-                    const d = new Date(item['วันที่ตรวจล่าสุด']);
-                    if (!isNaN(d)) {
-                        lastInspectStr = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
-                    }
-                }
-
-                const proceed = await Swal.fire({
-                    title: '<span style="color:#f57f17;">ยังไม่ถึงรอบการตรวจ</span>',
-                    icon: 'warning',
-                    html: `
-                        <div style="text-align: left; background: #fff9db; padding: 15px; border-radius: 10px; border: 1px solid #ffe066;">
-                            <div style="margin-bottom: 8px;"><b>ชื่อ:</b> ${item['ชื่อครุภัณฑ์'] || '-'}</div>
-                            <div style="margin-bottom: 8px;"><b>ยี่ห้อ:</b> ${item['ยี่ห้อ'] || '-'}</div>
-                            <div style="margin-bottom: 8px;"><b>เลขครุภัณฑ์:</b> <span style="color:#d32f2f;">${item['เลขครุภัณฑ์'] || '-'}</span></div>
-                            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #fab005;">
-                                <i class="fas fa-history"></i> ตรวจล่าสุดวันที่: <b>${lastInspectStr}</b>
-                            </div>
-                        </div>
-                        <p style="margin-top: 15px; font-size: 0.95rem;">รายการนี้ยังไม่ถึงกำหนดรอบตรวจเช็ค<br><b>คุณยังต้องการบันทึกการตรวจหรือไม่?</b></p>
-                    `,
-                    showCancelButton: true,
-                    confirmButtonColor: '#003366',
-                    cancelButtonColor: '#adb5bd',
-                    confirmButtonText: 'ใช่, ต้องการบันทึก',
-                    cancelButtonText: 'ไม่ต้อง, ยกเลิก'
-                });
-
-                if (!proceed.isConfirmed) return;
-            }
-
-            Swal.fire({
-                title: 'บันทึกการตรวจนับ',
-                html: `
-                    <div style="text-align: left; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee;">
-                        <b style="color: var(--primary); font-size:1.1rem;">${item['ชื่อครุภัณฑ์']}</b><br>
-                        <small style="color:#666;"><i class="fas fa-barcode"></i> เลข: ${item['เลขครุภัณฑ์']}</small>
-                    </div>
-                    
-                    <div class="swal-form-group">
-                        <label><i class="fas fa-flag"></i> สถานะการตรวจพบ:</label>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px;">
-                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 0.9rem; transition: 0.3s;">
-                                <input type="radio" name="update-status" value="ปกติ" onchange="toggleExtraInputs()" checked style="transform: scale(1.2);">
-                                <span style="color: #28a745;"><i class="fas fa-check-circle"></i> ปกติ/พร้อมใช้</span>
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 0.9rem; transition: 0.3s;">
-                                <input type="radio" name="update-status" value="ชำรุดส่งซ่อม" onchange="toggleExtraInputs()" style="transform: scale(1.2);">
-                                <span style="color: #dc3545;"><i class="fas fa-wrench"></i> ชำรุดส่งซ่อม</span>
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 0.9rem; transition: 0.3s;">
-                                <input type="radio" name="update-status" value="ถูกยืม" onchange="toggleExtraInputs()" style="transform: scale(1.2);">
-                                <span style="color: #f57f17;"><i class="fas fa-exchange-alt"></i> ถูกยืมใช้งาน</span>
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 0.9rem; transition: 0.3s;">
-                                <input type="radio" name="update-status" value="รอจำหน่าย" onchange="toggleExtraInputs()" style="transform: scale(1.2);">
-                                <span style="color: #ef6c00;"><i class="fas fa-file-circle-xmark"></i> รอจำหน่าย</span>
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 0.9rem; transition: 0.3s;">
-                                <input type="radio" name="update-status" value="แทงจำหน่าย" onchange="toggleExtraInputs()" style="transform: scale(1.2);">
-                                <span style="color: #6c757d;"><i class="fas fa-trash-alt"></i> แทงจำหน่าย</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div id="borrow-div" class="swal-form-group" style="display: none;">
-                        <label><i class="fas fa-hospital"></i> ยืมไปที่หน่วยงานใด:</label>
-                        <select id="update-borrow" class="swal-input">
-                            ${buildWardOptionsHtml('', currentWard)}
-                        </select>
-                    </div>
-
-                    <div id="document-div" class="swal-form-group" style="display: none;">
-                        <label id="document-label"><i class="fas fa-file-arrow-up"></i> แนบเอกสารประกอบ:</label>
-                        <input type="file" id="update-document" class="swal-input" accept="image/*,.pdf,application/pdf">
-                        <small id="document-hint" style="display:block; margin-top:6px; color:#6c757d;">รองรับไฟล์รูปภาพและ PDF</small>
-                    </div>
-
-                    <div class="swal-form-group">
-                        <label><i class="fas fa-map-marker-alt"></i> อัปเดตตำแหน่งย่อย (ถ้ามีการย้าย):</label>
-                        <input type="text" id="update-subloc" class="swal-input" value="${item['ตำแหน่งย่อย (Sub-location)'] || ''}" placeholder="เช่น เตียง 1, รถ Emergency">
-                    </div>
-
-                    <div class="swal-form-group">
-                        <label><i class="fas fa-comment-dots"></i> หมายเหตุ:</label>
-                        <textarea id="update-note" class="swal-input" rows="2" placeholder="ระบุข้อมูลเพิ่มเติม (ถ้ามี)..."></textarea>
-                    </div>
-                `,
-                showCancelButton: true,
-                confirmButtonText: '<i class="fas fa-save"></i> บันทึกข้อมูล',
-                cancelButtonText: 'ยกเลิก',
-                confirmButtonColor: '#003366',
-                showLoaderOnConfirm: true,
-                preConfirm: async () => {
-                    const status = document.querySelector('input[name="update-status"]:checked').value;
-                    const borrowedWard = document.getElementById('update-borrow').value;
-                    const subLocation = document.getElementById('update-subloc').value.trim();
-                    const note = document.getElementById('update-note').value.trim();
-                    const documentInput = document.getElementById('update-document');
-                    
-                    let imageBase64 = "";
-                    let mimeType = "";
-                    let imageName = "";
-                    const requiresBorrowWard = status === 'ถูกยืม';
-                    const requiresEvidence = status === 'รอจำหน่าย' || status === 'แทงจำหน่าย';
-
-                    if (requiresBorrowWard && !borrowedWard) {
-                        Swal.showValidationMessage('กรุณาเลือกหน่วยงานที่ยืมไปใช้');
-                        return false;
-                    }
-
-                    if (requiresBorrowWard && normalizeWard(borrowedWard) === normalizeWard(currentWard)) {
-                        Swal.showValidationMessage('หน่วยงานปลายทางต้องไม่ใช่หน่วยงานเดียวกับผู้บันทึก');
-                        return false;
-                    }
-
-                    if (requiresEvidence && documentInput.files.length === 0) {
-                        Swal.showValidationMessage('กรุณาแนบเอกสารประกอบก่อนบันทึก');
-                        return false;
-                    }
-
-                    if (documentInput.files.length > 0) {
-                        const file = documentInput.files[0];
-                        mimeType = file.type;
-                        const extension = file.name && file.name.includes('.') ? file.name.split('.').pop() : 'bin';
-                        imageName = `${item['เลขครุภัณฑ์']}_${new Date().getTime()}.${extension}`;
-                        
-                        const reader = new FileReader();
-                        const promise = new Promise((resolve, reject) => {
-                            reader.onload = (e) => resolve(e.target.result.split(',')[1]);
-                            reader.onerror = reject;
-                        });
-                        reader.readAsDataURL(file);
-                        imageBase64 = await promise;
-                    }
-
-                    const payload = {
-                        action: 'updateStatus', ward: currentWard, itemId: item['เลขครุภัณฑ์'],
-                        status: status, borrowedWard: borrowedWard, subLocation: subLocation,
-                        note: note, imageBase64: imageBase64, mimeType: mimeType, imageName: imageName
-                    };
-
-                    try {
-                        const response = await fetch(EQUIPMENT_API, {
-                            method: 'POST', redirect: 'follow', headers: { "Content-Type": "text/plain;charset=utf-8" },
-                            body: JSON.stringify(payload)
-                        });
-                        const result = await response.json();
-                        if (result.status !== 'success') throw new Error(result.message);
-
-                        if (status === 'แทงจำหน่าย') {
-                            const deleteResponse = await fetch(EQUIPMENT_API, {
-                                method: 'POST', redirect: 'follow', headers: { "Content-Type": "text/plain;charset=utf-8" },
-                                body: JSON.stringify({ action: 'deleteEquipment', itemId: item['เลขครุภัณฑ์'] })
-                            });
-                            const deleteResult = await deleteResponse.json();
-                            if (deleteResult.status !== 'success') throw new Error(deleteResult.message || 'ไม่สามารถลบรายการออกจากระบบได้');
-                        }
-                        return result;
-                    } catch (error) {
-                        Swal.showValidationMessage(`การบันทึกขัดข้อง: ${error}`);
-                    }
-                },
-                allowOutsideClick: () => !Swal.isLoading()
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    Swal.fire({
-                        icon: 'success', title: 'บันทึกสำเร็จ!', text: 'อัปเดตข้อมูลและประทับเวลาเรียบร้อยแล้ว',
-                        timer: 1500, showConfirmButton: false
-                    }).then(() => {
-                        document.getElementById('loadingState').classList.remove('hidden');
-                        fetchEquipment(); 
-                    });
-                }
-            });
         }
 
         function toggleExtraInputs() {
@@ -2094,6 +975,160 @@
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+        }
+
+        function setLoadingState(visible, message = 'กำลังดึงข้อมูลครุภัณฑ์...') {
+            const loadingState = document.getElementById('loadingState');
+            if (!loadingState) return;
+            loadingState.innerHTML = `<i class="fas fa-spinner fa-spin fa-3x"></i><br><br>${message}`;
+            loadingState.classList.toggle('hidden', !visible);
+        }
+
+        function showPageMessage(type, message) {
+            const loadingState = document.getElementById('loadingState');
+            if (!loadingState) return;
+            const color = type === 'error' ? '#d32f2f' : '#666';
+            loadingState.innerHTML = `<div style="text-align:center; color:${color};">${message}</div>`;
+            loadingState.classList.remove('hidden');
+        }
+
+        async function bootstrapEquipmentPage() {
+            if (pageBootstrapped) return;
+            pageBootstrapped = true;
+
+            if (currentWard && savedRole !== 'admin') {
+                sessionStorage.setItem('aide_ward', currentWard);
+                sessionStorage.setItem('aide_role', 'user');
+            }
+
+            isAdminLoggedIn = isAdminEntry || (savedRole === 'admin' && entryRole === 'admin');
+            document.getElementById('displayWard').innerText = isAdminLoggedIn ? 'ADMIN MODE' : (currentWard || 'ไม่ได้เลือกหน่วยงาน');
+            document.getElementById('wardSubtitle').innerText = isAdminLoggedIn ? 'ภาพรวมทั้งโรงพยาบาล (Admin)' : `หน่วยงาน: ${currentWard || '-'}`;
+            document.getElementById('roleAccessNotice').classList.remove('hidden');
+            document.getElementById('roleAccessNotice').setAttribute('aria-hidden', 'false');
+            document.getElementById('tab-admin').classList.toggle('hidden-tab', !isAdminLoggedIn);
+            if (isAdminLoggedIn) document.getElementById('btnAdminLogin').style.display = 'none';
+            updateWorkspaceMeta();
+            setCurrentMonthHeading();
+            wireEquipmentEvents();
+
+            setLoadingState(true);
+            await loadInspectionWindowStatus();
+
+            if (isAdminLoggedIn) {
+                await fetchAllEquipmentForAdmin();
+                return;
+            }
+
+            if (!currentWard) {
+                showPageMessage('error', 'ไม่พบหน่วยงานที่เข้าสู่ระบบ กรุณากลับหน้าหลักแล้วเลือกหน่วยงานอีกครั้ง');
+                return;
+            }
+
+            await fetchEquipment();
+        }
+
+        function wireEquipmentEvents() {
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput && !searchInput.dataset.wired) {
+                searchInput.dataset.wired = '1';
+                searchInput.addEventListener('input', () => {
+                    clearTimeout(typingTimer);
+                    typingTimer = setTimeout(() => processSearchOrScan(searchInput.value), doneTypingInterval);
+                });
+            }
+        }
+
+        async function refreshCurrentData() {
+            setLoadingState(true, 'กำลังรีเฟรชข้อมูล...');
+            await loadInspectionWindowStatus();
+            if (isAdminLoggedIn && currentActiveTab === 'admin') {
+                await fetchAllEquipmentForAdmin();
+            } else {
+                await fetchEquipment();
+            }
+        }
+
+        function handleAllStatusFilterChange() {
+            currentAllStatusFilter = document.getElementById('allStatusFilter').value || 'all';
+            renderActiveView();
+        }
+
+        function showHelpModal() {
+            Swal.fire({
+                title: '<i class="fas fa-book-open" style="color:var(--primary);"></i> คู่มือการใช้งานระบบ',
+                html: `
+                    <div class="help-content">
+                        <h4><i class="fas fa-search" style="color:var(--secondary);"></i> 1. การค้นหาและการสแกน QR</h4>
+                        <ul>
+                            <li>ใช้ช่องค้นหาเพื่อพิมพ์ <b>ชื่อเครื่องมือ</b>, <b>เลขครุภัณฑ์</b>, หรือ <b>ตำแหน่งย่อย</b></li>
+                            <li>หากไม่ต้องการพิมพ์ สามารถกดปุ่ม <b style="color:var(--accent); background:var(--primary); padding:2px 6px; border-radius:4px;"><i class="fas fa-qrcode"></i> สแกน QR</b> เพื่อเปิดกล้องสแกนบาร์โค้ดที่ตัวเครื่องมือ ระบบจะค้นหารายการให้ทันที</li>
+                        </ul>
+                        <h4><i class="fas fa-check-square" style="color:var(--secondary);"></i> 2. วิธีการตรวจนับครุภัณฑ์</h4>
+                        <ul>
+                            <li>ในแท็บ <b>"รายการที่รอตรวจนับ"</b> จะแสดงเฉพาะรายการที่ "ถึงรอบที่ต้องตรวจ" ในเดือนปัจจุบันเท่านั้น</li>
+                            <li>กดปุ่ม <b style="color:white; background:var(--primary); padding:2px 6px; border-radius:4px;"><i class="fas fa-check"></i> บันทึกการตรวจ</b> ที่รายการนั้นๆ</li>
+                            <li>อัปเดตสถานะให้ตรงกับความจริง:
+                                <br>- <b>ปกติ</b>: พร้อมใช้งาน
+                                <br>- <b style="color:#dc3545;">ชำรุดส่งซ่อม</b>: สามารถแนบภาพจุดที่ชำรุดได้
+                                <br>- <b style="color:#f57f17;">ถูกยืม</b>: ต้องเลือกหน่วยงานปลายทางจากดรอปดาวน์
+                                <br>- <b style="color:#ef6c00;">รอจำหน่าย</b>: ต้องแนบใบสรุปส่งซ่อมจากศูนย์เครื่องมือแพทย์
+                                <br>- <b>แทงจำหน่าย</b>: ต้องแนบใบส่งคืนพัสดุ และรายการจะถูกลบออกจากระบบ
+                            </li>
+                            <li>เมื่อกดบันทึกสำเร็จ รายการนั้นจะ <b>หายไปจากหน้าจอ "รอตรวจ"</b> อัตโนมัติ</li>
+                        </ul>
+                        <h4><i class="fas fa-list-ul" style="color:var(--secondary);"></i> 3. การดูภาพรวม และ Export</h4>
+                        <ul>
+                            <li>สามารถกดเปลี่ยนไปแท็บ <b>"รายการทั้งหมด"</b> เพื่อเช็คประวัติการตรวจครั้งล่าสุดของครุภัณฑ์ทุกชิ้นในตึกได้</li>
+                            <li>กดปุ่ม <b style="color:white; background:#28a745; padding:2px 6px; border-radius:4px;"><i class="fas fa-file-excel"></i> ส่งออกไฟล์</b> เพื่อดาวน์โหลดข้อมูลที่แสดงผลอยู่เป็นไฟล์ .csv สำหรับนำไปทำรายงาน</li>
+                        </ul>
+                    </div>
+                `,
+                confirmButtonColor: '#003366',
+                confirmButtonText: 'เข้าใจแล้ว',
+                width: 600,
+                customClass: { htmlContainer: 'text-left' }
+            });
+        }
+
+        async function toggleScanner() {
+            const reader = document.getElementById('qr-reader');
+            const scanButton = document.getElementById('btnScanQr');
+            if (!reader || !window.Html5Qrcode) {
+                Swal.fire('แจ้งเตือน', 'ไม่สามารถเปิดระบบสแกน QR ได้ในเบราว์เซอร์นี้', 'warning');
+                return;
+            }
+
+            if (scannerRunning && html5QrcodeScanner) {
+                await html5QrcodeScanner.stop();
+                await html5QrcodeScanner.clear();
+                scannerRunning = false;
+                reader.style.display = 'none';
+                scanButton.innerHTML = '<i class="fas fa-qrcode"></i> สแกน QR';
+                return;
+            }
+
+            reader.style.display = 'block';
+            html5QrcodeScanner = new Html5Qrcode('qr-reader');
+            try {
+                await html5QrcodeScanner.start(
+                    { facingMode: 'environment' },
+                    { fps: 10, qrbox: { width: 250, height: 250 } },
+                    async (decodedText) => {
+                        const value = String(decodedText || '').trim();
+                        document.getElementById('searchInput').value = value;
+                        processSearchOrScan(value);
+                        await toggleScanner();
+                        const item = getEquipmentById(value);
+                        if (item) openUpdateModal(item);
+                    }
+                );
+                scannerRunning = true;
+                scanButton.innerHTML = '<i class="fas fa-times"></i> ปิดสแกน';
+            } catch (error) {
+                reader.style.display = 'none';
+                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเปิดกล้องสำหรับสแกน QR ได้', 'error');
+            }
         }
 
         // ==========================================
@@ -2273,20 +1308,17 @@
         }
 
         async function fetchAllEquipmentForAdmin() {
-            document.getElementById('loadingState').classList.remove('hidden');
+            setLoadingState(true);
             document.getElementById('view-inspection').classList.add('hidden');
             document.getElementById('view-all').classList.add('hidden');
             document.getElementById('view-borrowed-out').classList.add('hidden');
             document.getElementById('view-repair').classList.add('hidden');
-            if(document.getElementById('view-admin')) document.getElementById('view-admin').classList.add('hidden');
+            if (document.getElementById('view-admin')) document.getElementById('view-admin').classList.add('hidden');
 
             try {
-                const response = await fetch(`${EQUIPMENT_API}?action=getAllItems`);
-                const textData = await response.text();
-                const result = JSON.parse(textData);
-                
+                const result = await apiGetJson('getAllItems');
                 if (result.status === 'success') {
-                    allEquipment = (result.data || []).map(prepareEquipmentItem); 
+                    allEquipment = (result.data || []).map(prepareEquipmentItem);
                     filteredEquipment = [...allEquipment];
                     wardOptions = getWardOptionsFromItems(allEquipment);
 
@@ -2294,17 +1326,20 @@
                     const wardSelect = document.getElementById('adminWardFilter');
                     wardSelect.innerHTML = '<option value="all">ดูทุกหน่วยงาน (ทั้ง รพ.)</option>';
                     wards.forEach(w => { wardSelect.innerHTML += `<option value="${w}">${w}</option>`; });
-                    
+
                     document.getElementById('wardSubtitle').innerHTML = '<span style="color:#d32f2f; font-weight:bold;"><i class="fas fa-globe"></i> ภาพรวมทั้งโรงพยาบาล (Admin)</span>';
                     document.getElementById('allCountTab').innerText = allEquipment.length;
-                    updateDashboardStats(); 
-                    
-                    document.getElementById('loadingState').classList.add('hidden');
-                    switchTab('admin'); 
+                    updateDashboardStats();
+
+                    setLoadingState(false);
+                    switchTab('admin');
                     markDataSynced();
+                } else {
+                    showPageMessage('error', result.message || 'ไม่สามารถดึงข้อมูลภาพรวมได้');
                 }
             } catch (error) {
                 console.error("Error fetching all items:", error);
+                showPageMessage('error', 'ไม่สามารถดึงข้อมูลภาพรวมได้ กรุณาลองรีเฟรชอีกครั้ง');
                 Swal.fire('ข้อผิดพลาด', 'ไม่สามารถดึงข้อมูลภาพรวมได้', 'error');
             }
         }
@@ -2522,12 +1557,12 @@
             let pendingCount = 0;
 
             data.forEach(item => {
-                const s = item._statusText || item['สถานะ'] || '';
-                if(s.includes('ปกติ')) statusCounts['ปกติ']++;
-                else if(s.includes('ชำรุด')) statusCounts['ชำรุดส่งซ่อม']++;
-                else if(s.includes('ยืม')) statusCounts['ถูกยืม']++;
-                else if(s.includes('รอจำหน่าย')) statusCounts['รอจำหน่าย']++;
-                else if(s.includes('จำหน่าย')) statusCounts['จำหน่าย']++;
+                const s = normalizeStatusForFilter(item._statusText || item['สถานะ'] || '');
+                if(s === 'ปกติ') statusCounts['ปกติ']++;
+                else if(s === 'ชำรุดส่งซ่อม') statusCounts['ชำรุดส่งซ่อม']++;
+                else if(s === 'ถูกยืม') statusCounts['ถูกยืม']++;
+                else if(s === 'รอจำหน่าย') statusCounts['รอจำหน่าย']++;
+                else if(s === 'แทงจำหน่าย') statusCounts['จำหน่าย']++;
 
                 if(item._needsInspection) pendingCount++;
                 else inspectedCount++;
@@ -2981,6 +2016,791 @@
             window.print();
             printCleanupTimer = setTimeout(cleanupPrintArea, 1500);
         }
+        // Recovery layer for missing functions after corrupted edit
+        function saveLocalInspectionWindowRecord(record) {
+            const normalized = normalizeInspectionWindowRecord(record);
+            if (!normalized) return false;
+            const records = loadLocalInspectionWindowRecords().filter(item => item.periodKey !== normalized.periodKey);
+            records.push(normalized);
+            records.sort((a, b) => a.periodKey.localeCompare(b.periodKey));
+            localStorage.setItem(LOCAL_INSPECTION_WINDOW_KEY, JSON.stringify(records));
+            return true;
+        }
+
+        function evaluateInspectionWindowRecords(records, source = 'local') {
+            const normalizedRecords = (Array.isArray(records) ? records : []).map(normalizeInspectionWindowRecord).filter(Boolean).sort((a, b) => a.periodKey.localeCompare(b.periodKey));
+            const today = toStartOfDay(new Date());
+            const activeWindow = normalizedRecords.find(record => {
+                const openDate = toStartOfDay(record.openDate);
+                const closeDate = toStartOfDay(record.closeDate);
+                return openDate && closeDate && today >= openDate && today <= closeDate;
+            }) || null;
+            const upcomingWindow = normalizedRecords.find(record => {
+                const openDate = toStartOfDay(record.openDate);
+                return openDate && openDate > today;
+            }) || null;
+            const latestWindow = normalizedRecords.length ? normalizedRecords[normalizedRecords.length - 1] : null;
+            return { hasConfiguredWindow: normalizedRecords.length > 0, isActive: Boolean(activeWindow), activeWindow, upcomingWindow, latestWindow, source };
+        }
+
+        function normalizeInspectionWindowStatusPayload(payload, source = 'api') {
+            if (!payload || typeof payload !== 'object') return createDefaultInspectionWindowStatus();
+            return {
+                hasConfiguredWindow: Boolean(payload.hasConfiguredWindow),
+                isActive: Boolean(payload.isActive),
+                activeWindow: normalizeInspectionWindowRecord(payload.activeWindow),
+                upcomingWindow: normalizeInspectionWindowRecord(payload.upcomingWindow),
+                latestWindow: normalizeInspectionWindowRecord(payload.latestWindow),
+                source
+            };
+        }
+
+        function getInspectionDisplayWindow() {
+            return inspectionWindowStatus.activeWindow || inspectionWindowStatus.upcomingWindow || inspectionWindowStatus.latestWindow || null;
+        }
+
+        function formatInspectionPeriodLabel(windowRecord) {
+            if (!windowRecord) return '-';
+            return `${THAI_MONTH_NAMES[(windowRecord.targetMonth || 1) - 1]} ${Number(windowRecord.targetYear || 0) + 543}`;
+        }
+
+        function formatThaiDate(value) {
+            const date = value instanceof Date ? value : parseISODate(value);
+            if (!date || isNaN(date)) return '-';
+            return date.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+        }
+
+        function updateInspectionWindowNotice() {
+            const noteBox = document.getElementById('inspectionWindowNotice');
+            if (!noteBox) return;
+            const displayWindow = getInspectionDisplayWindow();
+            if (!inspectionWindowStatus.hasConfiguredWindow) {
+                noteBox.innerHTML = 'ระบบเปิดรอบตรวจพร้อมกันตั้งแต่วันที่ 1 ของเดือน โดยอิงตามเดือนครบกำหนด ไม่อิงตามวันตรวจล่าสุดของแต่ละรายการ';
+                return;
+            }
+            if (inspectionWindowStatus.activeWindow) {
+                noteBox.innerHTML = `<strong>รอบที่เปิดใช้งาน:</strong> ${formatInspectionPeriodLabel(displayWindow)} <strong>ช่วงวันที่:</strong> ${formatThaiDate(displayWindow.openDate)} - ${formatThaiDate(displayWindow.closeDate)}`;
+                return;
+            }
+            noteBox.innerHTML = displayWindow
+                ? `<strong>ระบบปิดอยู่</strong> แอดมินกำหนดรอบ ${formatInspectionPeriodLabel(displayWindow)} ไว้ช่วง ${formatThaiDate(displayWindow.openDate)} - ${formatThaiDate(displayWindow.closeDate)}`
+                : '<strong>ระบบปิดอยู่</strong> กรุณาติดต่อแอดมินเพื่อกำหนดช่วงวันเปิดระบบตรวจนับ';
+        }
+
+        function getInspectionAvailabilityState() {
+            if (isAdminLoggedIn) return { allowed: true, message: 'ผู้ดูแลระบบสามารถตรวจนับได้ตลอดเวลา', source: 'admin' };
+            if (!inspectionWindowStatus.hasConfiguredWindow) return { allowed: true, message: 'ยังไม่ได้ตั้งรอบเปิดระบบรายเดือน ระบบจึงเปิดใช้งานตามปกติ', source: inspectionWindowStatus.source };
+            if (inspectionWindowStatus.activeWindow) {
+                const activeWindow = inspectionWindowStatus.activeWindow;
+                return { allowed: true, message: `ระบบเปิดสำหรับรอบ ${formatInspectionPeriodLabel(activeWindow)} วันที่ ${formatThaiDate(activeWindow.openDate)} - ${formatThaiDate(activeWindow.closeDate)}`, source: inspectionWindowStatus.source };
+            }
+            const displayWindow = getInspectionDisplayWindow();
+            return { allowed: false, message: displayWindow ? `ระบบปิดอยู่ ขณะนี้กำหนดรอบ ${formatInspectionPeriodLabel(displayWindow)} ไว้วันที่ ${formatThaiDate(displayWindow.openDate)} - ${formatThaiDate(displayWindow.closeDate)}` : 'ระบบยังไม่เปิดให้ตรวจนับในช่วงนี้', source: inspectionWindowStatus.source };
+        }
+
+        function ensureInspectionWindowOpenForStaff() {
+            const availability = getInspectionAvailabilityState();
+            if (availability.allowed || isAdminLoggedIn) return true;
+            Swal.fire({ icon: 'info', title: 'ระบบยังไม่เปิดให้ตรวจนับ', text: availability.message, confirmButtonColor: '#003366' });
+            return false;
+        }
+
+        async function loadInspectionWindowStatus() {
+            try {
+                const result = await apiGetJson('getInspectionWindowStatus');
+                if (result.status === 'success') {
+                    inspectionWindowStatus = normalizeInspectionWindowStatusPayload(result.data, 'api');
+                    setCurrentMonthHeading();
+                    updateInspectionWindowNotice();
+                    return inspectionWindowStatus;
+                }
+            } catch (error) {
+                console.warn('Unable to load inspection window from API, fallback to local:', error);
+            }
+            inspectionWindowStatus = evaluateInspectionWindowRecords(loadLocalInspectionWindowRecords(), 'local');
+            setCurrentMonthHeading();
+            updateInspectionWindowNotice();
+            return inspectionWindowStatus;
+        }
+
+        function setCurrentMonthHeading() {
+            const displayWindow = getInspectionDisplayWindow();
+            if (displayWindow) {
+                document.getElementById('currentMonthText').innerText = formatInspectionPeriodLabel(displayWindow);
+                return;
+            }
+            const d = new Date();
+            document.getElementById('currentMonthText').innerText = `${THAI_MONTH_NAMES[d.getMonth()]} ${d.getFullYear() + 543}`;
+        }
+
+        function formatSyncTimestamp(dateValue) {
+            if (!dateValue) return 'ยังไม่ซิงก์';
+            const date = new Date(dateValue);
+            if (isNaN(date)) return 'ยังไม่ซิงก์';
+            return date.toLocaleString('th-TH', { day: 'numeric', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+        }
+
+        function updateWorkspaceMeta() {
+            const scopeLabel = document.getElementById('heroScopeLabel');
+            const roleLabel = document.getElementById('heroRoleLabel');
+            const syncLabel = document.getElementById('heroSyncLabel');
+            const accessNotice = document.getElementById('roleAccessNotice');
+            const wardPrintButton = document.getElementById('btnWardPrint');
+            if (scopeLabel) scopeLabel.textContent = isAdminLoggedIn ? 'ภาพรวมทั้งโรงพยาบาล' : (currentWard || 'กรุณาเข้าสู่ระบบ');
+            if (roleLabel) roleLabel.textContent = isAdminLoggedIn ? 'ผู้ดูแลระบบ' : (currentWard ? 'ระดับหน่วยงาน' : 'ยังไม่ยืนยันตัวตน');
+            if (syncLabel) syncLabel.textContent = formatSyncTimestamp(lastDataSyncAt);
+            if (wardPrintButton) wardPrintButton.classList.toggle('hidden', isAdminLoggedIn || !currentWard);
+            if (accessNotice) {
+                if (isAdminLoggedIn) accessNotice.innerHTML = '<i class="fas fa-user-shield"></i><span>ผู้ดูแลระบบสามารถดูข้อมูลภาพรวมทั้งโรงพยาบาลและจัดการข้อมูลหลักได้</span>';
+                else if (currentWard) accessNotice.innerHTML = `<i class="fas fa-building-lock"></i><span>สิทธิ์ระดับหน่วยงานถูกจำกัดไว้เฉพาะข้อมูลของ <strong>${currentWard}</strong></span>`;
+                else accessNotice.innerHTML = '<i class="fas fa-lock"></i><span>กรุณาเข้าสู่ระบบจากหน้าหลักก่อนใช้งาน</span>';
+            }
+        }
+
+        function markDataSynced() {
+            lastDataSyncAt = new Date();
+            updateWorkspaceMeta();
+        }
+
+        function escapeHtml(value) {
+            return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        function getItemStatusText(item) {
+            return String(item['สถานะ'] || 'พร้อมใช้').trim();
+        }
+
+        function isDisposedStatus(status) {
+            return normalizeStatusForFilter(status) === 'แทงจำหน่าย';
+        }
+
+        function getOwnerWard(item) {
+            return normalizeWard(item['หน่วยงาน']);
+        }
+
+        function getUsageWard(item) {
+            return normalizeWard(item['ใช้งานที่']) || getOwnerWard(item);
+        }
+
+        function getInspectionFrequency(item) {
+            return parseInt(item['ความถี่การตรวจนับ (เดือน)']) || parseInt(item['ความถี่การตรวจนับ']) || 1;
+        }
+
+        function getInspectionReferenceMonthStart() {
+            const displayWindow = getInspectionDisplayWindow();
+            if (displayWindow) return new Date(displayWindow.targetYear, displayWindow.targetMonth - 1, 1);
+            const now = new Date();
+            return new Date(now.getFullYear(), now.getMonth(), 1);
+        }
+
+        function shouldItemBeInspectableThisMonth(item) {
+            const status = getItemStatusText(item);
+            if (INSPECTION_SKIP_STATUSES.includes(status) || normalizeStatusForFilter(status) === 'ชำรุดส่งซ่อม' || normalizeStatusForFilter(status) === 'รอจำหน่าย' || normalizeStatusForFilter(status) === 'แทงจำหน่าย') return false;
+            const lastInspectRaw = item['วันที่ตรวจล่าสุด'];
+            if (!lastInspectRaw) return true;
+            const lastInspectDate = new Date(lastInspectRaw);
+            if (isNaN(lastInspectDate)) return true;
+            const currentMonthStart = getInspectionReferenceMonthStart();
+            const dueMonthStart = new Date(lastInspectDate.getFullYear(), lastInspectDate.getMonth() + getInspectionFrequency(item), 1);
+            return currentMonthStart >= dueMonthStart;
+        }
+
+        function prepareEquipmentItem(item) {
+            const prepared = { ...item };
+            prepared._ownerWard = getOwnerWard(prepared);
+            prepared._usageWard = getUsageWard(prepared);
+            prepared._statusText = getItemStatusText(prepared);
+            prepared._isDisposed = isDisposedStatus(prepared._statusText);
+            prepared._statusFilter = normalizeStatusForFilter(prepared._statusText);
+            prepared._isRepair = prepared._statusFilter === 'ชำรุดส่งซ่อม';
+            prepared._isAwaitDisposal = prepared._statusFilter === 'รอจำหน่าย';
+            prepared._needsInspection = shouldItemBeInspectableThisMonth(prepared);
+            return prepared;
+        }
+
+        function getWardOptionsFromItems(items) {
+            return [...new Set(items.flatMap(item => [item._ownerWard, item._usageWard]).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'th'));
+        }
+
+        function mergeWardOptions(newWards = []) {
+            const merged = [...new Set([...wardOptions.map(normalizeWard), ...newWards.map(normalizeWard)].filter(Boolean))];
+            wardOptions = merged.sort((a, b) => a.localeCompare(b, 'th'));
+        }
+
+        async function ensureWardOptionsLoaded() {
+            if (wardOptions.length > 1) return;
+            if (!WARD_API || WARD_API === "YOUR_WEB_APP_URL_FROM_GAS_HERE") return;
+            try {
+                const response = await fetch(WARD_API, { cache: 'no-store' });
+                const result = await response.json();
+                if (result.status === 'success' && Array.isArray(result.data)) mergeWardOptions(result.data);
+            } catch (error) {
+                console.error('Error fetching ward master:', error);
+            }
+        }
+
+        function matchesSearchTerm(item, searchTerm) {
+            if (!searchTerm) return true;
+            const term = searchTerm.toLowerCase();
+            return String(item['ชื่อครุภัณฑ์'] || '').toLowerCase().includes(term) ||
+                String(item['เลขครุภัณฑ์'] || '').toLowerCase().includes(term) ||
+                String(item['RMC No'] || '').toLowerCase().includes(term) ||
+                String(item['ยี่ห้อ'] || '').toLowerCase().includes(term) ||
+                String(item['ตำแหน่งย่อย (Sub-location)'] || '').toLowerCase().includes(term) ||
+                String(item._ownerWard || '').toLowerCase().includes(term) ||
+                String(item._usageWard || '').toLowerCase().includes(term);
+        }
+
+        function normalizeStatusForFilter(status) {
+            const statusText = String(status || '').trim();
+            if (statusText.includes('ยืม')) return 'ถูกยืม';
+            if (statusText.includes('ชำรุด') || statusText.includes('ซ่อม')) return 'ชำรุดส่งซ่อม';
+            if (statusText.includes('รอจำหน่าย')) return 'รอจำหน่าย';
+            if (statusText.includes('จำหน่าย')) return 'แทงจำหน่าย';
+            return 'ปกติ';
+        }
+
+        function matchesStatusFilter(item, statusFilter = 'all') {
+            if (!statusFilter || statusFilter === 'all') return true;
+            return normalizeStatusForFilter(item._statusText || item['สถานะ']) === statusFilter;
+        }
+
+        function getCurrentWardVisibleItems(searchTerm = currentSearchTerm, statusFilter = 'all') {
+            const ward = normalizeWard(currentWard);
+            return allEquipment.filter(item => !item._isDisposed && matchesSearchTerm(item, searchTerm) && matchesStatusFilter(item, statusFilter) && (item._ownerWard === ward || item._usageWard === ward));
+        }
+
+        function getWardScopedData(searchTerm = currentSearchTerm, statusFilter = 'all') {
+            const ward = normalizeWard(currentWard);
+            const visibleItems = getCurrentWardVisibleItems(searchTerm, statusFilter);
+            const ownedCurrent = visibleItems.filter(item => item._ownerWard === ward && item._usageWard === ward);
+            const borrowedIn = visibleItems.filter(item => item._ownerWard !== ward && item._usageWard === ward);
+            const borrowedOut = visibleItems.filter(item => item._ownerWard === ward && item._usageWard && item._usageWard !== ward);
+            const repair = visibleItems.filter(item => item._usageWard === ward && item._isRepair);
+            const awaitDisposal = visibleItems.filter(item => item._usageWard === ward && item._isAwaitDisposal);
+            const canInspect = getInspectionAvailabilityState().allowed || isAdminLoggedIn;
+            const pendingOwned = canInspect ? ownedCurrent.filter(item => item._needsInspection) : [];
+            const pendingBorrowedIn = canInspect ? borrowedIn.filter(item => item._needsInspection) : [];
+            return { visibleItems, ownedCurrent, borrowedIn, borrowedOut, repair, awaitDisposal, pendingOwned, pendingBorrowedIn };
+        }
+
+        function getLastInspectionText(item, emptyText = '-') {
+            if (item['วันที่ตรวจล่าสุด']) {
+                const d = new Date(item['วันที่ตรวจล่าสุด']);
+                if (!isNaN(d)) return d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
+            }
+            return emptyText;
+        }
+
+        function getRiskHtml(item) {
+            const riskLevel = item['RISK LEVEL'] ? String(item['RISK LEVEL']).trim().toLowerCase() : '';
+            if (riskLevel === 'high') return `<span class="risk-badge risk-high"><i class="fas fa-exclamation-triangle"></i> High Risk</span>`;
+            if (riskLevel === 'medium') return `<span class="risk-badge risk-medium"><i class="fas fa-exclamation-circle"></i> Medium Risk</span>`;
+            if (riskLevel === 'low') return `<span class="risk-badge risk-low"><i class="fas fa-info-circle"></i> Low Risk</span>`;
+            return '';
+        }
+
+        function buildWardOptionsHtml(selectedWard = '', excludedWard = '') {
+            const normalizedSelectedWard = normalizeWard(selectedWard);
+            const normalizedExcludedWard = normalizeWard(excludedWard);
+            const options = wardOptions.map(ward => {
+                if (normalizedExcludedWard && ward === normalizedExcludedWard) return '';
+                const selectedAttr = ward === normalizedSelectedWard ? 'selected' : '';
+                return `<option value="${ward}" ${selectedAttr}>${ward}</option>`;
+            });
+            return `<option value="">-- กรุณาเลือกหน่วยงาน --</option>${options.join('')}`;
+        }
+
+        function createEmptyStateHtml(title, message) {
+            return `
+                <div class="empty-state-box">
+                    <h4 style="margin:0 0 6px 0; color:var(--primary);">${escapeHtml(title)}</h4>
+                    <p style="margin:0;">${escapeHtml(message)}</p>
+                </div>
+            `;
+        }
+
+        async function fetchEquipment() {
+            try {
+                const result = await apiGetJson('getItemsByWard', { ward: currentWard });
+                setLoadingState(false);
+                if (result.status === 'success') {
+                    allEquipment = (result.data || []).map(prepareEquipmentItem);
+                    filteredEquipment = [...allEquipment];
+                    mergeWardOptions(getWardOptionsFromItems(allEquipment));
+                    updateDashboardStats();
+                    switchTab(currentActiveTab);
+                    ensureWardOptionsLoaded();
+                    markDataSynced();
+                } else {
+                    allEquipment = [];
+                    filteredEquipment = [];
+                    wardOptions = [];
+                    updateDashboardStats();
+                    switchTab(currentActiveTab);
+                    updateWorkspaceMeta();
+                }
+            } catch (error) {
+                showPageMessage('error', 'เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล กรุณาลองรีเฟรชอีกครั้ง');
+            }
+        }
+
+        function getStatusClass(status) {
+            const normalized = normalizeStatusForFilter(status);
+            if (normalized === 'ชำรุดส่งซ่อม') return 'status-broken';
+            if (normalized === 'ถูกยืม') return 'status-borrowed';
+            if (normalized === 'รอจำหน่าย') return 'status-await-disposal';
+            if (normalized === 'แทงจำหน่าย') return 'status-disposed';
+            return 'status-normal';
+        }
+
+        function getStatusIcon(status) {
+            const normalized = normalizeStatusForFilter(status);
+            if (normalized === 'ชำรุดส่งซ่อม') return '<i class="fas fa-wrench"></i>';
+            if (normalized === 'ถูกยืม') return '<i class="fas fa-exchange-alt"></i>';
+            if (normalized === 'รอจำหน่าย') return '<i class="fas fa-file-circle-xmark"></i>';
+            if (normalized === 'แทงจำหน่าย') return '<i class="fas fa-trash-alt"></i>';
+            return '<i class="fas fa-check-circle"></i>';
+        }
+
+        function getEquipmentById(itemId) {
+            return allEquipment.find(item => String(item['เลขครุภัณฑ์'] || '').trim() === String(itemId || '').trim()) || null;
+        }
+
+        function getEquipmentPrimaryKey(item) {
+            return String((item && (item['เลขครุภัณฑ์'] || item['RMC No'])) || '').trim();
+        }
+
+        function upsertLocalEquipmentItem(updatedItem) {
+            if (!updatedItem) return;
+            const prepared = prepareEquipmentItem(updatedItem);
+            const updatedId = String(prepared['เลขครุภัณฑ์'] || '').trim();
+            const updatedRmc = String(prepared['RMC No'] || '').trim();
+            const matches = item => {
+                const itemId = String(item['เลขครุภัณฑ์'] || '').trim();
+                const itemRmc = String(item['RMC No'] || '').trim();
+                return (updatedId && itemId === updatedId) || (updatedRmc && itemRmc === updatedRmc);
+            };
+            const index = allEquipment.findIndex(matches);
+            if (index >= 0) allEquipment[index] = prepared;
+            else allEquipment.push(prepared);
+            filteredEquipment = filteredEquipment.map(item => matches(item) ? prepared : item);
+            updateDashboardStats();
+            switchTab(currentActiveTab);
+        }
+
+        function showEquipmentDetailsById(itemId) {
+            const item = getEquipmentById(itemId);
+            if (item) showEquipmentDetails(item);
+        }
+
+        function openUpdateModalById(itemId) {
+            const item = getEquipmentById(itemId);
+            if (item) openUpdateModal(item);
+        }
+
+        function showEquipmentDetails(item) {
+            let lastInspectStr = 'ยังไม่เคยตรวจ';
+            if (item['วันที่ตรวจล่าสุด']) {
+                const d = new Date(item['วันที่ตรวจล่าสุด']);
+                if (!isNaN(d)) {
+                    lastInspectStr = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' }) + ' เวลา ' + d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+                }
+            }
+
+            Swal.fire({
+                title: 'รายละเอียดครุภัณฑ์',
+                width: 600,
+                html: `
+                    <table class="details-table">
+                        <tbody>
+                            <tr><th><i class="fas fa-fingerprint"></i> RMC No</th><td>${escapeHtml(item['RMC No'] || '-')}</td></tr>
+                            <tr><th><i class="fas fa-barcode"></i> เลขครุภัณฑ์</th><td>${escapeHtml(item['เลขครุภัณฑ์'] || '-')}</td></tr>
+                            <tr><th><i class="fas fa-box"></i> ชื่อครุภัณฑ์</th><td>${escapeHtml(item['ชื่อครุภัณฑ์'] || '-')}</td></tr>
+                            <tr><th><i class="fas fa-tag"></i> ยี่ห้อ / รุ่น</th><td>${escapeHtml(item['ยี่ห้อ'] || '-')} / ${escapeHtml(item['ชื่อรุ่น'] || '-')}</td></tr>
+                            <tr><th><i class="fas fa-list"></i> ประเภท</th><td>${escapeHtml(item['ประเภทครุภัณฑ์'] || '-')}</td></tr>
+                            <tr><th><i class="fas fa-hospital"></i> ใช้งานที่</th><td>${escapeHtml(item._usageWard || item['ใช้งานที่'] || '-')} (เจ้าของ: ${escapeHtml(item._ownerWard || item['หน่วยงาน'] || '-')})</td></tr>
+                            <tr><th><i class="fas fa-map-pin"></i> ตำแหน่งย่อย</th><td>${escapeHtml(item['ตำแหน่งย่อย (Sub-location)'] || '-')}</td></tr>
+                            <tr><th><i class="fas fa-history"></i> ความถี่การตรวจ</th><td>${escapeHtml(getInspectionFrequency(item))} เดือน/ครั้ง</td></tr>
+                            <tr><th style="color:#28a745;"><i class="fas fa-calendar-check"></i> ตรวจล่าสุด</th><td style="color:#28a745; font-weight:bold;">${escapeHtml(lastInspectStr)}</td></tr>
+                        </tbody>
+                    </table>
+                `,
+                confirmButtonColor: '#003366',
+                confirmButtonText: '<i class="fas fa-times"></i> ปิดหน้าต่าง'
+            });
+        }
+
+        function showDetailsModal(item) {
+            showEquipmentDetails(prepareEquipmentItem(item));
+        }
+
+        async function openUpdateModal(item) {
+            if (!ensureInspectionWindowOpenForStaff()) return;
+            await ensureWardOptionsLoaded();
+            if (!item._needsInspection) {
+                let lastInspectStr = 'ยังไม่เคยตรวจ';
+                if (item['วันที่ตรวจล่าสุด']) {
+                    const d = new Date(item['วันที่ตรวจล่าสุด']);
+                    if (!isNaN(d)) lastInspectStr = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+                }
+
+                const proceed = await Swal.fire({
+                    title: '<span style="color:#f57f17;">ยังไม่ถึงรอบการตรวจ</span>',
+                    icon: 'warning',
+                    html: `
+                        <div style="text-align: left; background: #fff9db; padding: 15px; border-radius: 10px; border: 1px solid #ffe066;">
+                            <div style="margin-bottom: 8px;"><b>ชื่อ:</b> ${escapeHtml(item['ชื่อครุภัณฑ์'] || '-')}</div>
+                            <div style="margin-bottom: 8px;"><b>ยี่ห้อ:</b> ${escapeHtml(item['ยี่ห้อ'] || '-')}</div>
+                            <div style="margin-bottom: 8px;"><b>เลขครุภัณฑ์:</b> <span style="color:#d32f2f;">${escapeHtml(item['เลขครุภัณฑ์'] || '-')}</span></div>
+                            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #fab005;">
+                                <i class="fas fa-history"></i> ตรวจล่าสุดวันที่: <b>${escapeHtml(lastInspectStr)}</b>
+                            </div>
+                        </div>
+                        <p style="margin-top: 15px; font-size: 0.95rem;">รายการนี้ยังไม่ถึงกำหนดรอบตรวจเช็ค<br><b>คุณยังต้องการบันทึกการตรวจหรือไม่?</b></p>
+                    `,
+                    showCancelButton: true,
+                    confirmButtonColor: '#003366',
+                    cancelButtonColor: '#adb5bd',
+                    confirmButtonText: 'ใช่, ต้องการบันทึก',
+                    cancelButtonText: 'ไม่ต้อง, ยกเลิก'
+                });
+
+                if (!proceed.isConfirmed) return;
+            }
+
+            Swal.fire({
+                title: 'บันทึกการตรวจนับ',
+                width: 720,
+                html: `<div style="text-align:left; margin-bottom:15px; padding-bottom:10px; border-bottom:1px solid #eee;">
+                        <b style="color: var(--primary); font-size:1.1rem;">${escapeHtml(item['ชื่อครุภัณฑ์'] || '-')}</b><br>
+                        <small style="color:#666;"><i class="fas fa-barcode"></i> เลข: ${escapeHtml(item['เลขครุภัณฑ์'] || '-')}</small>
+                    </div>
+                    <div class="swal-form-group">
+                        <label><i class="fas fa-flag"></i> สถานะการตรวจพบ:</label>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px;">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; background:#f8f9fa; padding:10px; border-radius:8px; border:1px solid #ddd; font-size:0.9rem;">
+                                <input type="radio" name="update-status" value="ปกติ" onchange="toggleExtraInputs()" checked style="transform:scale(1.2);">
+                                <span style="color:#28a745;"><i class="fas fa-check-circle"></i> ปกติ/พร้อมใช้</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; background:#f8f9fa; padding:10px; border-radius:8px; border:1px solid #ddd; font-size:0.9rem;">
+                                <input type="radio" name="update-status" value="ชำรุดส่งซ่อม" onchange="toggleExtraInputs()" style="transform:scale(1.2);">
+                                <span style="color:#dc3545;"><i class="fas fa-wrench"></i> ชำรุดส่งซ่อม</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; background:#f8f9fa; padding:10px; border-radius:8px; border:1px solid #ddd; font-size:0.9rem;">
+                                <input type="radio" name="update-status" value="ถูกยืม" onchange="toggleExtraInputs()" style="transform:scale(1.2);">
+                                <span style="color:#f57f17;"><i class="fas fa-exchange-alt"></i> ถูกยืมใช้งาน</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; background:#f8f9fa; padding:10px; border-radius:8px; border:1px solid #ddd; font-size:0.9rem;">
+                                <input type="radio" name="update-status" value="รอจำหน่าย" onchange="toggleExtraInputs()" style="transform:scale(1.2);">
+                                <span style="color:#ef6c00;"><i class="fas fa-file-circle-xmark"></i> รอจำหน่าย</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; background:#f8f9fa; padding:10px; border-radius:8px; border:1px solid #ddd; font-size:0.9rem;">
+                                <input type="radio" name="update-status" value="แทงจำหน่าย" onchange="toggleExtraInputs()" style="transform:scale(1.2);">
+                                <span style="color:#6c757d;"><i class="fas fa-trash-alt"></i> แทงจำหน่าย</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div id="borrow-div" class="swal-form-group" style="display:none;">
+                        <label><i class="fas fa-hospital"></i> ยืมไปที่หน่วยงานใด:</label>
+                        <select id="update-borrow" class="swal-input">${buildWardOptionsHtml('', currentWard || item._usageWard || item._ownerWard)}</select>
+                    </div>
+                    <div id="document-div" class="swal-form-group" style="display:none;">
+                        <label id="document-label"><i class="fas fa-file-arrow-up"></i> แนบเอกสารประกอบ:</label>
+                        <input type="file" id="update-document" class="swal-input" accept="image/*,.pdf,application/pdf">
+                        <small id="document-hint" style="display:block; margin-top:6px; color:#6c757d;">รองรับไฟล์รูปภาพและ PDF</small>
+                    </div>
+                    <div class="swal-form-group">
+                        <label><i class="fas fa-map-marker-alt"></i> อัปเดตตำแหน่งย่อย (ถ้ามีการย้าย):</label>
+                        <input type="text" id="update-subloc" class="swal-input" value="${escapeHtml(item['ตำแหน่งย่อย (Sub-location)'] || '')}" placeholder="เช่น เตียง 1, รถ Emergency">
+                    </div>
+                    <div class="swal-form-group">
+                        <label><i class="fas fa-comment-dots"></i> หมายเหตุ:</label>
+                        <textarea id="update-note" class="swal-input" rows="2" placeholder="ระบุข้อมูลเพิ่มเติม (ถ้ามี)..."></textarea>
+                    </div>`,
+                showCancelButton: true,
+                confirmButtonText: '<i class="fas fa-save"></i> บันทึกข้อมูล',
+                cancelButtonText: 'ยกเลิก',
+                confirmButtonColor: '#003366',
+                showLoaderOnConfirm: true,
+                preConfirm: async () => {
+                    const status = document.querySelector('input[name="update-status"]:checked').value;
+                    const borrowedWard = document.getElementById('update-borrow').value;
+                    const subLocation = document.getElementById('update-subloc').value.trim();
+                    const note = document.getElementById('update-note').value.trim();
+                    const documentInput = document.getElementById('update-document');
+                    let imageBase64 = '';
+                    let mimeType = '';
+                    let imageName = '';
+                    const requiresBorrowWard = status === 'ถูกยืม';
+                    const requiresEvidence = status === 'รอจำหน่าย' || status === 'แทงจำหน่าย';
+                    if (requiresBorrowWard && !borrowedWard) {
+                        Swal.showValidationMessage('กรุณาเลือกหน่วยงานที่ยืมไปใช้');
+                        return false;
+                    }
+                    if (requiresBorrowWard && normalizeWard(borrowedWard) === normalizeWard(currentWard || item._usageWard || item._ownerWard)) {
+                        Swal.showValidationMessage('หน่วยงานปลายทางต้องไม่ใช่หน่วยงานเดียวกับผู้บันทึก');
+                        return false;
+                    }
+                    if (requiresEvidence && documentInput.files.length === 0) {
+                        Swal.showValidationMessage('กรุณาแนบเอกสารประกอบก่อนบันทึก');
+                        return false;
+                    }
+                    if (documentInput.files.length > 0) {
+                        const file = documentInput.files[0];
+                        mimeType = file.type;
+                        const extension = file.name && file.name.includes('.') ? file.name.split('.').pop() : 'bin';
+                        imageName = `${item['เลขครุภัณฑ์']}_${Date.now()}.${extension}`;
+                        const reader = new FileReader();
+                        imageBase64 = await new Promise((resolve, reject) => {
+                            reader.onload = (e) => resolve(e.target.result.split(',')[1]);
+                            reader.onerror = reject;
+                            reader.readAsDataURL(file);
+                        });
+                    }
+                    const itemKey = getEquipmentPrimaryKey(item);
+                    if (!itemKey) {
+                        Swal.showValidationMessage('รายการนี้ไม่มีเลขครุภัณฑ์หรือ RMC No จึงไม่สามารถระบุตำแหน่งแถวในฐานข้อมูลได้');
+                        return false;
+                    }
+                    const payload = {
+                        action: 'updateStatus',
+                        ward: currentWard || item._usageWard || item._ownerWard,
+                        itemId: itemKey,
+                        originalItemId: item['เลขครุภัณฑ์'] || '',
+                        rmcNo: item['RMC No'] || '',
+                        status,
+                        borrowedWard,
+                        subLocation,
+                        note,
+                        imageBase64,
+                        mimeType,
+                        imageName
+                    };
+                    try {
+                        await ensureEquipmentApiVersionCurrent();
+                        const submittedAt = new Date();
+                        const result = await apiPostJson(payload);
+                        if (result.status !== 'success') throw new Error(result.message);
+                        assertSaveCommittedByApi(result);
+                        const latestItem = await verifyInspectionSaved(item, status, borrowedWard, submittedAt, result.data && result.data.updatedItem);
+                        if (status === 'แทงจำหน่าย') {
+                            const deleteResult = await apiPostJson({ action: 'deleteEquipment', itemId: payload.itemId });
+                            if (deleteResult.status !== 'success') throw new Error(deleteResult.message || 'ไม่สามารถลบรายการออกจากระบบได้');
+                        }
+                        return { ...result, latestItem };
+                    } catch (error) {
+                        Swal.showValidationMessage(`การบันทึกขัดข้อง: ${error}`);
+                        return false;
+                    }
+                },
+                allowOutsideClick: () => !Swal.isLoading()
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    if (result.value && result.value.latestItem && getEquipmentPrimaryKey(result.value.latestItem)) {
+                        upsertLocalEquipmentItem(result.value.latestItem);
+                    }
+                    Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ!', text: 'อัปเดตข้อมูลเรียบร้อยแล้ว', timer: 1500, showConfirmButton: false }).then(() => {
+                        setLoadingState(true);
+                        fetchEquipment();
+                    });
+                }
+            });
+        }
+
+        function openManageModal(item) {
+            return openUpdateModal(prepareEquipmentItem(item));
+        }
+
+        function renderInspectionCards(ownedItems, borrowedItems) {
+            const availability = getInspectionAvailabilityState();
+            const closedTitle = 'ระบบยังไม่เปิดให้ตรวจนับในช่วงนี้';
+            const closedMessage = availability.message;
+            document.getElementById('pendingOwnedCount').innerText = `${ownedItems.length} รายการ`;
+            document.getElementById('pendingBorrowedInCount').innerText = `${borrowedItems.length} รายการ`;
+            renderItemCardsIntoContainer(
+                'equipmentListOwned',
+                ownedItems,
+                availability.allowed ? 'ไม่มีรายการของหน่วยงานที่ถึงรอบตรวจในเดือนนี้' : closedTitle,
+                availability.allowed ? 'ถ้าตรวจครบแล้ว รายการจะไม่แสดงในรอบเดือนนี้อีก' : closedMessage
+            );
+            renderItemCardsIntoContainer(
+                'equipmentListBorrowedIn',
+                borrowedItems,
+                availability.allowed ? 'ไม่มีรายการยืมจากหน่วยงานอื่นที่ถึงรอบตรวจ' : closedTitle,
+                availability.allowed ? 'รายการที่ถูกยืมมาใช้งานจะแสดงในส่วนนี้' : closedMessage
+            );
+        }
+
+        function renderItemCardsIntoContainer(containerId, data, emptyTitle, emptyMessage) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            container.innerHTML = '';
+            const inspectionAvailability = getInspectionAvailabilityState();
+            const inspectionDisabled = !inspectionAvailability.allowed && !isAdminLoggedIn;
+            const disabledAttr = inspectionDisabled ? 'disabled' : '';
+            const disabledTitle = inspectionDisabled ? `title="${escapeHtml(inspectionAvailability.message)}"` : '';
+
+            if (!data.length) {
+                container.innerHTML = createEmptyStateHtml(emptyTitle, emptyMessage);
+                return;
+            }
+
+            data.forEach((item) => {
+                const statusClass = getStatusClass(item._statusText);
+                const statusIcon = getStatusIcon(item._statusText);
+                const safeItemJson = JSON.stringify(item).replace(/"/g, '&quot;');
+                const brandText = escapeHtml(item['ยี่ห้อ'] || '-');
+                const modelText = escapeHtml(item['ชื่อรุ่น'] || '-');
+                const ownerUsageInfo = item._ownerWard === item._usageWard
+                    ? `<span class="info-item"><i class="fas fa-building"></i> หน่วยงาน: <strong>${escapeHtml(item._usageWard || '-')}</strong></span>`
+                    : `
+                        <span class="info-item"><i class="fas fa-warehouse"></i> เจ้าของ: <strong>${escapeHtml(item._ownerWard || '-')}</strong></span>
+                        <span class="info-item"><i class="fas fa-right-left"></i> ใช้งานที่: <strong>${escapeHtml(item._usageWard || '-')}</strong></span>
+                    `;
+
+                const card = document.createElement('div');
+                card.className = 'item-card';
+                card.innerHTML = `
+                    <div class="item-details">
+                        <h4>${escapeHtml(item['ชื่อครุภัณฑ์'] || 'ไม่ระบุชื่อ')} ${getRiskHtml(item)}</h4>
+                        <div style="font-size:0.95rem; font-weight:400; color:#5f6b7a; margin-top:-4px; margin-bottom:8px;">
+                            ยี่ห้อ: ${brandText} / รุ่น: ${modelText}
+                        </div>
+                        <div class="info-row">
+                            <span class="info-item"><i class="fas fa-fingerprint"></i> RMC: <strong>${escapeHtml(item['RMC No'] || '-')}</strong></span>
+                            <span class="info-item"><i class="fas fa-barcode"></i> ID: <strong>${escapeHtml(item['เลขครุภัณฑ์'] || '-')}</strong></span>
+                            ${ownerUsageInfo}
+                            <span class="info-item"><i class="fas fa-map-marker-alt"></i> จุด: <strong>${escapeHtml(item['ตำแหน่งย่อย (Sub-location)'] || '-')}</strong></span>
+                            <span class="info-item"><i class="fas fa-clock"></i> ตรวจทุก: <strong>${escapeHtml(getInspectionFrequency(item))} เดือน</strong></span>
+                        </div>
+                    </div>
+                    <div class="item-actions">
+                        <span class="status-badge ${statusClass}">${statusIcon} ${escapeHtml(item._statusText || 'ปกติ')}</span>
+                        <button class="btn btn-primary btn-sm" onclick="openManageModal(${safeItemJson})" ${disabledAttr} ${disabledTitle}>
+                            <i class="fas fa-check"></i> บันทึกการตรวจ
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function renderTableRows(elementId, items, emptyMessage) {
+            const tbody = document.getElementById(elementId);
+            if (!tbody) return;
+            if (!items.length) {
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:20px;">${escapeHtml(emptyMessage)}</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = '';
+            items.forEach((item) => {
+                const statusClass = getStatusClass(item._statusText);
+                const safeItemJson = JSON.stringify(item).replace(/"/g, '&quot;');
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="color:#666; font-size:0.9rem;">${escapeHtml(item['RMC No'] || '-')}</td>
+                    <td><strong>${escapeHtml(item['เลขครุภัณฑ์'] || '-')}</strong></td>
+                    <td>
+                        ${escapeHtml(item['ชื่อครุภัณฑ์'] || '-')}<br>
+                        <small style="color:#666;">ยี่ห้อ/รุ่น: ${escapeHtml(item['ยี่ห้อ'] || '-')} / ${escapeHtml(item['ชื่อรุ่น'] || '-')}</small>
+                    </td>
+                    <td>${escapeHtml(item._ownerWard || '-')}</td>
+                    <td>${escapeHtml(item._usageWard || '-')}</td>
+                    <td>${escapeHtml(getInspectionFrequency(item))} เดือน</td>
+                    <td style="color:#28a745; font-size:0.9rem;">${escapeHtml(getLastInspectionText(item, 'ยังไม่เคยตรวจ'))}</td>
+                    <td><span class="status-badge ${statusClass}" style="font-size:0.75rem;">${escapeHtml(item._statusText || 'ปกติ')}</span></td>
+                    <td>
+                        <button class="btn btn-outline btn-sm" onclick="showDetailsModal(${safeItemJson})">
+                            <i class="fas fa-search"></i> ดูข้อมูล
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderActiveView() {
+            const scoped = getWardScopedData(currentSearchTerm, currentAllStatusFilter);
+            document.getElementById('pendingBadge').innerText = scoped.pendingOwned.length + scoped.pendingBorrowedIn.length;
+            document.getElementById('allCountTab').innerText = scoped.visibleItems.length;
+            document.getElementById('borrowedOutCountTab').innerText = scoped.borrowedOut.length;
+            document.getElementById('repairCountTab').innerText = scoped.repair.length + scoped.awaitDisposal.length;
+            if (currentActiveTab === 'inspection') {
+                renderInspectionCards(scoped.pendingOwned, scoped.pendingBorrowedIn);
+            } else if (currentActiveTab === 'all') {
+                const filteredScoped = getWardScopedData(currentSearchTerm, currentAllStatusFilter);
+                document.getElementById('allOwnedCount').innerText = `${filteredScoped.ownedCurrent.length} รายการ`;
+                document.getElementById('allBorrowedInCount').innerText = `${filteredScoped.borrowedIn.length} รายการ`;
+                renderTableRows('allEquipmentTableBodyOwned', filteredScoped.ownedCurrent, 'ไม่มีรายการของหน่วยงานตามเงื่อนไขที่เลือก');
+                renderTableRows('allEquipmentTableBodyBorrowedIn', filteredScoped.borrowedIn, 'ไม่มีรายการยืมจากหน่วยงานอื่นตามเงื่อนไขที่เลือก');
+            } else if (currentActiveTab === 'borrowed-out') {
+                document.getElementById('borrowedOutCount').innerText = `${scoped.borrowedOut.length} รายการ`;
+                renderTableRows('borrowedOutTableBody', scoped.borrowedOut, 'ไม่มีรายการที่ถูกยืมไปใช้หน่วยงานอื่น');
+            } else if (currentActiveTab === 'repair') {
+                document.getElementById('repairCount').innerText = `${scoped.repair.length} รายการ`;
+                document.getElementById('awaitDisposalCount').innerText = `${scoped.awaitDisposal.length} รายการ`;
+                renderTableRows('repairTableBody', scoped.repair, 'ไม่มีรายการสถานะส่งซ่อม');
+                renderTableRows('awaitDisposalTableBody', scoped.awaitDisposal, 'ไม่มีรายการสถานะรอจำหน่าย');
+            } else if (currentActiveTab === 'admin') {
+                renderAdminTable(filteredEquipment);
+                renderAdminDashboard(filteredEquipment);
+            }
+        }
+
+        function switchTab(tabName) {
+            currentActiveTab = tabName;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.getElementById(`tab-${tabName}`);
+            if (activeBtn) activeBtn.classList.add('active');
+            ['inspection', 'all', 'borrowed-out', 'repair', 'admin'].forEach(name => {
+                const view = document.getElementById(`view-${name}`);
+                if (view) view.classList.add('hidden');
+            });
+            const view = document.getElementById(`view-${tabName}`);
+            if (view) view.classList.remove('hidden');
+            if (tabName === 'admin' && isAdminLoggedIn) {
+                renderAdminTable(filteredEquipment);
+                renderAdminDashboard(filteredEquipment);
+                return;
+            }
+            renderActiveView();
+        }
+
+        function updateDashboardStats() {
+            const scoped = getWardScopedData();
+            const statItems = isAdminLoggedIn ? filteredEquipment : scoped.visibleItems;
+            let normalCount = 0, brokenCount = 0, disposedCount = 0;
+            statItems.forEach(item => {
+                const status = normalizeStatusForFilter(item._statusText);
+                if (status === 'ปกติ' || status === 'ถูกยืม') normalCount++;
+                else if (status === 'ชำรุดส่งซ่อม' || status === 'รอจำหน่าย') brokenCount++;
+                else if (status === 'แทงจำหน่าย') disposedCount++;
+            });
+            document.getElementById('stat-total').innerText = statItems.length;
+            document.getElementById('stat-normal').innerText = normalCount;
+            document.getElementById('stat-broken').innerText = brokenCount;
+            document.getElementById('stat-disposed').innerText = disposedCount;
+            renderActiveView();
+        }
+
+        function processSearchOrScan(searchValue) {
+            currentSearchTerm = String(searchValue || '').trim();
+            if (isAdminLoggedIn && currentActiveTab === 'admin') {
+                filterAdminByWard();
+                return;
+            }
+            renderActiveView();
+        }
+
+        function getWardOwnedItemsForPrint() {
+            const ward = normalizeWard(currentWard);
+            return allEquipment.filter(item => item._ownerWard === ward);
+        }
+
+        document.addEventListener('DOMContentLoaded', bootstrapEquipmentPage);
     </script>
 </body>
 </html>
+
+
