@@ -408,7 +408,7 @@
             <div class="action-bar">
                 <button id="btnWardPrint" class="btn btn-outline hidden" onclick="openWardPrintModal()"><i class="fas fa-print"></i> พิมพ์ป้าย QR หน่วยงาน</button>
                 <button class="btn btn-outline" onclick="refreshCurrentData()"><i class="fas fa-rotate"></i> รีเฟรช</button>
-                <input type="text" id="searchInput" class="search-box" placeholder="ค้นหาชื่อ, เลขครุภัณฑ์, ยี่ห้อ, ตำแหน่ง...">
+                <input type="text" id="searchInput" class="search-box" placeholder="ค้นหาชื่อ, เลขครุภัณฑ์, ยี่ห้อ, ตำแหน่ง, รายละเอียด...">
                 <button id="btnScanQr" class="btn btn-accent" onclick="toggleScanner()"><i class="fas fa-qrcode"></i> สแกน QR</button>
                 <button class="btn btn-success" onclick="exportToCSV()"><i class="fas fa-file-excel"></i> ส่งออกไฟล์ (Excel)</button>
             </div>
@@ -2248,13 +2248,15 @@
         function matchesSearchTerm(item, searchTerm) {
             if (!searchTerm) return true;
             const term = searchTerm.toLowerCase();
+            
             return String(item['ชื่อครุภัณฑ์'] || '').toLowerCase().includes(term) ||
                 String(item['เลขครุภัณฑ์'] || '').toLowerCase().includes(term) ||
                 String(item['RMC No'] || '').toLowerCase().includes(term) ||
                 String(item['ยี่ห้อ'] || '').toLowerCase().includes(term) ||
                 String(item['ตำแหน่งย่อย (Sub-location)'] || '').toLowerCase().includes(term) ||
                 String(item._ownerWard || '').toLowerCase().includes(term) ||
-                String(item._usageWard || '').toLowerCase().includes(term);
+                String(item._usageWard || '').toLowerCase().includes(term) ||
+                String(item['รายละเอียดครุภัณฑ์'] || item.detailLink || '').toLowerCase().includes(term); // <--- เพิ่มบรรทัดนี้เพื่อเช็ครายละเอียด/ลิงก์
         }
 
         function normalizeStatusForFilter(status) {
