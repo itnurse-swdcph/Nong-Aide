@@ -1324,8 +1324,17 @@
             }
 
             if (scannerRunning && html5QrcodeScanner) {
-                await html5QrcodeScanner.stop();
-                await html5QrcodeScanner.clear();
+                try {
+                    await html5QrcodeScanner.stop();
+                } catch (error) {
+                    console.warn('Unable to stop scanner cleanly:', error);
+                }
+                try {
+                    await html5QrcodeScanner.clear();
+                } catch (error) {
+                    console.warn('Unable to clear scanner cleanly:', error);
+                }
+                html5QrcodeScanner = null;
                 scannerRunning = false;
                 scanInProgress = false;
                 reader.style.display = 'none';
@@ -1333,51 +1342,109 @@
                 return;
             }
 
+            const handleQrDecoded = async (decodedText) => {
+                const value = String(decodedText || '').trim();
+                const now = Date.now();
+                if (!value || scanInProgress) return;
+                if (value === lastScannedQrValue && (now - lastScannedQrAt) < 1500) return;
+
+                scanInProgress = true;
+                lastScannedQrValue = value;
+                lastScannedQrAt = now;
+                document.getElementById('searchInput').value = value;
+                try {
+                    const matchedItem = await processSearchOrScan(value, { forceCrossWard: true, openPulledItem: true, notifyOnDuplicate: true });
+                    await toggleScanner();
+                    if (matchedItem) openUpdateModal(matchedItem);
+                } finally {
+                    scanInProgress = false;
+                }
+            };
+
+            const qrScannerConfig = {
+                fps: 12,
+                disableFlip: false,
+                aspectRatio: 1,
+                qrbox: (viewfinderWidth, viewfinderHeight) => {
+                    const size = Math.max(220, Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.85));
+                    return { width: size, height: size };
+                }
+            };
+
+            const startAttempts = [];
+            startAttempts.push({
+                label: 'rear-camera-hd',
+                cameraConfig: {
+                    facingMode: 'environment',
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            });
+            startAttempts.push({
+                label: 'rear-camera-basic',
+                cameraConfig: { facingMode: 'environment' }
+            });
+            startAttempts.push({
+                label: 'rear-camera-ideal',
+                cameraConfig: { facingMode: { ideal: 'environment' } }
+            });
+
+            if (window.Html5Qrcode && typeof Html5Qrcode.getCameras === 'function') {
+                try {
+                    const cameras = await Html5Qrcode.getCameras();
+                    const rearCamera = cameras.find(camera => /back|rear|environment/i.test(String(camera.label || ''))) || cameras[cameras.length - 1];
+                    if (rearCamera && rearCamera.id) {
+                        startAttempts.push({
+                            label: 'device-id-camera',
+                            cameraConfig: { deviceId: { exact: rearCamera.id } }
+                        });
+                    }
+                } catch (error) {
+                    console.warn('Unable to enumerate cameras, continuing with facingMode fallback:', error);
+                }
+            }
+
             reader.style.display = 'block';
             html5QrcodeScanner = new Html5Qrcode('qr-reader');
             scanInProgress = false;
+            let lastStartError = null;
             try {
-                await html5QrcodeScanner.start(
-                    {
-                        facingMode: 'environment',
-                        width: { ideal: 1920 },
-                        height: { ideal: 1080 },
-                        advanced: [{ focusMode: 'continuous' }]
-                    },
-                    {
-                        fps: 15,
-                        aspectRatio: 1,
-                        disableFlip: false,
-                        qrbox: (viewfinderWidth, viewfinderHeight) => {
-                            const size = Math.max(220, Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.85));
-                            return { width: size, height: size };
-                        }
-                    },
-                    async (decodedText) => {
-                        const value = String(decodedText || '').trim();
-                        const now = Date.now();
-                        if (!value || scanInProgress) return;
-                        if (value === lastScannedQrValue && (now - lastScannedQrAt) < 1500) return;
-
-                        scanInProgress = true;
-                        lastScannedQrValue = value;
-                        lastScannedQrAt = now;
-                        document.getElementById('searchInput').value = value;
+                for (const attempt of startAttempts) {
+                    try {
+                        await html5QrcodeScanner.start(
+                            attempt.cameraConfig,
+                            qrScannerConfig,
+                            handleQrDecoded
+                        );
+                        scannerRunning = true;
+                        scanButton.innerHTML = '<i class="fas fa-times"></i> ปิดสแกน';
+                        return;
+                    } catch (error) {
+                        lastStartError = error;
+                        console.warn(`QR scanner start failed (${attempt.label}):`, error);
                         try {
-                            const matchedItem = await processSearchOrScan(value, { forceCrossWard: true, openPulledItem: true, notifyOnDuplicate: true });
-                            await toggleScanner();
-                            if (matchedItem) openUpdateModal(matchedItem);
-                        } finally {
-                            scanInProgress = false;
+                            await html5QrcodeScanner.clear();
+                        } catch (clearError) {
+                            console.warn('Unable to clear scanner after failed start:', clearError);
                         }
+                        html5QrcodeScanner = new Html5Qrcode('qr-reader');
                     }
-                );
-                scannerRunning = true;
-                scanButton.innerHTML = '<i class="fas fa-times"></i> ปิดสแกน';
+                }
+
+                throw lastStartError || new Error('ไม่สามารถเริ่มต้นกล้องสแกนได้');
             } catch (error) {
                 reader.style.display = 'none';
+                html5QrcodeScanner = null;
+                scannerRunning = false;
                 scanInProgress = false;
-                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเปิดกล้องสำหรับสแกน QR ได้', 'error');
+                const errorMessage = String((error && error.message) || error || '').trim();
+                Swal.fire(
+                    'ข้อผิดพลาด',
+                    errorMessage
+                        ? `ไม่สามารถเปิดกล้องสำหรับสแกน QR ได้\n${errorMessage}`
+                        : 'ไม่สามารถเปิดกล้องสำหรับสแกน QR ได้ กรุณาอนุญาตสิทธิ์กล้องแล้วลองใหม่อีกครั้ง',
+                    'error'
+                );
             }
         }
 
