@@ -739,7 +739,7 @@
         const THAI_MONTH_NAMES = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
         const LOCAL_INSPECTION_WINDOW_KEY = 'aide_inspection_windows_v1';
         const API_TIMEOUT_MS = 30000;
-        const EXPECTED_EQUIPMENT_API_VERSION = '2026-05-05-inspection-window-sync-v3';
+        const EXPECTED_EQUIPMENT_API_VERSION = '2026-05-05-inspection-window-datetime-v4';
         let verifiedApiVersion = '';
         let allEquipmentUniverse = [];
         let crossWardSearchSeq = 0;
@@ -1026,6 +1026,58 @@
             return `${year}-${month}-${day}`;
         }
 
+        function formatLocalDateTime(date) {
+            if (!(date instanceof Date) || isNaN(date)) return '';
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${year}-${month}-${day}T${hours}:${minutes}`;
+        }
+
+        function parseInspectionWindowDateTime(value, boundary = 'start') {
+            if (!value && value !== 0) return null;
+
+            if (value instanceof Date) {
+                if (isNaN(value)) return null;
+                const date = new Date(value.getTime());
+                if (
+                    boundary === 'end' &&
+                    date.getHours() === 0 &&
+                    date.getMinutes() === 0 &&
+                    date.getSeconds() === 0 &&
+                    date.getMilliseconds() === 0
+                ) {
+                    date.setHours(23, 59, 0, 0);
+                }
+                return date;
+            }
+
+            const text = String(value || '').trim();
+            if (!text) return null;
+            if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+                return new Date(`${text}T${boundary === 'end' ? '23:59:00' : '00:00:00'}`);
+            }
+
+            const normalizedText = text.replace(' ', 'T').replace(/Z$/, '');
+            if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(normalizedText)) {
+                const withSeconds = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(normalizedText)
+                    ? `${normalizedText}:00`
+                    : normalizedText;
+                const date = new Date(withSeconds);
+                return isNaN(date) ? null : date;
+            }
+
+            const fallbackDate = new Date(text);
+            return isNaN(fallbackDate) ? null : fallbackDate;
+        }
+
+        function normalizeInspectionWindowDateTime(value, boundary = 'start') {
+            const date = parseInspectionWindowDateTime(value, boundary);
+            return date ? formatLocalDateTime(date) : '';
+        }
+
         function getInspectionPeriodKey(year, month) {
             return `${year}-${String(month).padStart(2, '0')}`;
         }
@@ -1035,8 +1087,8 @@
 
             const targetYear = Number(raw.targetYear || raw.year);
             const targetMonth = Number(raw.targetMonth || raw.month);
-            const openDate = formatISODate(raw.openDate);
-            const closeDate = formatISODate(raw.closeDate);
+            const openDate = normalizeInspectionWindowDateTime(raw.openDate, 'start');
+            const closeDate = normalizeInspectionWindowDateTime(raw.closeDate, 'end');
 
             if (!targetYear || targetMonth < 1 || targetMonth > 12 || !openDate || !closeDate) return null;
 
@@ -1055,8 +1107,8 @@
             const bUpdatedAt = b && b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
             if (aUpdatedAt !== bUpdatedAt) return aUpdatedAt - bUpdatedAt;
 
-            const aCloseAt = a && a.closeDate ? new Date(`${a.closeDate}T00:00:00`).getTime() : 0;
-            const bCloseAt = b && b.closeDate ? new Date(`${b.closeDate}T00:00:00`).getTime() : 0;
+            const aCloseAt = a && a.closeDate ? (parseInspectionWindowDateTime(a.closeDate, 'end') || new Date(0)).getTime() : 0;
+            const bCloseAt = b && b.closeDate ? (parseInspectionWindowDateTime(b.closeDate, 'end') || new Date(0)).getTime() : 0;
             if (aCloseAt !== bCloseAt) return aCloseAt - bCloseAt;
 
             return 0;
@@ -1075,8 +1127,8 @@
                 });
 
             return [...latestByPeriod.values()].sort((a, b) => {
-                const aDate = new Date(`${a.openDate}T00:00:00`).getTime();
-                const bDate = new Date(`${b.openDate}T00:00:00`).getTime();
+                const aDate = (parseInspectionWindowDateTime(a.openDate, 'start') || new Date(0)).getTime();
+                const bDate = (parseInspectionWindowDateTime(b.openDate, 'start') || new Date(0)).getTime();
                 if (aDate !== bDate) return aDate - bDate;
                 return String(a.periodKey || '').localeCompare(String(b.periodKey || ''));
             });
@@ -1500,11 +1552,12 @@
 
             const seedWindow = getInspectionDisplayWindow();
             const today = new Date();
-            const defaultCloseDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 5);
+            const defaultOpenDateTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), today.getHours(), today.getMinutes(), 0, 0);
+            const defaultCloseDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 5, 23, 59, 0, 0);
             const defaultTargetMonth = seedWindow ? seedWindow.targetMonth : (today.getMonth() + 1);
             const defaultTargetYear = seedWindow ? (seedWindow.targetYear + 543) : (today.getFullYear() + 543);
-            const defaultOpenDate = (seedWindow && seedWindow.openDate) || formatISODate(today);
-            const defaultCloseDateText = (seedWindow && seedWindow.closeDate) || formatISODate(defaultCloseDate);
+            const defaultOpenDate = (seedWindow && seedWindow.openDate) || formatLocalDateTime(defaultOpenDateTime);
+            const defaultCloseDateText = (seedWindow && seedWindow.closeDate) || formatLocalDateTime(defaultCloseDate);
             const availability = getInspectionAvailabilityState();
             const monthOptionsHtml = THAI_MONTH_NAMES.map((monthName, index) => {
                 const monthValue = index + 1;
@@ -1529,14 +1582,14 @@
                             </div>
                         </div>
                         <div class="swal-form-group">
-                            <label><i class="fas fa-door-open"></i> วันเปิดระบบ</label>
-                            <input type="date" id="scheduleOpenDate" class="swal-input" value="${defaultOpenDate}">
+                            <label><i class="fas fa-door-open"></i> วันและเวลาเปิดระบบ</label>
+                            <input type="datetime-local" id="scheduleOpenDate" class="swal-input" value="${defaultOpenDate}">
                         </div>
                         <div class="swal-form-group">
-                            <label><i class="fas fa-door-closed"></i> วันปิดระบบ</label>
-                            <input type="date" id="scheduleCloseDate" class="swal-input" value="${defaultCloseDateText}">
+                            <label><i class="fas fa-door-closed"></i> วันและเวลาปิดระบบ</label>
+                            <input type="datetime-local" id="scheduleCloseDate" class="swal-input" value="${defaultCloseDateText}">
                         </div>
-                        <small style="display:block; margin-top:8px; color:#666;">ตัวอย่าง: เปิดรอบ พฤษภาคม 2569 โดยกำหนดช่วงใช้งาน 30 เมษายน 2569 - 5 พฤษภาคม 2569 ได้</small>
+                        <small style="display:block; margin-top:8px; color:#666;">ตัวอย่าง: เปิดรอบ พฤษภาคม 2569 ช่วง 30 เมษายน 2569 เวลา 08:00 ถึง 8 พฤษภาคม 2569 เวลา 17:00 ได้</small>
                     </div>
                 `,
                 showCancelButton: true,
@@ -1570,8 +1623,8 @@
                         return false;
                     }
 
-                    if (parseISODate(record.openDate) > parseISODate(record.closeDate)) {
-                        Swal.showValidationMessage('วันปิดระบบต้องไม่เร็วกว่าวันเปิดระบบ');
+                    if (parseInspectionWindowDateTime(record.openDate, 'start') > parseInspectionWindowDateTime(record.closeDate, 'end')) {
+                        Swal.showValidationMessage('วันและเวลาปิดระบบต้องไม่เร็วกว่าวันและเวลาเปิดระบบ');
                         return false;
                     }
 
@@ -2414,15 +2467,15 @@
 
         function evaluateInspectionWindowRecords(records, source = 'local') {
             const normalizedRecords = dedupeInspectionWindowRecords(Array.isArray(records) ? records : []);
-            const today = toStartOfDay(new Date());
+            const now = new Date();
             const activeWindow = normalizedRecords.find(record => {
-                const openDate = toStartOfDay(record.openDate);
-                const closeDate = toStartOfDay(record.closeDate);
-                return openDate && closeDate && today >= openDate && today <= closeDate;
+                const openDate = parseInspectionWindowDateTime(record.openDate, 'start');
+                const closeDate = parseInspectionWindowDateTime(record.closeDate, 'end');
+                return openDate && closeDate && now >= openDate && now <= closeDate;
             }) || null;
             const upcomingWindow = normalizedRecords.find(record => {
-                const openDate = toStartOfDay(record.openDate);
-                return openDate && openDate > today;
+                const openDate = parseInspectionWindowDateTime(record.openDate, 'start');
+                return openDate && openDate > now;
             }) || null;
             const latestWindow = normalizedRecords.length ? normalizedRecords[normalizedRecords.length - 1] : null;
             return { hasConfiguredWindow: normalizedRecords.length > 0, isActive: Boolean(activeWindow), activeWindow, upcomingWindow, latestWindow, source };
@@ -2453,9 +2506,15 @@
         }
 
         function formatThaiDate(value) {
-            const date = value instanceof Date ? value : parseISODate(value);
+            const date = value instanceof Date ? value : parseInspectionWindowDateTime(value, 'start');
             if (!date || isNaN(date)) return '-';
-            return date.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+            return date.toLocaleString('th-TH', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
         }
 
         function updateInspectionWindowNotice() {
@@ -2467,7 +2526,7 @@
                 return;
             }
             if (inspectionWindowStatus.activeWindow) {
-                noteBox.innerHTML = `<strong>รอบที่เปิดใช้งาน:</strong> ${formatInspectionPeriodLabel(displayWindow)} <strong>ช่วงวันที่:</strong> ${formatThaiDate(displayWindow.openDate)} - ${formatThaiDate(displayWindow.closeDate)}`;
+                noteBox.innerHTML = `<strong>รอบที่เปิดใช้งาน:</strong> ${formatInspectionPeriodLabel(displayWindow)} <strong>ช่วงเวลา:</strong> ${formatThaiDate(displayWindow.openDate)} - ${formatThaiDate(displayWindow.closeDate)}`;
                 return;
             }
             noteBox.innerHTML = displayWindow
@@ -2480,10 +2539,10 @@
             if (!inspectionWindowStatus.hasConfiguredWindow) return { allowed: true, message: 'ยังไม่ได้ตั้งรอบเปิดระบบรายเดือน ระบบจึงเปิดใช้งานตามปกติ', source: inspectionWindowStatus.source };
             if (inspectionWindowStatus.activeWindow) {
                 const activeWindow = inspectionWindowStatus.activeWindow;
-                return { allowed: true, message: `ระบบเปิดสำหรับรอบ ${formatInspectionPeriodLabel(activeWindow)} วันที่ ${formatThaiDate(activeWindow.openDate)} - ${formatThaiDate(activeWindow.closeDate)}`, source: inspectionWindowStatus.source };
+                return { allowed: true, message: `ระบบเปิดสำหรับรอบ ${formatInspectionPeriodLabel(activeWindow)} ช่วง ${formatThaiDate(activeWindow.openDate)} - ${formatThaiDate(activeWindow.closeDate)}`, source: inspectionWindowStatus.source };
             }
             const displayWindow = getInspectionDisplayWindow();
-            return { allowed: false, message: displayWindow ? `ระบบปิดอยู่ ขณะนี้กำหนดรอบ ${formatInspectionPeriodLabel(displayWindow)} ไว้วันที่ ${formatThaiDate(displayWindow.openDate)} - ${formatThaiDate(displayWindow.closeDate)}` : 'ระบบยังไม่เปิดให้ตรวจนับในช่วงนี้', source: inspectionWindowStatus.source };
+            return { allowed: false, message: displayWindow ? `ระบบปิดอยู่ ขณะนี้กำหนดรอบ ${formatInspectionPeriodLabel(displayWindow)} ไว้ช่วง ${formatThaiDate(displayWindow.openDate)} - ${formatThaiDate(displayWindow.closeDate)}` : 'ระบบยังไม่เปิดให้ตรวจนับในช่วงนี้', source: inspectionWindowStatus.source };
         }
 
         function ensureInspectionWindowOpenForStaff() {
