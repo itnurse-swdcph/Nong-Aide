@@ -748,6 +748,7 @@
         let scanInProgress = false;
         let lastScannedQrValue = '';
         let lastScannedQrAt = 0;
+        let wardOptionsLoadedFromApi = false;
 
         function buildApiUrl(action, params = {}) {
             const url = new URL(EQUIPMENT_API);
@@ -2616,12 +2617,15 @@
         }
 
         async function ensureWardOptionsLoaded() {
-            if (wardOptions.length > 1) return;
+            if (wardOptionsLoadedFromApi) return;
             if (!WARD_API || WARD_API === "YOUR_WEB_APP_URL_FROM_GAS_HERE") return;
             try {
                 const response = await fetch(WARD_API, { cache: 'no-store' });
                 const result = await response.json();
-                if (result.status === 'success' && Array.isArray(result.data)) mergeWardOptions(result.data);
+                if (result.status === 'success' && Array.isArray(result.data)) {
+                    mergeWardOptions(result.data);
+                    wardOptionsLoadedFromApi = true;
+                }
             } catch (error) {
                 console.error('Error fetching ward master:', error);
             }
