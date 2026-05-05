@@ -709,7 +709,7 @@
         const THAI_MONTH_NAMES = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
         const LOCAL_INSPECTION_WINDOW_KEY = 'aide_inspection_windows_v1';
         const API_TIMEOUT_MS = 30000;
-        const EXPECTED_EQUIPMENT_API_VERSION = '2026-05-05-commit-verified-status-map';
+        const EXPECTED_EQUIPMENT_API_VERSION = '2026-05-05-rmc-primary-verified-save';
         let verifiedApiVersion = '';
 
         function buildApiUrl(action, params = {}) {
@@ -771,12 +771,18 @@
             return isNaN(date) ? null : date;
         }
 
-        async function fetchLatestEquipmentItem(itemId) {
+        async function fetchLatestEquipmentItem(item) {
             const result = await apiGetJson('getAllItems');
             if (result.status !== 'success' || !Array.isArray(result.data)) {
                 throw new Error('ไม่สามารถตรวจสอบข้อมูลหลังบันทึกได้');
             }
-            return result.data.find(entry => String(entry['เลขครุภัณฑ์'] || '').trim() === String(itemId || '').trim()) || null;
+            const rmcNo = String((item && item['RMC No']) || '').trim();
+            const itemId = String((item && item['เลขครุภัณฑ์']) || item || '').trim();
+            if (rmcNo) {
+                return result.data.find(entry => String(entry['RMC No'] || '').trim() === rmcNo) || null;
+            }
+            const matches = result.data.filter(entry => String(entry['เลขครุภัณฑ์'] || '').trim() === itemId);
+            return matches.length === 1 ? matches[0] : null;
         }
 
         function normalizeEquipmentItemFromApi(item) {
@@ -803,7 +809,7 @@
         }
 
         async function verifyInspectionSaved(item, status, borrowedWard = '', submittedAt = new Date(), updatedItem = null) {
-            const latestItem = updatedItem ? normalizeEquipmentItemFromApi(updatedItem) : await fetchLatestEquipmentItem(item['เลขครุภัณฑ์']);
+            const latestItem = updatedItem ? normalizeEquipmentItemFromApi(updatedItem) : await fetchLatestEquipmentItem(item);
             const persisted = wasInspectionPersisted(latestItem, {
                 status,
                 borrowedWard,
@@ -812,7 +818,7 @@
             });
 
             if (!persisted) {
-                throw new Error(`API ตอบว่าสำเร็จ แต่ข้อมูลครุภัณฑ์เลข ${item['เลขครุภัณฑ์']} ยังไม่ถูกอัปเดตในฐานข้อมูลจริง กรุณาตรวจสอบว่า Apps Script ถูก Deploy เป็นเวอร์ชันล่าสุด และ URL ในหน้าเว็บชี้ไปยัง deployment เดียวกัน`);
+                throw new Error(`API ตอบว่าสำเร็จ แต่ข้อมูลครุภัณฑ์ RMC ${item['RMC No'] || '-'} เลข ${item['เลขครุภัณฑ์'] || '-'} ยังไม่ถูกอัปเดตในฐานข้อมูลจริง กรุณาตรวจสอบว่า Apps Script ถูก Deploy เป็นเวอร์ชันล่าสุด และ URL ในหน้าเว็บชี้ไปยัง deployment เดียวกัน`);
             }
 
             return latestItem;
@@ -2167,7 +2173,7 @@
         }
 
         function getItemStatusText(item) {
-            return String(item['สถานะ'] || 'พร้อมใช้').trim();
+            return String(item['สถานะ'] || 'ปกติ').trim();
         }
 
         function isDisposedStatus(status) {
@@ -2368,7 +2374,7 @@
         }
 
         function getEquipmentPrimaryKey(item) {
-            return String((item && (item['เลขครุภัณฑ์'] || item['RMC No'])) || '').trim();
+            return String((item && (item['RMC No'] || item['เลขครุภัณฑ์'])) || '').trim();
         }
 
         function upsertLocalEquipmentItem(updatedItem) {
@@ -2379,7 +2385,8 @@
             const matches = item => {
                 const itemId = String(item['เลขครุภัณฑ์'] || '').trim();
                 const itemRmc = String(item['RMC No'] || '').trim();
-                return (updatedId && itemId === updatedId) || (updatedRmc && itemRmc === updatedRmc);
+                if (updatedRmc) return itemRmc === updatedRmc;
+                return updatedId && itemId === updatedId;
             };
             const index = allEquipment.findIndex(matches);
             if (index >= 0) allEquipment[index] = prepared;
@@ -2474,7 +2481,7 @@
                 width: 720,
                 html: `<div style="text-align:left; margin-bottom:15px; padding-bottom:10px; border-bottom:1px solid #eee;">
                         <b style="color: var(--primary); font-size:1.1rem;">${escapeHtml(item['ชื่อครุภัณฑ์'] || '-')}</b><br>
-                        <small style="color:#666;"><i class="fas fa-barcode"></i> เลข: ${escapeHtml(item['เลขครุภัณฑ์'] || '-')}</small>
+                        <small style="color:#666;"><i class="fas fa-fingerprint"></i> RMC: ${escapeHtml(item['RMC No'] || '-')} &nbsp; <i class="fas fa-barcode"></i> เลข: ${escapeHtml(item['เลขครุภัณฑ์'] || '-')}</small>
                     </div>
                     <div class="swal-form-group">
                         <label><i class="fas fa-flag"></i> สถานะการตรวจพบ:</label>
