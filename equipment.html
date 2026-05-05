@@ -86,7 +86,7 @@
         .data-table td { padding: 12px 15px; border-bottom: 1px solid #eee; color: #444; vertical-align: middle; }
         .data-table tbody tr:hover { background: #f8f9fa; }
 
-        #qr-reader { width: 100%; max-width: 400px; margin: 0 auto 20px auto; display: none; border-radius: 12px; overflow: hidden; border: 2px solid var(--primary); }
+        #qr-reader { width: 100%; max-width: 520px; margin: 0 auto 20px auto; display: none; border-radius: 12px; overflow: hidden; border: 2px solid var(--primary); background: #000; }
         .hidden { display: none !important; }
         
         .swal-form-group { text-align: left; margin-bottom: 15px; }
@@ -123,6 +123,13 @@
         .admin-data-table th { background: #003366; color: white; padding: 12px 15px; text-align: left; font-weight: 500; white-space: nowrap; }
         .admin-data-table td { padding: 15px; border-bottom: 1px solid #eee; color: #444; vertical-align: middle; }
         .admin-data-table tbody tr:hover { background: #f4f7f9; }
+        .admin-progress-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px; }
+        .admin-progress-card { background: #fff; border-radius: 14px; padding: 18px; border: 1px solid #dde6f2; box-shadow: 0 3px 12px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s; }
+        .admin-progress-card:hover { transform: translateY(-3px); box-shadow: 0 8px 18px rgba(0,0,0,0.08); border-color: #b8cae6; }
+        .admin-progress-card h4 { margin: 0 0 10px 0; color: var(--primary); font-size: 1rem; display: flex; align-items: center; gap: 8px; }
+        .admin-progress-card .progress-num { font-size: 2rem; font-weight: 600; color: var(--text-main); line-height: 1; }
+        .admin-progress-card .progress-label { margin-top: 8px; color: #5f6b7a; font-size: 0.9rem; line-height: 1.5; }
+        .admin-progress-card .progress-hint { margin-top: 10px; color: #7a8795; font-size: 0.82rem; }
 
         /* --- ปุ่มจัดการ (แก้ไข/ลบ) --- */
         .btn-edit-icon { background: #ffc107; color: #000; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 0.9rem;}
@@ -628,6 +635,26 @@
                         <canvas id="inspectChart" style="max-height: 250px;"></canvas>
                     </div>
                 </div>
+                <div id="adminProgressGrid" class="admin-progress-grid">
+                    <div class="admin-progress-card" onclick="showAdminProgressDetails('not-started')">
+                        <h4><i class="fas fa-hourglass-start"></i> ยังไม่เริ่มตรวจ</h4>
+                        <div class="progress-num" id="adminNotStartedCount">0</div>
+                        <div class="progress-label">หน่วยงานที่ยังไม่เริ่มตรวจในรอบเดือนนี้</div>
+                        <div class="progress-hint">คลิกเพื่อดูรายชื่อหน่วยงานและจำนวนรายการที่รอตรวจ</div>
+                    </div>
+                    <div class="admin-progress-card" onclick="showAdminProgressDetails('in-progress')">
+                        <h4><i class="fas fa-person-running"></i> กำลังดำเนินการ</h4>
+                        <div class="progress-num" id="adminInProgressCount">0</div>
+                        <div class="progress-label">หน่วยงานที่ตรวจแล้วบางส่วน แต่ยังมีรายการค้างตรวจ</div>
+                        <div class="progress-hint">คลิกเพื่อดูจำนวนรายการทั้งหมด, ตรวจแล้ว และรอตรวจ</div>
+                    </div>
+                    <div class="admin-progress-card" onclick="showAdminProgressDetails('completed')">
+                        <h4><i class="fas fa-trophy"></i> ดำเนินการเสร็จสิ้น</h4>
+                        <div class="progress-num" id="adminCompletedCount">0</div>
+                        <div class="progress-label">หน่วยงานที่ตรวจครบถ้วนในรอบเดือนนี้</div>
+                        <div class="progress-hint">คลิกเพื่อดูอันดับหน่วยงานที่เสร็จสมบูรณ์ก่อนหลัง</div>
+                    </div>
+                </div>
 
                 <div class="admin-table-wrapper table-responsive">
                     <table class="admin-data-table">
@@ -709,10 +736,15 @@
         const THAI_MONTH_NAMES = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
         const LOCAL_INSPECTION_WINDOW_KEY = 'aide_inspection_windows_v1';
         const API_TIMEOUT_MS = 30000;
-        const EXPECTED_EQUIPMENT_API_VERSION = '2026-05-05-cross-ward-pull-v2';
+        const EXPECTED_EQUIPMENT_API_VERSION = '2026-05-05-inspection-window-sync-v3';
         let verifiedApiVersion = '';
         let allEquipmentUniverse = [];
         let crossWardSearchSeq = 0;
+        let adminWardProgressSummary = { notStarted: [], inProgress: [], completed: [] };
+        let inspectionDuplicateFocusKeys = null;
+        let scanInProgress = false;
+        let lastScannedQrValue = '';
+        let lastScannedQrAt = 0;
 
         function buildApiUrl(action, params = {}) {
             const url = new URL(EQUIPMENT_API);
@@ -798,12 +830,16 @@
             const latestInspectionDate = parseInspectionDateValue(latestItem['วันที่ตรวจล่าสุด']);
             const previousInspectionDate = parseInspectionDateValue(expected.previousInspectionDate);
             const submittedAt = parseInspectionDateValue(expected.submittedAt);
+            const expectedMasterStatus = expected.requestedStatus === 'ย้ายหน่วยงาน'
+                ? 'ปกติ'
+                : expected.status;
+            const skipInspectionDateCheck = expected.requestedStatus === 'ย้ายหน่วยงาน';
 
-            if (normalizeStatusForFilter(latestStatus) !== normalizeStatusForFilter(expected.status)) return false;
-            if (!latestInspectionDate) return false;
-            if (submittedAt && latestInspectionDate.getTime() + 60000 < submittedAt.getTime()) return false;
-            if (previousInspectionDate && latestInspectionDate.getTime() === previousInspectionDate.getTime()) return false;
-            if (expected.status === 'ถูกยืม' && expected.borrowedWard) {
+            if (normalizeStatusForFilter(latestStatus) !== normalizeStatusForFilter(expectedMasterStatus)) return false;
+            if (!skipInspectionDateCheck && !latestInspectionDate) return false;
+            if (!skipInspectionDateCheck && submittedAt && latestInspectionDate.getTime() + 60000 < submittedAt.getTime()) return false;
+            if (!skipInspectionDateCheck && previousInspectionDate && latestInspectionDate.getTime() === previousInspectionDate.getTime()) return false;
+            if ((expected.status === 'ถูกยืม' || expected.requestedStatus === 'ย้ายหน่วยงาน') && expected.borrowedWard) {
                 const latestUsageWard = String(latestItem['ใช้งานที่'] || '').trim();
                 if (latestUsageWard !== String(expected.borrowedWard).trim()) return false;
             }
@@ -814,6 +850,7 @@
             const latestItem = updatedItem ? normalizeEquipmentItemFromApi(updatedItem) : await fetchLatestEquipmentItem(item);
             const persisted = wasInspectionPersisted(latestItem, {
                 status,
+                requestedStatus: status,
                 borrowedWard,
                 submittedAt,
                 previousInspectionDate: item['วันที่ตรวจล่าสุด']
@@ -840,12 +877,127 @@
                 activeWindow: null,
                 upcomingWindow: null,
                 latestWindow: null,
+                windows: [],
                 source: 'default'
             };
         }
 
         function normalizeWard(value) {
             return String(value || '').trim();
+        }
+
+        function normalizeSearchKey(value) {
+            return String(value || '').trim().toLowerCase();
+        }
+
+        function getEquipmentDetailLink(item) {
+            return String((item && (item['รายละเอียดครุภัณฑ์'] || item.detailLink)) || '').trim();
+        }
+
+        function normalizeExternalLink(link) {
+            const normalized = String(link || '').trim();
+            if (!normalized) return '';
+            if (/^https?:\/\//i.test(normalized)) return normalized;
+            if (/^www\./i.test(normalized)) return `https://${normalized}`;
+            return normalized;
+        }
+
+        function openEquipmentDetailLink(item) {
+            const link = normalizeExternalLink(getEquipmentDetailLink(item));
+            if (!link) {
+                Swal.fire('ไม่พบลิงก์รายละเอียด', 'รายการนี้ยังไม่มีลิงก์ในคอลัมน์รายละเอียดครุภัณฑ์', 'info');
+                return;
+            }
+
+            const openedWindow = window.open(link, '_blank', 'noopener,noreferrer');
+            if (!openedWindow) {
+                Swal.fire('เปิดลิงก์ไม่สำเร็จ', 'เบราว์เซอร์อาจบล็อกหน้าต่างใหม่ กรุณาอนุญาต popup แล้วลองอีกครั้ง', 'warning');
+            }
+        }
+
+        function wireDetailLinkButton(buttonId, item) {
+            const button = document.getElementById(buttonId);
+            if (!button) return;
+            button.addEventListener('click', () => openEquipmentDetailLink(item));
+        }
+
+        function getEquipmentDuplicateFocusKey(item) {
+            const rmcNo = String((item && item['RMC No']) || '').trim();
+            if (rmcNo) return `rmc:${rmcNo}`;
+            const itemId = String((item && item['เลขครุภัณฑ์']) || '').trim();
+            if (itemId) return `item:${itemId}`;
+            const detailLink = getEquipmentDetailLink(item);
+            if (detailLink) return `detail:${detailLink}`;
+            return '';
+        }
+
+        function dedupeEquipmentByFocusKey(items = []) {
+            const seen = new Set();
+            return items.filter(item => {
+                const key = getEquipmentDuplicateFocusKey(item);
+                if (!key) return true;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+        }
+
+        function matchesExactDuplicateSearch(item, searchTerm) {
+            const term = normalizeSearchKey(searchTerm);
+            if (!term) return false;
+            return normalizeSearchKey(item['เลขครุภัณฑ์']) === term ||
+                normalizeSearchKey(getEquipmentDetailLink(item)) === term;
+        }
+
+        function clearInspectionDuplicateFocus() {
+            inspectionDuplicateFocusKeys = null;
+        }
+
+        function setInspectionDuplicateFocus(items = []) {
+            const keys = items.map(getEquipmentDuplicateFocusKey).filter(Boolean);
+            inspectionDuplicateFocusKeys = keys.length ? new Set(keys) : null;
+        }
+
+        function filterInspectionItemsByDuplicateFocus(items = []) {
+            if (!inspectionDuplicateFocusKeys || !inspectionDuplicateFocusKeys.size) return items;
+            return items.filter(item => inspectionDuplicateFocusKeys.has(getEquipmentDuplicateFocusKey(item)));
+        }
+
+        function findDuplicatePendingInspectionMatches(searchTerm) {
+            if (!currentWard || isAdminLoggedIn) {
+                return { hasDuplicates: false, rawMatches: [], uniqueMatches: [] };
+            }
+
+            const scoped = getWardScopedData('', 'all');
+            const rawMatches = [...scoped.pendingOwned, ...scoped.pendingBorrowedIn]
+                .filter(item => matchesExactDuplicateSearch(item, searchTerm))
+                .sort((a, b) => scoreSearchMatch(b, searchTerm) - scoreSearchMatch(a, searchTerm));
+
+            return {
+                hasDuplicates: rawMatches.length > 1,
+                rawMatches,
+                uniqueMatches: dedupeEquipmentByFocusKey(rawMatches)
+            };
+        }
+
+        async function notifyDuplicatePendingInspectionMatches(searchTerm, matches = []) {
+            const message = matches.length
+                ? `ระบบแสดงเฉพาะรายการที่รอตรวจนับจำนวน ${matches.length} รายการ โดยคัดตาม RMC No ที่ไม่ซ้ำ`
+                : 'ระบบไม่พบรายการที่รอตรวจนับหลังจากคัดตาม RMC No';
+
+            await Swal.fire({
+                icon: 'info',
+                title: 'ตรวจพบหลายรายการ',
+                html: `
+                    <div style="text-align:left; line-height:1.7;">
+                        <div><b>คำค้น/QR:</b> ${escapeHtml(searchTerm)}</div>
+                        <div style="margin-top:8px;">พบเลขครุภัณฑ์หรือ Link รายละเอียดซ้ำกันหลายแถว</div>
+                        <div style="margin-top:8px; color:#0b5394;">${escapeHtml(message)}</div>
+                    </div>
+                `,
+                confirmButtonText: 'แสดงรายการรอตรวจนับ',
+                confirmButtonColor: '#003366'
+            });
         }
 
         function toStartOfDay(dateValue) {
@@ -894,24 +1046,77 @@
             };
         }
 
+        function compareInspectionWindowRecency(a, b) {
+            const aUpdatedAt = a && a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+            const bUpdatedAt = b && b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+            if (aUpdatedAt !== bUpdatedAt) return aUpdatedAt - bUpdatedAt;
+
+            const aCloseAt = a && a.closeDate ? new Date(`${a.closeDate}T00:00:00`).getTime() : 0;
+            const bCloseAt = b && b.closeDate ? new Date(`${b.closeDate}T00:00:00`).getTime() : 0;
+            if (aCloseAt !== bCloseAt) return aCloseAt - bCloseAt;
+
+            return 0;
+        }
+
+        function dedupeInspectionWindowRecords(records = []) {
+            const latestByPeriod = new Map();
+            records
+                .map(normalizeInspectionWindowRecord)
+                .filter(Boolean)
+                .forEach(record => {
+                    const current = latestByPeriod.get(record.periodKey);
+                    if (!current || compareInspectionWindowRecency(current, record) <= 0) {
+                        latestByPeriod.set(record.periodKey, record);
+                    }
+                });
+
+            return [...latestByPeriod.values()].sort((a, b) => {
+                const aDate = new Date(`${a.openDate}T00:00:00`).getTime();
+                const bDate = new Date(`${b.openDate}T00:00:00`).getTime();
+                if (aDate !== bDate) return aDate - bDate;
+                return String(a.periodKey || '').localeCompare(String(b.periodKey || ''));
+            });
+        }
+
         function loadLocalInspectionWindowRecords() {
             try {
                 const raw = localStorage.getItem(LOCAL_INSPECTION_WINDOW_KEY);
                 if (!raw) return [];
                 const parsed = JSON.parse(raw);
                 if (!Array.isArray(parsed)) return [];
-                return parsed.map(normalizeInspectionWindowRecord).filter(Boolean);
+                return dedupeInspectionWindowRecords(parsed);
             } catch (error) {
                 console.warn('Unable to load local inspection windows:', error);
                 return [];
             }
         }
 
+        function replaceLocalInspectionWindowRecords(records = []) {
+            const deduped = dedupeInspectionWindowRecords(records);
+            localStorage.setItem(LOCAL_INSPECTION_WINDOW_KEY, JSON.stringify(deduped));
+            return deduped;
+        }
+
         function toggleExtraInputs() {
             const statusElement = document.querySelector('input[name="update-status"]:checked');
             if (statusElement) {
                 const status = statusElement.value;
-                document.getElementById('borrow-div').style.display = (status === 'ถูกยืม') ? 'block' : 'none';
+                const borrowDiv = document.getElementById('borrow-div');
+                const borrowLabel = document.getElementById('borrow-label');
+                const borrowHint = document.getElementById('borrow-hint');
+                if (borrowDiv) {
+                    borrowDiv.style.display = (status === 'ถูกยืม' || status === 'ย้ายหน่วยงาน') ? 'block' : 'none';
+                }
+                if (borrowLabel) {
+                    borrowLabel.innerHTML = status === 'ย้ายหน่วยงาน'
+                        ? '<i class="fas fa-arrow-right-arrow-left"></i> ย้ายไปที่หน่วยงานใด:'
+                        : '<i class="fas fa-hospital"></i> ยืมไปที่หน่วยงานใด:';
+                }
+                if (borrowHint) {
+                    borrowHint.textContent = status === 'ย้ายหน่วยงาน'
+                        ? 'รายการจะเปลี่ยนหน่วยงานใช้งานไปยังปลายทาง และไปอยู่ในรอบตรวจของหน่วยงานนั้น'
+                        : 'เลือกหน่วยงานปลายทางที่รับครุภัณฑ์ไปใช้งาน';
+                }
                 const documentDiv = document.getElementById('document-div');
                 const documentLabel = document.getElementById('document-label');
                 const documentHint = document.getElementById('document-hint');
@@ -938,22 +1143,20 @@
 
         function exportToCSV() {
             let dataToExport = [];
+            const scoped = getScopedDataForCurrentMode(currentSearchTerm, currentAllStatusFilter);
 
             if (isAdminLoggedIn && currentActiveTab === 'admin') {
                 dataToExport = filteredEquipment;
             } else if (currentActiveTab === 'inspection') {
-                const scoped = getWardScopedData();
                 dataToExport = [...scoped.pendingOwned, ...scoped.pendingBorrowedIn];
             } else if (currentActiveTab === 'all') {
-                const scoped = getWardScopedData(currentSearchTerm, currentAllStatusFilter);
                 dataToExport = [...scoped.ownedCurrent, ...scoped.borrowedIn];
             } else if (currentActiveTab === 'borrowed-out') {
-                dataToExport = getWardScopedData().borrowedOut;
+                dataToExport = scoped.borrowedOut;
             } else if (currentActiveTab === 'repair') {
-                const scoped = getWardScopedData();
                 dataToExport = [...scoped.repair, ...scoped.awaitDisposal];
             } else {
-                dataToExport = getWardScopedData().visibleItems;
+                dataToExport = scoped.visibleItems;
             }
 
             if (dataToExport.length === 0) {
@@ -978,7 +1181,7 @@
             const link = document.createElement("a");
             const url = URL.createObjectURL(blob);
             link.setAttribute("href", url);
-            link.setAttribute("download", `รายการครุภัณฑ์_${currentWard}.csv`);
+            link.setAttribute("download", `รายการครุภัณฑ์_${isAdminLoggedIn ? 'ทั้งโรงพยาบาล' : currentWard}.csv`);
             link.style.visibility = 'hidden';
             document.body.appendChild(link);
             link.click();
@@ -1052,7 +1255,7 @@
                     if (event.key === 'Enter') {
                         event.preventDefault();
                         clearTimeout(typingTimer);
-                        processSearchOrScan(searchInput.value, { forceCrossWard: true });
+                        processSearchOrScan(searchInput.value, { forceCrossWard: true, notifyOnDuplicate: true });
                     }
                 });
             }
@@ -1092,6 +1295,7 @@
                                 <br>- <b>ปกติ</b>: พร้อมใช้งาน
                                 <br>- <b style="color:#dc3545;">ชำรุดส่งซ่อม</b>: สามารถแนบภาพจุดที่ชำรุดได้
                                 <br>- <b style="color:#f57f17;">ถูกยืม</b>: ต้องเลือกหน่วยงานปลายทางจากดรอปดาวน์
+                                <br>- <b style="color:#0b5394;">ย้ายหน่วยงาน</b>: สำหรับหน่วยงานเจ้าของ ใช้เมื่อต้องการย้ายการดูแลไปยังหน่วยงานปลายทางถาวร
                                 <br>- <b style="color:#ef6c00;">รอจำหน่าย</b>: ต้องแนบใบสรุปส่งซ่อมจากศูนย์เครื่องมือแพทย์
                                 <br>- <b>แทงจำหน่าย</b>: ต้องแนบใบส่งคืนพัสดุ และรายการจะถูกลบออกจากระบบ
                             </li>
@@ -1123,6 +1327,7 @@
                 await html5QrcodeScanner.stop();
                 await html5QrcodeScanner.clear();
                 scannerRunning = false;
+                scanInProgress = false;
                 reader.style.display = 'none';
                 scanButton.innerHTML = '<i class="fas fa-qrcode"></i> สแกน QR';
                 return;
@@ -1130,22 +1335,48 @@
 
             reader.style.display = 'block';
             html5QrcodeScanner = new Html5Qrcode('qr-reader');
+            scanInProgress = false;
             try {
                 await html5QrcodeScanner.start(
-                    { facingMode: 'environment' },
-                    { fps: 10, qrbox: { width: 250, height: 250 } },
+                    {
+                        facingMode: 'environment',
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 },
+                        advanced: [{ focusMode: 'continuous' }]
+                    },
+                    {
+                        fps: 15,
+                        aspectRatio: 1,
+                        disableFlip: false,
+                        qrbox: (viewfinderWidth, viewfinderHeight) => {
+                            const size = Math.max(220, Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.85));
+                            return { width: size, height: size };
+                        }
+                    },
                     async (decodedText) => {
                         const value = String(decodedText || '').trim();
+                        const now = Date.now();
+                        if (!value || scanInProgress) return;
+                        if (value === lastScannedQrValue && (now - lastScannedQrAt) < 1500) return;
+
+                        scanInProgress = true;
+                        lastScannedQrValue = value;
+                        lastScannedQrAt = now;
                         document.getElementById('searchInput').value = value;
-                        const matchedItem = await processSearchOrScan(value, { forceCrossWard: true, openPulledItem: true });
-                        await toggleScanner();
-                        if (matchedItem) openUpdateModal(matchedItem);
+                        try {
+                            const matchedItem = await processSearchOrScan(value, { forceCrossWard: true, openPulledItem: true, notifyOnDuplicate: true });
+                            await toggleScanner();
+                            if (matchedItem) openUpdateModal(matchedItem);
+                        } finally {
+                            scanInProgress = false;
+                        }
                     }
                 );
                 scannerRunning = true;
                 scanButton.innerHTML = '<i class="fas fa-times"></i> ปิดสแกน';
             } catch (error) {
                 reader.style.display = 'none';
+                scanInProgress = false;
                 Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเปิดกล้องสำหรับสแกน QR ได้', 'error');
             }
         }
@@ -1374,7 +1605,7 @@
                 return matchWard && matchSearch;
             });
             updateDashboardStats();
-            renderActiveView(); 
+            renderActiveView();
         }
 
         function exitAdminMode() {
@@ -1618,6 +1849,72 @@
                     }]
                 },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { font: { family: 'Prompt' } } } } }
+            });
+
+            adminWardProgressSummary = buildWardProgressSummary(data);
+            document.getElementById('adminNotStartedCount').innerText = adminWardProgressSummary.notStarted.length;
+            document.getElementById('adminInProgressCount').innerText = adminWardProgressSummary.inProgress.length;
+            document.getElementById('adminCompletedCount').innerText = adminWardProgressSummary.completed.length;
+        }
+
+        function formatCompletionDateTime(dateValue) {
+            if (!dateValue) return '-';
+            const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
+            if (isNaN(date)) return '-';
+            return date.toLocaleString('th-TH', {
+                day: 'numeric',
+                month: 'short',
+                year: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function showAdminProgressDetails(type) {
+            const summary = adminWardProgressSummary || { notStarted: [], inProgress: [], completed: [] };
+            let title = '';
+            let headers = [];
+            let rows = [];
+
+            if (type === 'not-started') {
+                title = 'หน่วยงานที่ยังไม่เริ่มตรวจ';
+                headers = ['ลำดับ', 'หน่วยงาน', 'รายการที่รอการตรวจ'];
+                rows = summary.notStarted.map((entry, index) => [index + 1, entry.ward, entry.pending]);
+            } else if (type === 'in-progress') {
+                title = 'หน่วยงานที่กำลังดำเนินการ';
+                headers = ['ลำดับ', 'หน่วยงาน', 'รายการทั้งหมด', 'ตรวจแล้ว', 'รอตรวจ'];
+                rows = summary.inProgress.map((entry, index) => [index + 1, entry.ward, entry.total, entry.inspected, entry.pending]);
+            } else {
+                title = 'หน่วยงานที่ดำเนินการเสร็จสิ้น';
+                headers = ['อันดับ', 'หน่วยงาน', 'รายการทั้งหมด', 'ตรวจแล้ว', 'เสร็จสมบูรณ์เมื่อ'];
+                rows = summary.completed.map((entry, index) => [index + 1, entry.ward, entry.total, entry.inspected, formatCompletionDateTime(entry.completionDate)]);
+            }
+
+            if (!rows.length) {
+                Swal.fire('ไม่พบข้อมูล', 'ยังไม่มีข้อมูลตามเงื่อนไขในรอบเดือนนี้', 'info');
+                return;
+            }
+
+            const headerHtml = headers.map(text => `<th style="padding:10px; border:1px solid #e5e7eb; background:#f4f7fb; color:#003366;">${escapeHtml(text)}</th>`).join('');
+            const bodyHtml = rows.map(row => `
+                <tr>
+                    ${row.map(value => `<td style="padding:10px; border:1px solid #e5e7eb;">${escapeHtml(String(value))}</td>`).join('')}
+                </tr>
+            `).join('');
+
+            Swal.fire({
+                title,
+                width: 960,
+                html: `
+                    <div style="max-height:65vh; overflow:auto; text-align:left;">
+                        <table style="width:100%; border-collapse:collapse; font-size:0.92rem;">
+                            <thead><tr>${headerHtml}</tr></thead>
+                            <tbody>${bodyHtml}</tbody>
+                        </table>
+                    </div>
+                `,
+                confirmButtonColor: '#003366',
+                confirmButtonText: 'ปิด'
             });
         }
 
@@ -2040,15 +2337,12 @@
         function saveLocalInspectionWindowRecord(record) {
             const normalized = normalizeInspectionWindowRecord(record);
             if (!normalized) return false;
-            const records = loadLocalInspectionWindowRecords().filter(item => item.periodKey !== normalized.periodKey);
-            records.push(normalized);
-            records.sort((a, b) => a.periodKey.localeCompare(b.periodKey));
-            localStorage.setItem(LOCAL_INSPECTION_WINDOW_KEY, JSON.stringify(records));
+            replaceLocalInspectionWindowRecords([...loadLocalInspectionWindowRecords(), normalized]);
             return true;
         }
 
         function evaluateInspectionWindowRecords(records, source = 'local') {
-            const normalizedRecords = (Array.isArray(records) ? records : []).map(normalizeInspectionWindowRecord).filter(Boolean).sort((a, b) => a.periodKey.localeCompare(b.periodKey));
+            const normalizedRecords = dedupeInspectionWindowRecords(Array.isArray(records) ? records : []);
             const today = toStartOfDay(new Date());
             const activeWindow = normalizedRecords.find(record => {
                 const openDate = toStartOfDay(record.openDate);
@@ -2065,13 +2359,16 @@
 
         function normalizeInspectionWindowStatusPayload(payload, source = 'api') {
             if (!payload || typeof payload !== 'object') return createDefaultInspectionWindowStatus();
+            const normalizedWindows = dedupeInspectionWindowRecords(payload.windows || [
+                payload.activeWindow,
+                payload.upcomingWindow,
+                payload.latestWindow
+            ]);
+            const normalizedStatus = evaluateInspectionWindowRecords(normalizedWindows, source);
             return {
-                hasConfiguredWindow: Boolean(payload.hasConfiguredWindow),
-                isActive: Boolean(payload.isActive),
-                activeWindow: normalizeInspectionWindowRecord(payload.activeWindow),
-                upcomingWindow: normalizeInspectionWindowRecord(payload.upcomingWindow),
-                latestWindow: normalizeInspectionWindowRecord(payload.latestWindow),
-                source
+                ...normalizedStatus,
+                source,
+                windows: normalizedWindows
             };
         }
 
@@ -2130,6 +2427,7 @@
                 const result = await apiGetJson('getInspectionWindowStatus');
                 if (result.status === 'success') {
                     inspectionWindowStatus = normalizeInspectionWindowStatusPayload(result.data, 'api');
+                    replaceLocalInspectionWindowRecords(inspectionWindowStatus.windows || []);
                     setCurrentMonthHeading();
                     updateInspectionWindowNotice();
                     return inspectionWindowStatus;
@@ -2304,6 +2602,82 @@
             const pendingOwned = canInspect ? ownedCurrent.filter(item => item._needsInspection) : [];
             const pendingBorrowedIn = canInspect ? borrowedIn.filter(item => item._needsInspection) : [];
             return { visibleItems, ownedCurrent, borrowedIn, borrowedOut, repair, awaitDisposal, pendingOwned, pendingBorrowedIn };
+        }
+
+        function getHospitalScopedData(searchTerm = currentSearchTerm, statusFilter = 'all') {
+            const visibleItems = allEquipment.filter(item => !item._isDisposed && matchesSearchTerm(item, searchTerm) && matchesStatusFilter(item, statusFilter));
+            const ownedCurrent = visibleItems.filter(item => item._ownerWard === item._usageWard);
+            const borrowedIn = visibleItems.filter(item => item._ownerWard !== item._usageWard);
+            const borrowedOut = borrowedIn;
+            const repair = visibleItems.filter(item => item._isRepair);
+            const awaitDisposal = visibleItems.filter(item => item._isAwaitDisposal);
+            const canInspect = getInspectionAvailabilityState().allowed || isAdminLoggedIn;
+            const pendingOwned = canInspect ? ownedCurrent.filter(item => item._needsInspection) : [];
+            const pendingBorrowedIn = canInspect ? borrowedIn.filter(item => item._needsInspection) : [];
+            return { visibleItems, ownedCurrent, borrowedIn, borrowedOut, repair, awaitDisposal, pendingOwned, pendingBorrowedIn };
+        }
+
+        function getScopedDataForCurrentMode(searchTerm = currentSearchTerm, statusFilter = currentAllStatusFilter) {
+            return isAdminLoggedIn ? getHospitalScopedData(searchTerm, statusFilter) : getWardScopedData(searchTerm, statusFilter);
+        }
+
+        function isItemInspectedInCurrentCycle(item) {
+            const lastInspectionDate = parseInspectionDateValue(item['วันที่ตรวจล่าสุด']);
+            if (!lastInspectionDate) return false;
+            const cycleStart = getInspectionReferenceMonthStart();
+            const cycleEnd = new Date(cycleStart.getFullYear(), cycleStart.getMonth() + 1, 1);
+            return lastInspectionDate >= cycleStart && lastInspectionDate < cycleEnd;
+        }
+
+        function isItemIncludedInWardCycle(item) {
+            if (!item || item._isDisposed || item._isRepair || item._isAwaitDisposal) return false;
+            return item._needsInspection || isItemInspectedInCurrentCycle(item);
+        }
+
+        function buildWardProgressSummary(items) {
+            const wardMap = new Map();
+            (items || []).forEach(item => {
+                const prepared = item && item._usageWard ? item : prepareEquipmentItem(item);
+                const ward = prepared._usageWard || prepared._ownerWard;
+                if (!ward || !isItemIncludedInWardCycle(prepared)) return;
+
+                if (!wardMap.has(ward)) {
+                    wardMap.set(ward, {
+                        ward,
+                        total: 0,
+                        inspected: 0,
+                        pending: 0,
+                        completionDate: null
+                    });
+                }
+
+                const summary = wardMap.get(ward);
+                summary.total += 1;
+                if (prepared._needsInspection) {
+                    summary.pending += 1;
+                    return;
+                }
+
+                summary.inspected += 1;
+                const inspectedAt = parseInspectionDateValue(prepared['วันที่ตรวจล่าสุด']);
+                if (inspectedAt && (!summary.completionDate || inspectedAt > summary.completionDate)) {
+                    summary.completionDate = inspectedAt;
+                }
+            });
+
+            const summaries = [...wardMap.values()];
+            const notStarted = summaries.filter(entry => entry.total > 0 && entry.inspected === 0);
+            const inProgress = summaries.filter(entry => entry.total > 0 && entry.inspected > 0 && entry.pending > 0);
+            const completed = summaries
+                .filter(entry => entry.total > 0 && entry.pending === 0 && entry.inspected === entry.total)
+                .sort((a, b) => {
+                    const aTime = a.completionDate ? a.completionDate.getTime() : Number.MAX_SAFE_INTEGER;
+                    const bTime = b.completionDate ? b.completionDate.getTime() : Number.MAX_SAFE_INTEGER;
+                    if (aTime !== bTime) return aTime - bTime;
+                    return a.ward.localeCompare(b.ward, 'th');
+                });
+
+            return { notStarted, inProgress, completed };
         }
 
         function getLastInspectionText(item, emptyText = '-') {
@@ -2613,6 +2987,16 @@
 
         function showEquipmentDetails(item) {
             let lastInspectStr = 'ยังไม่เคยตรวจ';
+            const detailLinkButtonId = 'equipment-detail-link-btn';
+            const detailLinkButtonHtml = getEquipmentDetailLink(item)
+                ? `
+                    <div style="margin-top:16px; text-align:right;">
+                        <button type="button" id="${detailLinkButtonId}" class="btn btn-outline" style="width:auto;">
+                            <i class="fas fa-up-right-from-square"></i> รายละเอียดเพิ่มเติม
+                        </button>
+                    </div>
+                `
+                : '';
             if (item['วันที่ตรวจล่าสุด']) {
                 const d = new Date(item['วันที่ตรวจล่าสุด']);
                 if (!isNaN(d)) {
@@ -2637,9 +3021,11 @@
                             <tr><th style="color:#28a745;"><i class="fas fa-calendar-check"></i> ตรวจล่าสุด</th><td style="color:#28a745; font-weight:bold;">${escapeHtml(lastInspectStr)}</td></tr>
                         </tbody>
                     </table>
+                    ${detailLinkButtonHtml}
                 `,
                 confirmButtonColor: '#003366',
-                confirmButtonText: '<i class="fas fa-times"></i> ปิดหน้าต่าง'
+                confirmButtonText: '<i class="fas fa-times"></i> ปิดหน้าต่าง',
+                didOpen: () => wireDetailLinkButton(detailLinkButtonId, item)
             });
         }
 
@@ -2650,6 +3036,17 @@
         async function openUpdateModal(item) {
             if (!ensureInspectionWindowOpenForStaff()) return;
             await ensureWardOptionsLoaded();
+            const ownerCanTransfer = normalizeWard(currentWard) && normalizeWard(item._ownerWard) === normalizeWard(currentWard);
+            const updateDetailLinkButtonId = 'update-detail-link-btn';
+            const updateDetailLinkHtml = getEquipmentDetailLink(item)
+                ? `
+                    <div style="margin-top:10px;">
+                        <button type="button" id="${updateDetailLinkButtonId}" class="btn btn-outline" style="width:auto;">
+                            <i class="fas fa-up-right-from-square"></i> รายละเอียดเพิ่มเติม
+                        </button>
+                    </div>
+                `
+                : '';
             if (!item._needsInspection) {
                 let lastInspectStr = 'ยังไม่เคยตรวจ';
                 if (item['วันที่ตรวจล่าสุด']) {
@@ -2687,6 +3084,7 @@
                 html: `<div style="text-align:left; margin-bottom:15px; padding-bottom:10px; border-bottom:1px solid #eee;">
                         <b style="color: var(--primary); font-size:1.1rem;">${escapeHtml(item['ชื่อครุภัณฑ์'] || '-')}</b><br>
                         <small style="color:#666;"><i class="fas fa-fingerprint"></i> RMC: ${escapeHtml(item['RMC No'] || '-')} &nbsp; <i class="fas fa-barcode"></i> เลข: ${escapeHtml(item['เลขครุภัณฑ์'] || '-')}</small>
+                        ${updateDetailLinkHtml}
                     </div>
                     <div class="swal-form-group">
                         <label><i class="fas fa-flag"></i> สถานะการตรวจพบ:</label>
@@ -2703,6 +3101,11 @@
                                 <input type="radio" name="update-status" value="ถูกยืม" onchange="toggleExtraInputs()" style="transform:scale(1.2);">
                                 <span style="color:#f57f17;"><i class="fas fa-exchange-alt"></i> ถูกยืมใช้งาน</span>
                             </label>
+                            ${ownerCanTransfer ? `
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; background:#f8f9fa; padding:10px; border-radius:8px; border:1px solid #ddd; font-size:0.9rem;">
+                                <input type="radio" name="update-status" value="ย้ายหน่วยงาน" onchange="toggleExtraInputs()" style="transform:scale(1.2);">
+                                <span style="color:#0b5394;"><i class="fas fa-arrow-right-arrow-left"></i> ย้ายหน่วยงาน</span>
+                            </label>` : ''}
                             <label style="display:flex; align-items:center; gap:8px; cursor:pointer; background:#f8f9fa; padding:10px; border-radius:8px; border:1px solid #ddd; font-size:0.9rem;">
                                 <input type="radio" name="update-status" value="รอจำหน่าย" onchange="toggleExtraInputs()" style="transform:scale(1.2);">
                                 <span style="color:#ef6c00;"><i class="fas fa-file-circle-xmark"></i> รอจำหน่าย</span>
@@ -2714,8 +3117,9 @@
                         </div>
                     </div>
                     <div id="borrow-div" class="swal-form-group" style="display:none;">
-                        <label><i class="fas fa-hospital"></i> ยืมไปที่หน่วยงานใด:</label>
+                        <label id="borrow-label"><i class="fas fa-hospital"></i> ยืมไปที่หน่วยงานใด:</label>
                         <select id="update-borrow" class="swal-input">${buildWardOptionsHtml('', currentWard || item._usageWard || item._ownerWard)}</select>
+                        <small id="borrow-hint" style="display:block; margin-top:6px; color:#6c757d;">เลือกหน่วยงานปลายทางที่รับครุภัณฑ์ไปใช้งาน</small>
                     </div>
                     <div id="document-div" class="swal-form-group" style="display:none;">
                         <label id="document-label"><i class="fas fa-file-arrow-up"></i> แนบเอกสารประกอบ:</label>
@@ -2735,6 +3139,10 @@
                 cancelButtonText: 'ยกเลิก',
                 confirmButtonColor: '#003366',
                 showLoaderOnConfirm: true,
+                didOpen: () => {
+                    wireDetailLinkButton(updateDetailLinkButtonId, item);
+                    toggleExtraInputs();
+                },
                 preConfirm: async () => {
                     const status = document.querySelector('input[name="update-status"]:checked').value;
                     const borrowedWard = document.getElementById('update-borrow').value;
@@ -2745,13 +3153,18 @@
                     let mimeType = '';
                     let imageName = '';
                     const requiresBorrowWard = status === 'ถูกยืม';
+                    const requiresTransferWard = status === 'ย้ายหน่วยงาน';
                     const requiresEvidence = status === 'รอจำหน่าย' || status === 'แทงจำหน่าย';
-                    if (requiresBorrowWard && !borrowedWard) {
-                        Swal.showValidationMessage('กรุณาเลือกหน่วยงานที่ยืมไปใช้');
+                    if ((requiresBorrowWard || requiresTransferWard) && !borrowedWard) {
+                        Swal.showValidationMessage(requiresTransferWard ? 'กรุณาเลือกหน่วยงานปลายทางที่ต้องการย้ายไป' : 'กรุณาเลือกหน่วยงานที่ยืมไปใช้');
                         return false;
                     }
-                    if (requiresBorrowWard && normalizeWard(borrowedWard) === normalizeWard(currentWard || item._usageWard || item._ownerWard)) {
+                    if ((requiresBorrowWard || requiresTransferWard) && normalizeWard(borrowedWard) === normalizeWard(currentWard || item._usageWard || item._ownerWard)) {
                         Swal.showValidationMessage('หน่วยงานปลายทางต้องไม่ใช่หน่วยงานเดียวกับผู้บันทึก');
+                        return false;
+                    }
+                    if (requiresTransferWard && !ownerCanTransfer) {
+                        Swal.showValidationMessage('เฉพาะหน่วยงานเจ้าของเท่านั้นที่สามารถย้ายหน่วยงานได้');
                         return false;
                     }
                     if (requiresEvidence && documentInput.files.length === 0) {
@@ -2933,15 +3346,18 @@
         }
 
         function renderActiveView() {
-            const scoped = getWardScopedData(currentSearchTerm, currentAllStatusFilter);
-            document.getElementById('pendingBadge').innerText = scoped.pendingOwned.length + scoped.pendingBorrowedIn.length;
+            const scoped = getScopedDataForCurrentMode(currentSearchTerm, currentAllStatusFilter);
+            const inspectionOwned = filterInspectionItemsByDuplicateFocus(scoped.pendingOwned);
+            const inspectionBorrowedIn = filterInspectionItemsByDuplicateFocus(scoped.pendingBorrowedIn);
+            const inspectionPendingCount = inspectionOwned.length + inspectionBorrowedIn.length;
+            document.getElementById('pendingBadge').innerText = inspectionDuplicateFocusKeys ? inspectionPendingCount : (scoped.pendingOwned.length + scoped.pendingBorrowedIn.length);
             document.getElementById('allCountTab').innerText = scoped.visibleItems.length;
             document.getElementById('borrowedOutCountTab').innerText = scoped.borrowedOut.length;
             document.getElementById('repairCountTab').innerText = scoped.repair.length + scoped.awaitDisposal.length;
             if (currentActiveTab === 'inspection') {
-                renderInspectionCards(scoped.pendingOwned, scoped.pendingBorrowedIn);
+                renderInspectionCards(inspectionOwned, inspectionBorrowedIn);
             } else if (currentActiveTab === 'all') {
-                const filteredScoped = getWardScopedData(currentSearchTerm, currentAllStatusFilter);
+                const filteredScoped = getScopedDataForCurrentMode(currentSearchTerm, currentAllStatusFilter);
                 document.getElementById('allOwnedCount').innerText = `${filteredScoped.ownedCurrent.length} รายการ`;
                 document.getElementById('allBorrowedInCount').innerText = `${filteredScoped.borrowedIn.length} รายการ`;
                 renderTableRows('allEquipmentTableBodyOwned', filteredScoped.ownedCurrent, 'ไม่มีรายการของหน่วยงานตามเงื่อนไขที่เลือก');
@@ -2980,8 +3396,11 @@
         }
 
         function updateDashboardStats() {
-            const scoped = getWardScopedData();
-            const statItems = isAdminLoggedIn ? filteredEquipment : scoped.visibleItems;
+            const scoped = getScopedDataForCurrentMode(currentSearchTerm, currentAllStatusFilter);
+            let statItems = scoped.visibleItems;
+            if (isAdminLoggedIn && currentActiveTab === 'admin') {
+                statItems = filteredEquipment;
+            }
             let normalCount = 0, brokenCount = 0, disposedCount = 0;
             statItems.forEach(item => {
                 const status = normalizeStatusForFilter(item._statusText);
@@ -2997,11 +3416,23 @@
         }
 
         async function processSearchOrScan(searchValue, options = {}) {
-            const { forceCrossWard = false } = options;
-            currentSearchTerm = String(searchValue || '').trim();
+            const { forceCrossWard = false, notifyOnDuplicate = false } = options;
+            const nextSearchTerm = String(searchValue || '').trim();
+            if (currentSearchTerm !== nextSearchTerm) clearInspectionDuplicateFocus();
+            currentSearchTerm = nextSearchTerm;
             if (isAdminLoggedIn && currentActiveTab === 'admin') {
                 filterAdminByWard();
                 return null;
+            }
+
+            if (notifyOnDuplicate && currentSearchTerm) {
+                const duplicatePendingMatches = findDuplicatePendingInspectionMatches(currentSearchTerm);
+                if (duplicatePendingMatches.hasDuplicates) {
+                    setInspectionDuplicateFocus(duplicatePendingMatches.uniqueMatches);
+                    switchTab('inspection');
+                    await notifyDuplicatePendingInspectionMatches(currentSearchTerm, duplicatePendingMatches.uniqueMatches);
+                    return null;
+                }
             }
 
             renderActiveView();
