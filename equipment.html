@@ -739,7 +739,7 @@
         const THAI_MONTH_NAMES = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
         const LOCAL_INSPECTION_WINDOW_KEY = 'aide_inspection_windows_v1';
         const API_TIMEOUT_MS = 30000;
-        const EXPECTED_EQUIPMENT_API_VERSION = '2026-05-05-inspection-window-datetime-v4';
+        const EXPECTED_EQUIPMENT_API_VERSION = '2026-05-06-inspection-edit-v5';
         let verifiedApiVersion = '';
         let allEquipmentUniverse = [];
         let crossWardSearchSeq = 0;
@@ -823,8 +823,30 @@
             return matches.length === 1 ? matches[0] : null;
         }
 
+        async function fetchLatestInspectionRecord(item) {
+            const result = await apiGetJson('getLatestInspectionRecord', {
+                itemId: getEquipmentPrimaryKey(item),
+                originalItemId: item['เลขครุภัณฑ์'] || '',
+                rmcNo: item['RMC No'] || ''
+            });
+            if (result.status !== 'success' || !result.data || !result.data.inspectionRecord) {
+                throw new Error(result.message || 'ไม่พบบันทึกการตรวจล่าสุด');
+            }
+            return result.data.inspectionRecord;
+        }
+
         function normalizeEquipmentItemFromApi(item) {
             return prepareEquipmentItem(item || {});
+        }
+
+        function normalizeRequestedInspectionStatus(status) {
+            const text = String(status || '').trim();
+            if (text.includes('ย้ายหน่วยงาน')) return 'ย้ายหน่วยงาน';
+            if (text.includes('ยืม')) return 'ถูกยืม';
+            if (text.includes('ชำรุด') || text.includes('ซ่อม')) return 'ชำรุดส่งซ่อม';
+            if (text.includes('รอจำหน่าย')) return 'รอจำหน่าย';
+            if (text.includes('จำหน่าย')) return 'แทงจำหน่าย';
+            return 'ปกติ';
         }
 
         function wasInspectionPersisted(latestItem, expected) {
@@ -3183,9 +3205,74 @@
             });
         }
 
-        async function openUpdateModal(item) {
+        async function showLatestInspectionRecordModal(item) {
+            const preparedItem = prepareEquipmentItem(item);
+            try {
+                Swal.fire({
+                    title: 'กำลังโหลดบันทึกการตรวจ',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
+                const inspectionRecord = await fetchLatestInspectionRecord(preparedItem);
+                Swal.close();
+
+                const recordTimestamp = parseInspectionDateValue(inspectionRecord.timestamp);
+                const timestampText = recordTimestamp
+                    ? recordTimestamp.toLocaleString('th-TH', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                    : '-';
+                const statusText = normalizeRequestedInspectionStatus(inspectionRecord.status);
+                const evidenceHtml = inspectionRecord.imageUrl
+                    ? `<a href="${escapeHtml(inspectionRecord.imageUrl)}" target="_blank" rel="noopener noreferrer">เปิดเอกสาร/รูปที่แนบไว้</a>`
+                    : '<span style="color:#666;">ไม่มีไฟล์แนบ</span>';
+                const usageWardText = (statusText === 'ถูกยืม' || statusText === 'ย้ายหน่วยงาน')
+                    ? escapeHtml(preparedItem._usageWard || preparedItem['ใช้งานที่'] || '-')
+                    : '-';
+
+                const dialogResult = await Swal.fire({
+                    title: 'บันทึกการตรวจล่าสุด',
+                    width: 680,
+                    html: `
+                        <div style="text-align:left;">
+                            <div style="margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid #eee;">
+                                <b style="color:var(--primary); font-size:1.05rem;">${escapeHtml(preparedItem['ชื่อครุภัณฑ์'] || '-')}</b><br>
+                                <small style="color:#666;"><i class="fas fa-fingerprint"></i> RMC: ${escapeHtml(preparedItem['RMC No'] || '-')} &nbsp; <i class="fas fa-barcode"></i> เลข: ${escapeHtml(preparedItem['เลขครุภัณฑ์'] || '-')}</small>
+                            </div>
+                            <table class="details-table">
+                                <tbody>
+                                    <tr><th><i class="fas fa-calendar-check"></i> วันที่ตรวจ</th><td>${escapeHtml(timestampText)}</td></tr>
+                                    <tr><th><i class="fas fa-flag"></i> สถานะที่บันทึก</th><td>${escapeHtml(statusText)}</td></tr>
+                                    <tr><th><i class="fas fa-hospital"></i> หน่วยงานที่ตรวจ</th><td>${escapeHtml(inspectionRecord.ward || '-')}</td></tr>
+                                    <tr><th><i class="fas fa-right-left"></i> ใช้งานที่</th><td>${usageWardText}</td></tr>
+                                    <tr><th><i class="fas fa-map-marker-alt"></i> ตำแหน่งย่อยปัจจุบัน</th><td>${escapeHtml(preparedItem['ตำแหน่งย่อย (Sub-location)'] || '-')}</td></tr>
+                                    <tr><th><i class="fas fa-comment-dots"></i> หมายเหตุ</th><td>${escapeHtml(inspectionRecord.note || '-')}</td></tr>
+                                    <tr><th><i class="fas fa-paperclip"></i> เอกสารแนบ</th><td>${evidenceHtml}</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    `,
+                    showCancelButton: true,
+                    confirmButtonText: '<i class="fas fa-pen-to-square"></i> แก้ไขการตรวจ',
+                    cancelButtonText: 'ปิดหน้าต่าง',
+                    confirmButtonColor: '#003366',
+                    cancelButtonColor: '#adb5bd'
+                });
+
+                if (dialogResult.isConfirmed) {
+                    await openUpdateModal(preparedItem, {
+                        isEditMode: true,
+                        inspectionRecord
+                    });
+                }
+            } catch (error) {
+                Swal.close();
+                Swal.fire('ไม่พบบันทึกการตรวจ', String(error), 'info');
+            }
+        }
+
+        async function openUpdateModal(item, options = {}) {
             if (!ensureInspectionWindowOpenForStaff()) return;
             await ensureWardOptionsLoaded();
+            const { inspectionRecord = null, isEditMode = false } = options;
             const ownerCanTransfer = normalizeWard(currentWard) && normalizeWard(item._ownerWard) === normalizeWard(currentWard);
             const updateDetailLinkButtonId = 'update-detail-link-btn';
             const updateDetailLinkHtml = getEquipmentDetailLink(item)
@@ -3197,7 +3284,14 @@
                     </div>
                 `
                 : '';
-            if (!item._needsInspection) {
+            const initialStatus = isEditMode ? normalizeRequestedInspectionStatus(inspectionRecord && inspectionRecord.status) : 'ปกติ';
+            const initialBorrowedWard = isEditMode && (initialStatus === 'ถูกยืม' || initialStatus === 'ย้ายหน่วยงาน')
+                ? normalizeWard((item && (item._usageWard || item['ใช้งานที่'])) || '')
+                : '';
+            const initialNote = isEditMode ? String((inspectionRecord && inspectionRecord.note) || '') : '';
+            const initialSubLocation = String(item['ตำแหน่งย่อย (Sub-location)'] || '');
+            const existingImageUrl = isEditMode ? String((inspectionRecord && inspectionRecord.imageUrl) || '') : '';
+            if (!isEditMode && !item._needsInspection) {
                 let lastInspectStr = 'ยังไม่เคยตรวจ';
                 if (item['วันที่ตรวจล่าสุด']) {
                     const d = new Date(item['วันที่ตรวจล่าสุด']);
@@ -3229,7 +3323,7 @@
             }
 
             Swal.fire({
-                title: 'บันทึกการตรวจนับ',
+                title: isEditMode ? 'แก้ไขการตรวจนับ' : 'บันทึกการตรวจนับ',
                 width: 720,
                 html: `<div style="text-align:left; margin-bottom:15px; padding-bottom:10px; border-bottom:1px solid #eee;">
                         <b style="color: var(--primary); font-size:1.1rem;">${escapeHtml(item['ชื่อครุภัณฑ์'] || '-')}</b><br>
@@ -3278,19 +3372,24 @@
                     </div>
                     <div class="swal-form-group">
                         <label><i class="fas fa-map-marker-alt"></i> อัปเดตตำแหน่งย่อย (ถ้ามีการย้าย):</label>
-                        <input type="text" id="update-subloc" class="swal-input" value="${escapeHtml(item['ตำแหน่งย่อย (Sub-location)'] || '')}" placeholder="เช่น เตียง 1, รถ Emergency">
+                        <input type="text" id="update-subloc" class="swal-input" value="${escapeHtml(initialSubLocation)}" placeholder="เช่น เตียง 1, รถ Emergency">
                     </div>
                     <div class="swal-form-group">
                         <label><i class="fas fa-comment-dots"></i> หมายเหตุ:</label>
-                        <textarea id="update-note" class="swal-input" rows="2" placeholder="ระบุข้อมูลเพิ่มเติม (ถ้ามี)..."></textarea>
+                        <textarea id="update-note" class="swal-input" rows="2" placeholder="ระบุข้อมูลเพิ่มเติม (ถ้ามี)...">${escapeHtml(initialNote)}</textarea>
+                        ${isEditMode && existingImageUrl ? `<small style="display:block; margin-top:6px;"><a href="${escapeHtml(existingImageUrl)}" target="_blank" rel="noopener noreferrer">เปิดไฟล์แนบเดิม</a></small>` : ''}
                     </div>`,
                 showCancelButton: true,
-                confirmButtonText: '<i class="fas fa-save"></i> บันทึกข้อมูล',
+                confirmButtonText: isEditMode ? '<i class="fas fa-save"></i> บันทึกการแก้ไข' : '<i class="fas fa-save"></i> บันทึกข้อมูล',
                 cancelButtonText: 'ยกเลิก',
                 confirmButtonColor: '#003366',
                 showLoaderOnConfirm: true,
                 didOpen: () => {
                     wireDetailLinkButton(updateDetailLinkButtonId, item);
+                    const statusRadio = document.querySelector(`input[name="update-status"][value="${initialStatus}"]`);
+                    if (statusRadio) statusRadio.checked = true;
+                    const borrowSelect = document.getElementById('update-borrow');
+                    if (borrowSelect && initialBorrowedWard) borrowSelect.value = initialBorrowedWard;
                     toggleExtraInputs();
                 },
                 preConfirm: async () => {
@@ -3309,7 +3408,7 @@
                         Swal.showValidationMessage(requiresTransferWard ? 'กรุณาเลือกหน่วยงานปลายทางที่ต้องการย้ายไป' : 'กรุณาเลือกหน่วยงานที่ยืมไปใช้');
                         return false;
                     }
-                    if ((requiresBorrowWard || requiresTransferWard) && normalizeWard(borrowedWard) === normalizeWard(currentWard || item._usageWard || item._ownerWard)) {
+                    if (!isEditMode && (requiresBorrowWard || requiresTransferWard) && normalizeWard(borrowedWard) === normalizeWard(currentWard || item._usageWard || item._ownerWard)) {
                         Swal.showValidationMessage('หน่วยงานปลายทางต้องไม่ใช่หน่วยงานเดียวกับผู้บันทึก');
                         return false;
                     }
@@ -3317,7 +3416,7 @@
                         Swal.showValidationMessage('เฉพาะหน่วยงานเจ้าของเท่านั้นที่สามารถย้ายหน่วยงานได้');
                         return false;
                     }
-                    if (requiresEvidence && documentInput.files.length === 0) {
+                    if (requiresEvidence && documentInput.files.length === 0 && !existingImageUrl) {
                         Swal.showValidationMessage('กรุณาแนบเอกสารประกอบก่อนบันทึก');
                         return false;
                     }
@@ -3339,26 +3438,29 @@
                         return false;
                     }
                     const payload = {
-                        action: 'updateStatus',
+                        action: isEditMode ? 'editInspectionRecord' : 'updateStatus',
                         ward: currentWard || item._usageWard || item._ownerWard,
                         itemId: itemKey,
                         originalItemId: item['เลขครุภัณฑ์'] || '',
                         rmcNo: item['RMC No'] || '',
+                        historyRowNumber: isEditMode && inspectionRecord ? inspectionRecord.rowNumber : '',
                         status,
                         borrowedWard,
                         subLocation,
                         note,
+                        existingImageUrl,
                         imageBase64,
                         mimeType,
                         imageName
                     };
                     try {
                         await ensureEquipmentApiVersionCurrent();
-                        const submittedAt = new Date();
                         const result = await apiPostJson(payload);
                         if (result.status !== 'success') throw new Error(result.message);
                         assertSaveCommittedByApi(result);
-                        const latestItem = await verifyInspectionSaved(item, status, borrowedWard, submittedAt, result.data && result.data.updatedItem);
+                        const latestItem = isEditMode
+                            ? normalizeEquipmentItemFromApi((result.data && result.data.updatedItem) || await fetchLatestEquipmentItem(item))
+                            : await verifyInspectionSaved(item, status, borrowedWard, new Date(), result.data && result.data.updatedItem);
                         if (status === 'แทงจำหน่าย') {
                             const deleteResult = await apiPostJson({ action: 'deleteEquipment', itemId: payload.itemId });
                             if (deleteResult.status !== 'success') throw new Error(deleteResult.message || 'ไม่สามารถลบรายการออกจากระบบได้');
@@ -3375,7 +3477,7 @@
                     if (result.value && result.value.latestItem && getEquipmentPrimaryKey(result.value.latestItem)) {
                         upsertLocalEquipmentItem(result.value.latestItem);
                     }
-                    Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ!', text: 'อัปเดตข้อมูลเรียบร้อยแล้ว', timer: 1500, showConfirmButton: false }).then(() => {
+                    Swal.fire({ icon: 'success', title: isEditMode ? 'แก้ไขสำเร็จ!' : 'บันทึกสำเร็จ!', text: 'อัปเดตข้อมูลเรียบร้อยแล้ว', timer: 1500, showConfirmButton: false }).then(() => {
                         setLoadingState(true);
                         fetchEquipment();
                     });
@@ -3494,7 +3596,12 @@
                     <td>${escapeHtml(item._ownerWard || '-')}</td>
                     <td>${escapeHtml(item._usageWard || '-')}</td>
                     <td>${escapeHtml(getInspectionFrequency(item))} เดือน</td>
-                    <td style="color:#28a745; font-size:0.9rem;">${escapeHtml(getLastInspectionText(item, 'ยังไม่เคยตรวจ'))}</td>
+                    <td style="font-size:0.9rem;">
+                        ${item['วันที่ตรวจล่าสุด']
+                            ? `<button type="button" class="btn btn-outline btn-sm" style="color:#28a745; border-color:#b7e4c7; width:auto;" onclick="showLatestInspectionRecordModal(${safeItemJson})">${escapeHtml(getLastInspectionText(item, 'ยังไม่เคยตรวจ'))}</button>`
+                            : `<span style="color:#28a745;">${escapeHtml(getLastInspectionText(item, 'ยังไม่เคยตรวจ'))}</span>`
+                        }
+                    </td>
                     <td><span class="status-badge ${statusClass}" style="font-size:0.75rem;">${escapeHtml(item._statusText || 'ปกติ')}</span></td>
                     <td>
                         <button class="btn btn-outline btn-sm" onclick="showDetailsModal(${safeItemJson})">
