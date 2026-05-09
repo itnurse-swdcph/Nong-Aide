@@ -1,7 +1,7 @@
 {
-  "name": "nong-aide-swd-desktop",
+  "name": "swd-care-connect-desktop",
   "version": "1.0.0",
-  "description": "Desktop package for Nong AIDE SWD",
+  "description": "Desktop package for SWD Care Connect",
   "main": "main.js",
   "author": "Natnarinthorn",
   "license": "UNLICENSED",
@@ -16,8 +16,8 @@
     "electron-builder": "^26.0.12"
   },
   "build": {
-    "appId": "com.nongaide.swd.desktop",
-    "productName": "Nong AIDE SWD",
+    "appId": "com.swdcareconnect.desktop",
+    "productName": "SWD Care Connect",
     "artifactName": "${productName}-Setup-${version}.${ext}",
     "asar": true,
     "files": [
