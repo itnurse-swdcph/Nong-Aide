@@ -20,7 +20,7 @@ function createAppWindow(targetUrl = pathToFileURL(START_PAGE).toString(), overr
     show: false,
     backgroundColor: "#f0f4f8",
     autoHideMenuBar: true,
-    title: "Nong AIDE SWD",
+    title: "SWD Care Connect",
     icon: getWindowIcon(),
     webPreferences: {
       contextIsolation: true,
