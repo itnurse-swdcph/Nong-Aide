@@ -1,7 +1,7 @@
 {
-  "name": "น้อง AIDE ระบบบริหารจัดการงานพนักงานช่วยเหลือคนไข้ SWD",
-  "short_name": "น้อง AIDE SWD",
-  "description": "ระบบบริหารจัดการงานพนักงานช่วยเหลือคนไข้ โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน",
+  "name": "SWD Care Connect",
+  "short_name": "SWD Care Connect",
+  "description": "ระบบบริหารจัดการงานหน่วยงานอัจฉริยะ โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f0f4f8",
