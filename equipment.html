@@ -739,7 +739,7 @@
         const THAI_MONTH_NAMES = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
         const LOCAL_INSPECTION_WINDOW_KEY = 'aide_inspection_windows_v1';
         const API_TIMEOUT_MS = 30000;
-        const EXPECTED_EQUIPMENT_API_VERSION = '2026-05-06-inspection-edit-v5';
+        const EXPECTED_EQUIPMENT_API_VERSION = '2026-05-13-masterdate-verified-before-history';
         let verifiedApiVersion = '';
         let allEquipmentUniverse = [];
         let crossWardSearchSeq = 0;
@@ -809,6 +809,15 @@
             return isNaN(date) ? null : date;
         }
 
+        function isSameLocalDate(a, b) {
+            const dateA = parseInspectionDateValue(a);
+            const dateB = parseInspectionDateValue(b);
+            if (!dateA || !dateB) return false;
+            return dateA.getFullYear() === dateB.getFullYear() &&
+                dateA.getMonth() === dateB.getMonth() &&
+                dateA.getDate() === dateB.getDate();
+        }
+
         async function fetchLatestEquipmentItem(item) {
             const result = await apiGetJson('getAllItems');
             if (result.status !== 'success' || !Array.isArray(result.data)) {
@@ -863,7 +872,7 @@
 
             if (normalizeStatusForFilter(latestStatus) !== normalizeStatusForFilter(expectedMasterStatus)) return false;
             if (!skipInspectionDateCheck && !latestInspectionDate) return false;
-            if (!skipInspectionDateCheck && submittedAt && latestInspectionDate.getTime() + 60000 < submittedAt.getTime()) return false;
+            if (!skipInspectionDateCheck && submittedAt && latestInspectionDate.getTime() + 60000 < submittedAt.getTime() && !isSameLocalDate(latestInspectionDate, submittedAt)) return false;
             if (!skipInspectionDateCheck && previousInspectionDate && latestInspectionDate.getTime() === previousInspectionDate.getTime()) return false;
             if ((expected.status === 'ถูกยืม' || expected.requestedStatus === 'ย้ายหน่วยงาน') && expected.borrowedWard) {
                 const latestUsageWard = String(latestItem['ใช้งานที่'] || '').trim();
