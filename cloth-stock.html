@@ -652,7 +652,7 @@
 
                 <section id="unitDashboard" class="panel active">
                     <div class="metric-stack">
-                        <div class="metric"><small>Par รวม</small><strong id="metricPar">0</strong></div>
+                        <div class="metric"><small>Stock หน่วยงาน รวม</small><strong id="metricPar">0</strong></div>
                         <div class="metric"><small>พร้อมใช้</small><strong id="metricReady">0</strong></div>
                         <div class="metric"><small>กำลังใช้งาน</small><strong id="metricInUse">0</strong></div>
                         <div class="metric"><small>ส่งซัก</small><strong id="metricLaundry">0</strong></div>
@@ -805,8 +805,8 @@
                                         <th>ส่งซัก</th>
                                         <th>ติดผู้ป่วยกลับบ้าน</th>
                                         <th>รวม</th>
-                                        <th>Par</th>
-                                        <th>ต่าง</th>
+                                        <th>Stock หน่วยงาน</th>
+                                        <th>ส่วนต่าง</th>
                                         <th>ผู้บันทึก</th>
                                         <th>หมายเหตุ</th>
                                     </tr>
@@ -953,35 +953,38 @@
 
                 <section id="adminLogs" class="panel active">
                     <div class="metric-stack">
-                        <div class="metric"><small>Par</small><strong id="adminParMetric">0</strong></div>
+                        <div class="metric"><small>Stock หน่วยงาน</small><strong id="adminParMetric">0</strong></div>
                         <div class="metric"><small>พร้อมใช้</small><strong id="adminReadyMetric">0</strong></div>
                         <div class="metric"><small>กำลังใช้งาน</small><strong id="adminUseMetric">0</strong></div>
                         <div class="metric"><small>ส่งซัก</small><strong id="adminLaundryMetric">0</strong></div>
                         <div class="metric"><small>ติดผู้ป่วยกลับบ้าน</small><strong id="adminPendingMetric">0</strong></div>
                     </div>
+                    <div class="toolbar" style="margin-bottom: 16px;">
+                        <div class="tabs">
+                            <button id="btnAdminViewCategory" class="tab-btn active" onclick="setAdminViewMode('category')">ดูตามหมวดหมู่หลัก</button>
+                            <button id="btnAdminViewItem" class="tab-btn" onclick="setAdminViewMode('item')">ดูตามชื่อรายการผ้า</button>
+                            <button id="btnAdminViewWard" class="tab-btn" onclick="setAdminViewMode('ward')">ดูประวัติแยกตามหน่วยงาน (แบบเดิม)</button>
+                        </div>
+                    </div>
                     <div class="card">
                         <div class="section-head">
                             <div>
-                                <h3>ประวัติการตรวจนับทั้งหมด</h3>
+                                <h3 id="adminLogsTitle">สรุปแยกตามหมวดหมู่หลัก</h3>
                             </div>
-                            <button class="ghost-btn" type="button" onclick="exportAdminLogs()">Export CSV</button>
+                            <button id="btnExportAdminLogs" class="ghost-btn" type="button" onclick="exportAdminLogs()">Export CSV (แยกตามหมวดหมู่)</button>
                         </div>
                         <div class="table-wrap">
                             <table>
-                                <thead>
+                                <thead id="adminLogHeader">
                                     <tr>
-                                        <th>วัน/เวลา</th>
-                                        <th>รอบ</th>
-                                        <th>หน่วยงาน</th>
                                         <th>หมวดหมู่หลัก</th>
-                                        <th>ชื่อรายการผ้า</th>
-                                        <th>พร้อมใช้</th>
-                                        <th>ใช้งาน</th>
-                                        <th>ส่งซัก</th>
-                                        <th>ติดผู้ป่วยกลับบ้าน</th>
-                                        <th>รวม</th>
-                                        <th>Par</th>
-                                        <th>ต่าง</th>
+                                        <th>ยอดพร้อมใช้ (รวม)</th>
+                                        <th>ยอดกำลังใช้งาน (รวม)</th>
+                                        <th>ยอดส่งซัก (รวม)</th>
+                                        <th>ยอดติดผู้ป่วยกลับบ้าน (รวม)</th>
+                                        <th>ยอดรวมที่นับได้</th>
+                                        <th>Stock หน่วยงาน</th>
+                                        <th>ส่วนต่าง</th>
                                     </tr>
                                 </thead>
                                 <tbody id="adminLogBody"></tbody>
@@ -1050,6 +1053,7 @@
         let isAlreadyCounted = false;
         let lastCountDate = "";
         let unitChart = null;
+        let adminViewMode = "category";
 
         const isAdminMode = () => currentRole === "admin";
         const isLaundryUnit = () => !isAdminMode() && currentWard === "ซักฟอก";
@@ -1313,7 +1317,7 @@
                                 <h4>${escapeHtml(item.itemName)}</h4>
                             </div>
                             <div class="par-box">
-                                <small>Par</small>
+                                <small>Stock หน่วยงาน</small>
                                 <strong>${item.parLevel}</strong>
                             </div>
                         </div>
@@ -1324,7 +1328,7 @@
                                 <strong id="total-${index}">0</strong>
                             </div>
                             <div class="summary-item">
-                                <small>Par</small>
+                                <small>Stock หน่วยงาน</small>
                                 <strong>${item.parLevel}</strong>
                             </div>
                             <div class="summary-item negative" id="diffBox-${index}">
@@ -1844,8 +1848,25 @@
 
         function renderAdminView() {
             populateAdminFilters();
-            renderAdminViews();
+            setAdminViewMode(adminViewMode);
             document.getElementById("adminTrackingOpen").innerText = trackingRecords.filter(record => record.status === "open" || record.status === "in_progress").length.toLocaleString();
+        }
+
+        function setAdminViewMode(mode) {
+            adminViewMode = mode;
+            document.getElementById("btnAdminViewCategory").classList.toggle("active", mode === "category");
+            document.getElementById("btnAdminViewItem").classList.toggle("active", mode === "item");
+            document.getElementById("btnAdminViewWard").classList.toggle("active", mode === "ward");
+
+            const wardFilter = document.getElementById("adminWardFilter");
+            if (mode === "category" || mode === "item") {
+                wardFilter.value = "all";
+                wardFilter.disabled = true;
+            } else {
+                wardFilter.disabled = false;
+            }
+
+            renderAdminViews();
         }
 
         function populateAdminFilters() {
@@ -1879,24 +1900,170 @@
             document.getElementById("adminLaundryMetric").innerText = summary.laundry.toLocaleString();
             document.getElementById("adminPendingMetric").innerText = summary.pending.toLocaleString();
 
-            document.getElementById("adminLogBody").innerHTML = logs.length === 0
-                ? `<tr><td colspan="12" style="text-align:center;">ไม่มีข้อมูล</td></tr>`
-                : logs.sort((a, b) => b.sortValue - a.sortValue).map(log => `
+            const exportBtn = document.getElementById("btnExportAdminLogs");
+            const logsTitle = document.getElementById("adminLogsTitle");
+            const headerEl = document.getElementById("adminLogHeader");
+            const bodyEl = document.getElementById("adminLogBody");
+
+            if (adminViewMode === "category") {
+                exportBtn.innerText = "Export CSV (แยกตามหมวดหมู่)";
+                logsTitle.innerText = "สรุปแยกตามหมวดหมู่หลัก";
+                
+                headerEl.innerHTML = `
                     <tr>
-                        <td>${escapeHtml(log.timestamp)}</td>
-                        <td>${escapeHtml(log.quarter)}</td>
-                        <td>${escapeHtml(log.ward)}</td>
-                        <td>${escapeHtml(log.mainCategory)}</td>
-                        <td>${escapeHtml(log.itemName)}</td>
-                        <td>${log.readyStock}</td>
-                        <td>${log.inUse}</td>
-                        <td>${log.inLaundry}</td>
-                        <td>${log.pendingTracking}</td>
-                        <td>${log.total}</td>
-                        <td>${log.par}</td>
-                        <td class="${log.diff < 0 ? "text-danger" : log.diff > 0 ? "text-success" : ""}">${escapeHtml(formatDifference(log.diff))}</td>
+                        <th>หมวดหมู่หลัก</th>
+                        <th>ยอดพร้อมใช้ (รวม)</th>
+                        <th>ยอดกำลังใช้งาน (รวม)</th>
+                        <th>ยอดส่งซัก (รวม)</th>
+                        <th>ยอดติดผู้ป่วยกลับบ้าน (รวม)</th>
+                        <th>ยอดรวมที่นับได้</th>
+                        <th>Stock หน่วยงาน</th>
+                        <th>ส่วนต่าง</th>
                     </tr>
-                `).join("");
+                `;
+
+                const categoryMap = {};
+                logs.forEach(log => {
+                    const cat = log.mainCategory || "ไม่ระบุหมวดหมู่";
+                    if (!categoryMap[cat]) {
+                        categoryMap[cat] = {
+                            mainCategory: cat,
+                            readyStock: 0,
+                            inUse: 0,
+                            inLaundry: 0,
+                            pendingTracking: 0,
+                            par: 0
+                        };
+                    }
+                    categoryMap[cat].readyStock += log.readyStock;
+                    categoryMap[cat].inUse += log.inUse;
+                    categoryMap[cat].inLaundry += log.inLaundry;
+                    categoryMap[cat].pendingTracking += log.pendingTracking;
+                    categoryMap[cat].par += log.par;
+                });
+
+                const categoryRows = Object.values(categoryMap).map(row => {
+                    const total = row.readyStock + row.inUse + row.inLaundry + row.pendingTracking;
+                    const diff = total - row.par;
+                    return { ...row, total, diff };
+                }).sort((a, b) => a.mainCategory.localeCompare(b.mainCategory, 'th'));
+
+                bodyEl.innerHTML = categoryRows.length === 0
+                    ? `<tr><td colspan="8" style="text-align:center;">ไม่มีข้อมูล</td></tr>`
+                    : categoryRows.map(row => `
+                        <tr>
+                            <td>${escapeHtml(row.mainCategory)}</td>
+                            <td>${row.readyStock.toLocaleString()}</td>
+                            <td>${row.inUse.toLocaleString()}</td>
+                            <td>${row.inLaundry.toLocaleString()}</td>
+                            <td>${row.pendingTracking.toLocaleString()}</td>
+                            <td>${row.total.toLocaleString()}</td>
+                            <td>${row.par.toLocaleString()}</td>
+                            <td class="${row.diff < 0 ? "text-danger" : row.diff > 0 ? "text-success" : ""}">${escapeHtml(formatDifference(row.diff))}</td>
+                        </tr>
+                    `).join("");
+
+            } else if (adminViewMode === "item") {
+                exportBtn.innerText = "Export CSV (แยกตามรายการผ้า)";
+                logsTitle.innerText = "สรุปแยกตามชื่อรายการผ้า";
+
+                headerEl.innerHTML = `
+                    <tr>
+                        <th>หมวดหมู่หลัก</th>
+                        <th>ชื่อรายการผ้า</th>
+                        <th>ยอดพร้อมใช้ (รวม)</th>
+                        <th>ยอดกำลังใช้งาน (รวม)</th>
+                        <th>ยอดส่งซัก (รวม)</th>
+                        <th>ยอดติดผู้ป่วยกลับบ้าน (รวม)</th>
+                        <th>ยอดรวมที่นับได้</th>
+                        <th>Stock หน่วยงาน</th>
+                        <th>ส่วนต่าง</th>
+                    </tr>
+                `;
+
+                const itemMap = {};
+                logs.forEach(log => {
+                    const key = `${log.mainCategory || "ไม่ระบุ"}_${log.itemName}`;
+                    if (!itemMap[key]) {
+                        itemMap[key] = {
+                            mainCategory: log.mainCategory || "ไม่ระบุหมวดหมู่",
+                            itemName: log.itemName,
+                            readyStock: 0,
+                            inUse: 0,
+                            inLaundry: 0,
+                            pendingTracking: 0,
+                            par: 0
+                        };
+                    }
+                    itemMap[key].readyStock += log.readyStock;
+                    itemMap[key].inUse += log.inUse;
+                    itemMap[key].inLaundry += log.inLaundry;
+                    itemMap[key].pendingTracking += log.pendingTracking;
+                    itemMap[key].par += log.par;
+                });
+
+                const itemRows = Object.values(itemMap).map(row => {
+                    const total = row.readyStock + row.inUse + row.inLaundry + row.pendingTracking;
+                    const diff = total - row.par;
+                    return { ...row, total, diff };
+                }).sort((a, b) => a.mainCategory.localeCompare(b.mainCategory, 'th') || a.itemName.localeCompare(b.itemName, 'th'));
+
+                bodyEl.innerHTML = itemRows.length === 0
+                    ? `<tr><td colspan="9" style="text-align:center;">ไม่มีข้อมูล</td></tr>`
+                    : itemRows.map(row => `
+                        <tr>
+                            <td>${escapeHtml(row.mainCategory)}</td>
+                            <td>${escapeHtml(row.itemName)}</td>
+                            <td>${row.readyStock.toLocaleString()}</td>
+                            <td>${row.inUse.toLocaleString()}</td>
+                            <td>${row.inLaundry.toLocaleString()}</td>
+                            <td>${row.pendingTracking.toLocaleString()}</td>
+                            <td>${row.total.toLocaleString()}</td>
+                            <td>${row.par.toLocaleString()}</td>
+                            <td class="${row.diff < 0 ? "text-danger" : row.diff > 0 ? "text-success" : ""}">${escapeHtml(formatDifference(row.diff))}</td>
+                        </tr>
+                    `).join("");
+
+            } else {
+                exportBtn.innerText = "Export CSV (แยกตามหน่วยงาน)";
+                logsTitle.innerText = "ประวัติการตรวจนับแยกตามหน่วยงาน";
+
+                headerEl.innerHTML = `
+                    <tr>
+                        <th>วัน/เวลา</th>
+                        <th>รอบ</th>
+                        <th>หน่วยงาน</th>
+                        <th>หมวดหมู่หลัก</th>
+                        <th>ชื่อรายการผ้า</th>
+                        <th>พร้อมใช้</th>
+                        <th>ใช้งาน</th>
+                        <th>ส่งซัก</th>
+                        <th>ติดผู้ป่วยกลับบ้าน</th>
+                        <th>รวม</th>
+                        <th>Stock หน่วยงาน</th>
+                        <th>ส่วนต่าง</th>
+                    </tr>
+                `;
+
+                bodyEl.innerHTML = logs.length === 0
+                    ? `<tr><td colspan="12" style="text-align:center;">ไม่มีข้อมูล</td></tr>`
+                    : logs.sort((a, b) => b.sortValue - a.sortValue).map(log => `
+                        <tr>
+                            <td>${escapeHtml(log.timestamp)}</td>
+                            <td>${escapeHtml(log.quarter)}</td>
+                            <td>${escapeHtml(log.ward)}</td>
+                            <td>${escapeHtml(log.mainCategory)}</td>
+                            <td>${escapeHtml(log.itemName)}</td>
+                            <td>${log.readyStock}</td>
+                            <td>${log.inUse}</td>
+                            <td>${log.inLaundry}</td>
+                            <td>${log.pendingTracking}</td>
+                            <td>${log.total}</td>
+                            <td>${log.par}</td>
+                            <td class="${log.diff < 0 ? "text-danger" : log.diff > 0 ? "text-success" : ""}">${escapeHtml(formatDifference(log.diff))}</td>
+                        </tr>
+                    `).join("");
+            }
 
             document.getElementById("adminTrackingBody").innerHTML = tracking.length === 0
                 ? `<tr><td colspan="8" style="text-align:center;">ไม่มีข้อมูล</td></tr>`
@@ -2045,8 +2212,8 @@
                 ["ส่งซัก", row => row.inLaundry],
                 ["ติดผู้ป่วยกลับบ้าน", row => row.pendingTracking],
                 ["รวม", row => row.total],
-                ["Par", row => row.par],
-                ["ต่าง", row => formatDifference(row.diff)],
+                ["Stock หน่วยงาน", row => row.par],
+                ["ส่วนต่าง", row => formatDifference(row.diff)],
                 ["ผู้บันทึก", row => row.recorder || "-"],
                 ["หมายเหตุ", row => row.note || "-"]
             ]);
@@ -2056,20 +2223,97 @@
             const ward = document.getElementById("adminWardFilter").value;
             const quarter = document.getElementById("adminQuarterFilter").value;
             const logs = allLogs.filter(log => (ward === "all" || log.ward === ward) && (quarter === "all" || log.quarter === quarter));
-            exportCsv("cloth-admin-logs.csv", logs, [
-                ["วันที่", row => row.timestamp],
-                ["รอบ", row => row.quarter],
-                ["หน่วยงาน", row => row.ward],
-                ["หมวดหมู่หลัก", row => row.mainCategory],
-                ["ชื่อรายการผ้า", row => row.itemName],
-                ["พร้อมใช้", row => row.readyStock],
-                ["กำลังใช้งาน", row => row.inUse],
-                ["ส่งซัก", row => row.inLaundry],
-                ["ติดผู้ป่วยกลับบ้าน", row => row.pendingTracking],
-                ["รวม", row => row.total],
-                ["Par", row => row.par],
-                ["ต่าง", row => formatDifference(row.diff)]
-            ]);
+
+            if (adminViewMode === "category") {
+                const categoryMap = {};
+                logs.forEach(log => {
+                    const cat = log.mainCategory || "ไม่ระบุหมวดหมู่";
+                    if (!categoryMap[cat]) {
+                        categoryMap[cat] = {
+                            mainCategory: cat,
+                            readyStock: 0,
+                            inUse: 0,
+                            inLaundry: 0,
+                            pendingTracking: 0,
+                            par: 0
+                        };
+                    }
+                    categoryMap[cat].readyStock += log.readyStock;
+                    categoryMap[cat].inUse += log.inUse;
+                    categoryMap[cat].inLaundry += log.inLaundry;
+                    categoryMap[cat].pendingTracking += log.pendingTracking;
+                    categoryMap[cat].par += log.par;
+                });
+                const rows = Object.values(categoryMap).map(row => {
+                    const total = row.readyStock + row.inUse + row.inLaundry + row.pendingTracking;
+                    const diff = total - row.par;
+                    return { ...row, total, diff };
+                }).sort((a, b) => a.mainCategory.localeCompare(b.mainCategory, 'th'));
+
+                exportCsv("cloth-summary-category.csv", rows, [
+                    ["หมวดหมู่หลัก", row => row.mainCategory],
+                    ["ยอดพร้อมใช้ (รวม)", row => row.readyStock],
+                    ["ยอดกำลังใช้งาน (รวม)", row => row.inUse],
+                    ["ยอดส่งซัก (รวม)", row => row.inLaundry],
+                    ["ยอดติดผู้ป่วยกลับบ้าน (รวม)", row => row.pendingTracking],
+                    ["ยอดรวมที่นับได้", row => row.total],
+                    ["Stock หน่วยงาน", row => row.par],
+                    ["ส่วนต่าง", row => formatDifference(row.diff)]
+                ]);
+            } else if (adminViewMode === "item") {
+                const itemMap = {};
+                logs.forEach(log => {
+                    const key = `${log.mainCategory || "ไม่ระบุ"}_${log.itemName}`;
+                    if (!itemMap[key]) {
+                        itemMap[key] = {
+                            mainCategory: log.mainCategory || "ไม่ระบุหมวดหมู่",
+                            itemName: log.itemName,
+                            readyStock: 0,
+                            inUse: 0,
+                            inLaundry: 0,
+                            pendingTracking: 0,
+                            par: 0
+                        };
+                    }
+                    itemMap[key].readyStock += log.readyStock;
+                    itemMap[key].inUse += log.inUse;
+                    itemMap[key].inLaundry += log.inLaundry;
+                    itemMap[key].pendingTracking += log.pendingTracking;
+                    itemMap[key].par += log.par;
+                });
+                const rows = Object.values(itemMap).map(row => {
+                    const total = row.readyStock + row.inUse + row.inLaundry + row.pendingTracking;
+                    const diff = total - row.par;
+                    return { ...row, total, diff };
+                }).sort((a, b) => a.mainCategory.localeCompare(b.mainCategory, 'th') || a.itemName.localeCompare(b.itemName, 'th'));
+
+                exportCsv("cloth-summary-item.csv", rows, [
+                    ["หมวดหมู่หลัก", row => row.mainCategory],
+                    ["ชื่อรายการผ้า", row => row.itemName],
+                    ["ยอดพร้อมใช้ (รวม)", row => row.readyStock],
+                    ["ยอดกำลังใช้งาน (รวม)", row => row.inUse],
+                    ["ยอดส่งซัก (รวม)", row => row.inLaundry],
+                    ["ยอดติดผู้ป่วยกลับบ้าน (รวม)", row => row.pendingTracking],
+                    ["ยอดรวมที่นับได้", row => row.total],
+                    ["Stock หน่วยงาน", row => row.par],
+                    ["ส่วนต่าง", row => formatDifference(row.diff)]
+                ]);
+            } else {
+                exportCsv("cloth-admin-logs.csv", logs, [
+                    ["วันที่", row => row.timestamp],
+                    ["รอบ", row => row.quarter],
+                    ["หน่วยงาน", row => row.ward],
+                    ["หมวดหมู่หลัก", row => row.mainCategory],
+                    ["ชื่อรายการผ้า", row => row.itemName],
+                    ["พร้อมใช้", row => row.readyStock],
+                    ["กำลังใช้งาน", row => row.inUse],
+                    ["ส่งซัก", row => row.inLaundry],
+                    ["ติดผู้ป่วยกลับบ้าน", row => row.pendingTracking],
+                    ["รวม", row => row.total],
+                    ["Stock หน่วยงาน", row => row.par],
+                    ["ส่วนต่าง", row => formatDifference(row.diff)]
+                ]);
+            }
         }
 
         function exportCsv(filename, rows, columns) {
