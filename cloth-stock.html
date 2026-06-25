@@ -787,7 +787,7 @@
                     <div class="card">
                         <div class="section-head">
                             <div>
-                                <h3>ประวัติการตรวจนับ</h3>
+                                <h3 id="unitHistoryTitle">ประวัติการตรวจนับ</h3>
                                 <p>แสดงตามรายการผ้า</p>
                             </div>
                             <button class="ghost-btn" type="button" onclick="exportUnitHistory()">Export CSV</button>
@@ -1523,6 +1523,14 @@
         function renderUnitHistory() {
             const tbody = document.getElementById("unitHistoryBody");
             const logs = getFilteredUnitLogs().sort((a, b) => b.sortValue - a.sortValue);
+            
+            const quarter = getSelectedQuarter();
+            const unitQuarters = [...new Set(unitLogs.map(log => log.quarter).filter(Boolean))].sort().reverse();
+            const activeQuarterText = (quarter === "all") 
+                ? (unitQuarters.length > 0 ? `${unitQuarters[0]} (ล่าสุด)` : "ทั้งหมด")
+                : (quarter === "__current__" ? currentQuarter : quarter);
+            document.getElementById("unitHistoryTitle").innerText = `ประวัติการตรวจนับ (รอบ: ${activeQuarterText})`;
+
             if (logs.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;">ยังไม่มีประวัติ</td></tr>`;
                 return;
@@ -1905,9 +1913,14 @@
             const headerEl = document.getElementById("adminLogHeader");
             const bodyEl = document.getElementById("adminLogBody");
 
+            const quarters = [...new Set(allLogs.map(log => log.quarter).filter(Boolean))].sort().reverse();
+            const activeQuarterText = (quarter === "all") 
+                ? (quarters.length > 0 ? `${quarters[0]} (ล่าสุด)` : "ทั้งหมด") 
+                : quarter;
+
             if (adminViewMode === "category") {
                 exportBtn.innerText = "Export CSV (แยกตามหมวดหมู่)";
-                logsTitle.innerText = "สรุปแยกตามหมวดหมู่หลัก";
+                logsTitle.innerText = `สรุปแยกตามหมวดหมู่หลัก (รอบ: ${activeQuarterText})`;
                 
                 headerEl.innerHTML = `
                     <tr>
@@ -1965,7 +1978,7 @@
 
             } else if (adminViewMode === "item") {
                 exportBtn.innerText = "Export CSV (แยกตามรายการผ้า)";
-                logsTitle.innerText = "สรุปแยกตามชื่อรายการผ้า";
+                logsTitle.innerText = `สรุปแยกตามชื่อรายการผ้า (รอบ: ${activeQuarterText})`;
 
                 headerEl.innerHTML = `
                     <tr>
@@ -2026,7 +2039,7 @@
 
             } else {
                 exportBtn.innerText = "Export CSV (แยกตามหน่วยงาน)";
-                logsTitle.innerText = "ประวัติการตรวจนับแยกตามหน่วยงาน";
+                logsTitle.innerText = `ประวัติการตรวจนับแยกตามหน่วยงาน (รอบ: ${activeQuarterText})`;
 
                 headerEl.innerHTML = `
                     <tr>
