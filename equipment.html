@@ -133,6 +133,16 @@
         .admin-progress-card .progress-num { font-size: 2rem; font-weight: 600; color: var(--text-main); line-height: 1; }
         .admin-progress-card .progress-label { margin-top: 8px; color: #5f6b7a; font-size: 0.9rem; line-height: 1.5; }
         .admin-progress-card .progress-hint { margin-top: 10px; color: #7a8795; font-size: 0.82rem; }
+        .admin-report-box { background:#fff; border:1px solid #dbe5f0; border-radius:12px; padding:18px; margin:20px 0; }
+        .admin-report-toolbar { display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin-bottom:14px; }
+        .admin-report-toolbar h4 { margin:0; color:var(--primary); }
+        .report-table-wrap { overflow-x:auto; }
+        .report-table { width:100%; min-width:1100px; border-collapse:collapse; font-size:.9rem; }
+        .report-table th { background:#003366; color:#fff; padding:10px 8px; white-space:nowrap; text-align:center; }
+        .report-table td { border-bottom:1px solid #edf0f4; padding:10px 8px; text-align:center; white-space:nowrap; }
+        .report-table td:first-child { text-align:left; font-weight:500; }
+        .report-table tr:hover { background:#f7fbff; }
+        .report-meta { color:#66788a; font-size:.82rem; margin-bottom:10px; }
 
         /* --- ปุ่มจัดการ (แก้ไข/ลบ) --- */
         .btn-edit-icon { background: #ffc107; color: #000; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 0.9rem;}
@@ -628,6 +638,25 @@
                         </button>
                     </div>
                 </div>
+                <div class="admin-report-box">
+                    <div class="admin-report-toolbar">
+                        <div>
+                            <h4><i class="fas fa-chart-column"></i> รายงานสรุปรายหน่วยงาน</h4>
+                            <div id="departmentReportMeta" class="report-meta">เลือกปีงบประมาณเพื่อดูผลการตรวจนับ</div>
+                        </div>
+                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                            <label for="departmentReportFiscalYear" style="color:var(--primary);">ปีงบประมาณ</label>
+                            <select id="departmentReportFiscalYear" class="swal-input" style="width:auto; padding:8px 12px;" onchange="loadDepartmentSummaryReport()"></select>
+                            <button class="btn btn-success btn-sm" onclick="exportDepartmentSummaryReport()"><i class="fas fa-file-csv"></i> Export File</button>
+                        </div>
+                    </div>
+                    <div class="report-table-wrap">
+                        <table class="report-table" id="departmentSummaryTable">
+                            <thead><tr><th>หน่วยงาน/แผนก</th><th>ต.ค.</th><th>พ.ย.</th><th>ธ.ค.</th><th>ม.ค.</th><th>ก.พ.</th><th>มี.ค.</th><th>เม.ย.</th><th>พ.ค.</th><th>มิ.ย.</th><th>ก.ค.</th><th>ส.ค.</th><th>ก.ย.</th><th>รวมทั้งปี</th></tr></thead>
+                            <tbody id="departmentSummaryTableBody"><tr><td colspan="14">กำลังโหลดรายงาน...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
                 <div id="admin-charts-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px;">
                     <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 3px 10px rgba(0,0,0,0.05); border: 1px solid #e0e6ed;">
                         <h4 style="text-align: center; color: var(--primary); margin-top: 0; font-size: 1rem;"><i class="fas fa-chart-pie"></i> สัดส่วนสถานะครุภัณฑ์</h4>
@@ -739,9 +768,10 @@
         const THAI_MONTH_NAMES = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
         const LOCAL_INSPECTION_WINDOW_KEY = 'aide_inspection_windows_v1';
         const API_TIMEOUT_MS = 30000;
-        const EXPECTED_EQUIPMENT_API_VERSION = '2026-05-13-masterdate-verified-before-history';
+        const EXPECTED_EQUIPMENT_API_VERSION = '2026-08-13-department-report-count-fix';
         let verifiedApiVersion = '';
         let allEquipmentUniverse = [];
+        let lastDepartmentSummaryReport = null;
         let crossWardSearchSeq = 0;
         let adminWardProgressSummary = { notStarted: [], inProgress: [], completed: [] };
         let inspectionDuplicateFocusKeys = null;
@@ -1583,8 +1613,8 @@
 
             const seedWindow = getInspectionDisplayWindow();
             const today = new Date();
-            const defaultOpenDateTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), today.getHours(), today.getMinutes(), 0, 0);
-            const defaultCloseDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 5, 23, 59, 0, 0);
+            const defaultOpenDateTime = new Date(today.getFullYear(), today.getMonth(), 1, 0, 0, 0, 0);
+            const defaultCloseDate = new Date(today.getFullYear(), today.getMonth(), 10, 23, 59, 0, 0);
             const defaultTargetMonth = seedWindow ? seedWindow.targetMonth : (today.getMonth() + 1);
             const defaultTargetYear = seedWindow ? (seedWindow.targetYear + 543) : (today.getFullYear() + 543);
             const defaultOpenDate = (seedWindow && seedWindow.openDate) || formatLocalDateTime(defaultOpenDateTime);
@@ -1712,6 +1742,58 @@
             });
         }
 
+        function initializeDepartmentReportYears() {
+            const select = document.getElementById('departmentReportFiscalYear');
+            if (!select || select.options.length) return;
+            const currentThaiYear = new Date().getFullYear() + 543;
+            for (let year = currentThaiYear; year >= currentThaiYear - 5; year--) {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = `พ.ศ. ${year}`;
+                select.appendChild(option);
+            }
+        }
+
+        async function loadDepartmentSummaryReport() {
+            if (!isAdminLoggedIn) return;
+            initializeDepartmentReportYears();
+            const select = document.getElementById('departmentReportFiscalYear');
+            const body = document.getElementById('departmentSummaryTableBody');
+            if (!select || !body) return;
+            body.innerHTML = '<tr><td colspan="14">กำลังโหลดรายงาน...</td></tr>';
+            try {
+                const result = await apiGetJson('getDepartmentSummaryReport', { fiscalYear: select.value });
+                if (result.status !== 'success') throw new Error(result.message || 'โหลดรายงานไม่สำเร็จ');
+                lastDepartmentSummaryReport = result.data;
+                body.innerHTML = (result.data.rows || []).map(row => {
+                    const cells = (row.months || []).map(month => `<td>${escapeHtml(month.display || '-')}</td>`).join('');
+                    return `<tr><td>${escapeHtml(row.department)}</td>${cells}<td><strong>${row.inspected}/${row.total}</strong><br><small>${Number(row.percentage || 0).toFixed(2)}%</small></td></tr>`;
+                }).join('') || '<tr><td colspan="14">ไม่พบข้อมูลในปีงบประมาณนี้</td></tr>';
+                const meta = document.getElementById('departmentReportMeta');
+                if (meta) meta.textContent = `ปีงบประมาณ พ.ศ. ${result.data.fiscalYear} | จัดทำเมื่อ ${new Date(result.data.generatedAt).toLocaleString('th-TH')}`;
+            } catch (error) {
+                body.innerHTML = `<tr><td colspan="14">ไม่สามารถโหลดรายงานได้: ${escapeHtml(error.message)}</td></tr>`;
+            }
+        }
+
+        function exportDepartmentSummaryReport() {
+            if (!lastDepartmentSummaryReport) {
+                Swal.fire('แจ้งเตือน', 'กรุณาโหลดรายงานก่อนส่งออกไฟล์', 'info');
+                return;
+            }
+            const report = lastDepartmentSummaryReport;
+            const headers = ['รายงานสรุปรายหน่วยงาน', `ปีงบประมาณ พ.ศ. ${report.fiscalYear}`, `วันที่จัดทำ: ${new Date(report.generatedAt).toLocaleString('th-TH')}`, ''];
+            const tableHeaders = ['หน่วยงาน/แผนก', 'ต.ค.', 'พ.ย.', 'ธ.ค.', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'รวมทั้งปี'];
+            const csvRows = [headers, tableHeaders].concat((report.rows || []).map(row => [row.department].concat((row.months || []).map(m => m.display || '-')).concat([`${row.inspected}/${row.total} (${Number(row.percentage || 0).toFixed(2)}%)`])));
+            const csv = '\ufeff' + csvRows.map(row => row.map(value => `"${String(value == null ? '' : value).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `รายงานสรุปรายหน่วยงาน_ปีงบประมาณ_${report.fiscalYear}.csv`;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        }
+
         async function fetchAllEquipmentForAdmin() {
             setLoadingState(true);
             document.getElementById('view-inspection').classList.add('hidden');
@@ -1739,6 +1821,8 @@
 
                     setLoadingState(false);
                     switchTab('admin');
+                    initializeDepartmentReportYears();
+                    loadDepartmentSummaryReport();
                     markDataSynced();
                 } else {
                     showPageMessage('error', result.message || 'ไม่สามารถดึงข้อมูลภาพรวมได้');
