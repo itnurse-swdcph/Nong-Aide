@@ -641,7 +641,7 @@
                 <div class="admin-report-box">
                     <div class="admin-report-toolbar">
                         <div>
-                            <h4><i class="fas fa-chart-column"></i> รายงานสรุปรายหน่วยงาน</h4>
+                            <h4><i class="fas fa-chart-column"></i> รายงานสรุปการตรวจนับเครื่องมือรายหน่วยงาน</h4>
                             <div id="departmentReportMeta" class="report-meta">เลือกปีงบประมาณเพื่อดูผลการตรวจนับ</div>
                         </div>
                         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
@@ -1782,14 +1782,17 @@
                 return;
             }
             const report = lastDepartmentSummaryReport;
-            const headers = ['รายงานสรุปรายหน่วยงาน', `ปีงบประมาณ พ.ศ. ${report.fiscalYear}`, `วันที่จัดทำ: ${new Date(report.generatedAt).toLocaleString('th-TH')}`, ''];
+            // ป้องกัน Excel ตีความค่าเช่น "1/2" หรือ "44/50" เป็นวันที่โดยอัตโนมัติ
+            // ด้วยการห่อค่าด้วยสูตร ="..." เพื่อบังคับให้ Excel อ่านเป็นข้อความล้วน
+            const forceText_ = (value) => '="' + String(value == null ? '' : value).replace(/"/g, '""') + '"';
+            const headers = ['รายงานสรุปการตรวจนับเครื่องมือรายหน่วยงาน', `ปีงบประมาณ พ.ศ. ${report.fiscalYear}`, `วันที่จัดทำ: ${new Date(report.generatedAt).toLocaleString('th-TH')}`, ''];
             const tableHeaders = ['หน่วยงาน/แผนก', 'ต.ค.', 'พ.ย.', 'ธ.ค.', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'รวมทั้งปี'];
-            const csvRows = [headers, tableHeaders].concat((report.rows || []).map(row => [row.department].concat((row.months || []).map(m => m.display || '-')).concat([`${row.inspected}/${row.total} (${Number(row.percentage || 0).toFixed(2)}%)`])));
+            const csvRows = [headers, tableHeaders].concat((report.rows || []).map(row => [row.department].concat((row.months || []).map(m => forceText_(m.display || '-'))).concat([forceText_(`${row.inspected}/${row.total} (${Number(row.percentage || 0).toFixed(2)}%)`)])));
             const csv = '\ufeff' + csvRows.map(row => row.map(value => `"${String(value == null ? '' : value).replace(/"/g, '""')}"`).join(',')).join('\r\n');
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = `รายงานสรุปรายหน่วยงาน_ปีงบประมาณ_${report.fiscalYear}.csv`;
+            link.download = `ตรวจนับเครื่องมือ_รายงานสรุปรายหน่วยงาน_ปีงบประมาณ_${report.fiscalYear}.csv`;
             link.click();
             URL.revokeObjectURL(link.href);
         }
