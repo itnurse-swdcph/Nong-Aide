@@ -937,6 +937,7 @@
                 <div class="toolbar">
                     <div class="tabs">
                         <button class="tab-btn active" data-tab="adminLogs" onclick="switchPanel('adminSection', 'adminLogs', this)">ตรวจนับ</button>
+                        <button class="tab-btn" data-tab="adminSummaryReport" onclick="switchPanel('adminSection', 'adminSummaryReport', this)">รายงานสรุป</button>
                         <button class="tab-btn" data-tab="adminTracking" onclick="switchPanel('adminSection', 'adminTracking', this)">ติดตามผ้า</button>
                     </div>
                     <div class="filters">
@@ -990,6 +991,40 @@
                                 <tbody id="adminLogBody"></tbody>
                             </table>
                         </div>
+                    </div>
+                </section>
+
+                <section id="adminSummaryReport" class="panel">
+                    <div class="card">
+                        <div class="section-head">
+                            <div>
+                                <h3>รายงานสรุปการตรวจนับผ้ารายหน่วยงาน</h3>
+                                <p id="clothReportMeta" style="margin:4px 0 0; color:#667; font-size:0.85rem;">เลือกปีงบประมาณเพื่อดูผลการตรวจนับ</p>
+                            </div>
+                            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                                <label class="field" style="margin:0;">
+                                    ปีงบประมาณ
+                                    <select id="clothReportFiscalYear" onchange="renderClothSummaryReport()"></select>
+                                </label>
+                                <button class="ghost-btn" type="button" onclick="exportClothSummaryReport()">Export CSV</button>
+                            </div>
+                        </div>
+                        <div class="table-wrap">
+                            <table id="clothSummaryTable">
+                                <thead>
+                                    <tr>
+                                        <th>หน่วยงาน/แผนก</th>
+                                        <th>ต.ค.</th><th>พ.ย.</th><th>ธ.ค.</th><th>ม.ค.</th><th>ก.พ.</th><th>มี.ค.</th>
+                                        <th>เม.ย.</th><th>พ.ค.</th><th>มิ.ย.</th><th>ก.ค.</th><th>ส.ค.</th><th>ก.ย.</th>
+                                        <th>รวมทั้งปี</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="clothSummaryBody"><tr><td colspan="14">กำลังโหลดรายงาน...</td></tr></tbody>
+                            </table>
+                        </div>
+                        <p style="margin-top:10px; color:#889; font-size:0.8rem;">
+                            หมายเหตุ: จำนวนคือยอดรวมผ้าทุกประเภทของหน่วยงานนั้น ๆ (ยอดนับได้จริง/ยอดมาตรฐาน รวม) เดือนที่ไม่มีการส่งข้อมูลตรวจนับจะแสดงเป็น "-"
+                        </p>
                     </div>
                 </section>
 
@@ -1047,6 +1082,7 @@
         let currentQuarter = "";
         let masterItems = [];
         let allLogs = [];
+        let allWards = [];
         let unitLogs = [];
         let trackingRecords = [];
         let trackingApiAvailable = true;
@@ -1203,6 +1239,8 @@
             }
 
             renderAdminView();
+            initializeClothReportYears();
+            renderClothSummaryReport();
         }
 
         async function fetchClothMaster() {
@@ -1228,7 +1266,8 @@
 
             allLogs = (result.data || []).map(normalizeLog);
             unitLogs = allLogs.filter(log => log.ward === currentWard);
-            document.getElementById("adminWardCount").innerText = Array.isArray(result.allWards) ? result.allWards.length.toLocaleString() : "0";
+            allWards = Array.isArray(result.allWards) ? result.allWards : [];
+            document.getElementById("adminWardCount").innerText = allWards.length.toLocaleString();
         }
 
         async function fetchTrackingRecords() {
@@ -2205,6 +2244,117 @@
 
         function formatDifference(value) {
             return value > 0 ? `+${value}` : String(value);
+        }
+
+        function initializeClothReportYears() {
+            const select = document.getElementById("clothReportFiscalYear");
+            if (!select || select.options.length) return;
+            const currentThaiYear = new Date().getFullYear() + 543;
+            for (let year = currentThaiYear; year >= currentThaiYear - 5; year -= 1) {
+                const option = document.createElement("option");
+                option.value = year;
+                option.textContent = `พ.ศ. ${year}`;
+                select.appendChild(option);
+            }
+        }
+
+        function getClothFiscalMonths(fiscalYear) {
+            const startYearAD = fiscalYear - 544;
+            const labels = ["ต.ค.", "พ.ย.", "ธ.ค.", "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย."];
+            const months = [];
+            for (let m = 0; m < 12; m += 1) {
+                const d = new Date(startYearAD, 9 + m, 1);
+                months.push({ key: m, calendarYear: d.getFullYear(), calendarMonth: d.getMonth() + 1, label: labels[m] });
+            }
+            return months;
+        }
+
+        // รายงานสรุปการตรวจนับผ้ารายหน่วยงาน: นับเป็นรายเดือนตามปีงบประมาณไทย (ต.ค.-ก.ย.)
+        // เดือนที่มีการส่งข้อมูลตรวจนับจริง (Timestamp ตกในเดือนนั้น) จึงจะแสดงจำนวน
+        // เดือนที่ไม่มีการส่งข้อมูลเลยจะแสดงเป็น "-" เสมอ (ระบบนี้นับเป็นรอบไตรมาส ไม่ใช่รายเดือน)
+        function computeClothSummaryReport(fiscalYear) {
+            const startYearAD = fiscalYear - 544;
+            const months = getClothFiscalMonths(fiscalYear);
+
+            const wardsSet = new Set(allWards);
+            const byWardMonth = {};
+
+            allLogs.forEach(log => {
+                const ward = log.ward;
+                if (!ward || ward === "-") return;
+                wardsSet.add(ward);
+                const ts = log.sortValue;
+                if (!ts) return;
+                const d = new Date(ts);
+                const monthOffset = (d.getFullYear() - startYearAD) * 12 + (d.getMonth() - 9);
+                if (monthOffset < 0 || monthOffset > 11) return;
+                if (!byWardMonth[ward]) byWardMonth[ward] = {};
+                if (!byWardMonth[ward][monthOffset]) byWardMonth[ward][monthOffset] = { due: 0, inspected: 0 };
+                byWardMonth[ward][monthOffset].due += log.par;
+                byWardMonth[ward][monthOffset].inspected += log.total;
+            });
+
+            const wards = Array.from(wardsSet).filter(Boolean).sort((a, b) => a.localeCompare(b, "th"));
+            const rows = wards.map(ward => {
+                const monthData = byWardMonth[ward] || {};
+                let totalDue = 0;
+                let totalInspected = 0;
+                const monthsOut = months.map(m => {
+                    const cell = monthData[m.key];
+                    if (!cell) return { due: 0, inspected: 0, display: "-" };
+                    totalDue += cell.due;
+                    totalInspected += cell.inspected;
+                    return { due: cell.due, inspected: cell.inspected, display: `${cell.inspected}/${cell.due}` };
+                });
+                const percentage = totalDue ? Math.round((totalInspected * 10000) / totalDue) / 100 : 0;
+                return { ward, months: monthsOut, totalDue, totalInspected, percentage };
+            });
+
+            return { fiscalYear, months, rows, generatedAt: new Date() };
+        }
+
+        let lastClothSummaryReport = null;
+
+        function renderClothSummaryReport() {
+            initializeClothReportYears();
+            const select = document.getElementById("clothReportFiscalYear");
+            const body = document.getElementById("clothSummaryBody");
+            const meta = document.getElementById("clothReportMeta");
+            if (!select || !body) return;
+
+            const fiscalYear = Number(select.value) || (new Date().getFullYear() + 543);
+            const report = computeClothSummaryReport(fiscalYear);
+            lastClothSummaryReport = report;
+
+            body.innerHTML = (report.rows || []).map(row => {
+                const cells = row.months.map(m => `<td>${escapeHtml(m.display)}</td>`).join("");
+                return `<tr><td>${escapeHtml(row.ward)}</td>${cells}<td><strong>${row.totalInspected}/${row.totalDue}</strong><br><small>${row.percentage.toFixed(2)}%</small></td></tr>`;
+            }).join("") || `<tr><td colspan="14">ไม่พบข้อมูลในปีงบประมาณนี้</td></tr>`;
+
+            if (meta) meta.textContent = `ปีงบประมาณ พ.ศ. ${report.fiscalYear} | จัดทำเมื่อ ${report.generatedAt.toLocaleString("th-TH")}`;
+        }
+
+        function exportClothSummaryReport() {
+            if (!lastClothSummaryReport) {
+                Swal.fire({ icon: "info", title: "แจ้งเตือน", text: "กรุณาโหลดรายงานก่อนส่งออกไฟล์" });
+                return;
+            }
+            const report = lastClothSummaryReport;
+            // ป้องกัน Excel ตีความค่าเช่น "1/2" หรือ "596/596" เป็นวันที่โดยอัตโนมัติ
+            // ด้วยการห่อค่าด้วยสูตร ="..." เพื่อบังคับให้ Excel อ่านเป็นข้อความล้วน
+            const forceText_ = (value) => '="' + String(value == null ? "" : value).replace(/"/g, '""') + '"';
+            const headerRow = ["รายงานสรุปการตรวจนับผ้ารายหน่วยงาน", `ปีงบประมาณ พ.ศ. ${report.fiscalYear}`, `วันที่จัดทำ: ${report.generatedAt.toLocaleString("th-TH")}`, ""];
+            const tableHeaders = ["หน่วยงาน/แผนก", "ต.ค.", "พ.ย.", "ธ.ค.", "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "รวมทั้งปี"];
+            const csvRows = [headerRow, tableHeaders].concat((report.rows || []).map(row =>
+                [row.ward].concat(row.months.map(m => forceText_(m.display))).concat([forceText_(`${row.totalInspected}/${row.totalDue} (${row.percentage.toFixed(2)}%)`)])
+            ));
+            const csv = "\ufeff" + csvRows.map(r => r.map(v => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`).join(",")).join("\r\n");
+            const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `ตรวจนับผ้า_รายงานสรุปรายหน่วยงาน_ปีงบประมาณ_${report.fiscalYear}.csv`;
+            link.click();
+            URL.revokeObjectURL(link.href);
         }
 
         function switchPanel(sectionId, panelId, button) {
