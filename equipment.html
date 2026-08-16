@@ -657,6 +657,32 @@
                         </table>
                     </div>
                 </div>
+                <div class="admin-report-box">
+                    <div class="admin-report-toolbar">
+                        <div>
+                            <h4><i class="fas fa-award"></i> รายงานคะแนนรายหน่วยงานตาม MOU (การตรวจนับเครื่องมือ)</h4>
+                            <div id="mouReportMeta" class="report-meta">เลือกปีงบประมาณและเดือนที่ต้องการออกรายงาน</div>
+                        </div>
+                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                            <label for="mouReportFiscalYear" style="color:var(--primary);">ปีงบประมาณ</label>
+                            <select id="mouReportFiscalYear" class="swal-input" style="width:auto; padding:8px 12px;" onchange="loadMouScoreReport()"></select>
+                            <label for="mouReportFromMonth" style="color:var(--primary);">ตั้งแต่เดือน</label>
+                            <select id="mouReportFromMonth" class="swal-input" style="width:auto; padding:8px 12px;" onchange="renderMouScoreReport()"></select>
+                            <label for="mouReportToMonth" style="color:var(--primary);">ถึงเดือน</label>
+                            <select id="mouReportToMonth" class="swal-input" style="width:auto; padding:8px 12px;" onchange="renderMouScoreReport()"></select>
+                            <button class="btn btn-success btn-sm" onclick="exportMouScoreReport()"><i class="fas fa-file-csv"></i> Export File</button>
+                        </div>
+                    </div>
+                    <div class="report-table-wrap">
+                        <table class="report-table" id="mouScoreTable">
+                            <thead><tr><th>หน่วยงาน/แผนก</th><th>เดือนที่ต้องนับ (ในช่วงที่เลือก)</th><th>เดือนที่ทำครบ</th><th>ผลการดำเนินงาน</th><th>คะแนน MOU</th></tr></thead>
+                            <tbody id="mouScoreTableBody"><tr><td colspan="5">กำลังโหลดรายงาน...</td></tr></tbody>
+                        </table>
+                    </div>
+                    <p style="margin-top:10px; color:#889; font-size:0.8rem;">
+                        เกณฑ์คะแนน: ไม่ทำ = 1 คะแนน, ทำไม่ครบทุกเดือน = 3 คะแนน, ทำครบทุกเดือน = 5 คะแนน (นับเฉพาะเดือนในช่วงที่เลือกซึ่งมีรายการต้องตรวจ หน่วยงานที่ไม่มีรายการต้องตรวจเลยในช่วงที่เลือกจะไม่ถูกนำมาคิดคะแนน)
+                    </p>
+                </div>
                 <div id="admin-charts-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px;">
                     <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 3px 10px rgba(0,0,0,0.05); border: 1px solid #e0e6ed;">
                         <h4 style="text-align: center; color: var(--primary); margin-top: 0; font-size: 1rem;"><i class="fas fa-chart-pie"></i> สัดส่วนสถานะครุภัณฑ์</h4>
@@ -1797,6 +1823,131 @@
             URL.revokeObjectURL(link.href);
         }
 
+        let lastMouSourceReport = null;
+        let lastMouScoreReport = null;
+
+        const MOU_MONTH_LABELS_ = ['ตุลาคม', 'พฤศจิกายน', 'ธันวาคม', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน'];
+
+        function initializeMouReportControls() {
+            const yearSelect = document.getElementById('mouReportFiscalYear');
+            if (yearSelect && !yearSelect.options.length) {
+                const currentThaiYear = new Date().getFullYear() + 543;
+                for (let year = currentThaiYear; year >= currentThaiYear - 5; year--) {
+                    const option = document.createElement('option');
+                    option.value = year;
+                    option.textContent = `พ.ศ. ${year}`;
+                    yearSelect.appendChild(option);
+                }
+            }
+            const fromSelect = document.getElementById('mouReportFromMonth');
+            const toSelect = document.getElementById('mouReportToMonth');
+            [fromSelect, toSelect].forEach(select => {
+                if (select && !select.options.length) {
+                    MOU_MONTH_LABELS_.forEach((label, idx) => {
+                        const option = document.createElement('option');
+                        option.value = idx;
+                        option.textContent = label;
+                        select.appendChild(option);
+                    });
+                }
+            });
+            if (fromSelect && fromSelect.value === '') fromSelect.value = 0;
+            if (toSelect && toSelect.value === '') toSelect.value = 11;
+        }
+
+        async function loadMouScoreReport() {
+            if (!isAdminLoggedIn) return;
+            initializeMouReportControls();
+            const yearSelect = document.getElementById('mouReportFiscalYear');
+            const body = document.getElementById('mouScoreTableBody');
+            if (!yearSelect || !body) return;
+            body.innerHTML = '<tr><td colspan="5">กำลังโหลดรายงาน...</td></tr>';
+            try {
+                const result = await apiGetJson('getDepartmentSummaryReport', { fiscalYear: yearSelect.value });
+                if (result.status !== 'success') throw new Error(result.message || 'โหลดรายงานไม่สำเร็จ');
+                lastMouSourceReport = result.data;
+                renderMouScoreReport();
+            } catch (error) {
+                body.innerHTML = `<tr><td colspan="5">ไม่สามารถโหลดรายงานได้: ${escapeHtml(error.message)}</td></tr>`;
+            }
+        }
+
+        // คำนวณคะแนน MOU ตามช่วงเดือนที่เลือก (fromMonthKey ถึง toMonthKey ภายในปีงบประมาณเดียวกัน)
+        // เดือนที่ "ต้องนับ" คือเดือนในช่วงที่เลือกซึ่งมีรายการครุภัณฑ์ต้องตรวจ (due > 0) เท่านั้น
+        // ไม่ทำ (ทำครบ 0 เดือน) = 1, ทำไม่ครบทุกเดือน = 3, ทำครบทุกเดือน = 5
+        // หน่วยงานที่ไม่มีเดือนที่ต้องนับเลยในช่วงที่เลือก จะไม่ถูกให้คะแนน (requiredMonths = 0)
+        function computeEquipmentMouScores(sourceReport, fromMonthKey, toMonthKey) {
+            const from = Number(fromMonthKey);
+            const to = Number(toMonthKey);
+            return (sourceReport.rows || []).map(row => {
+                let requiredMonths = 0;
+                let completedMonths = 0;
+                (row.months || []).forEach((month, idx) => {
+                    if (idx < from || idx > to) return;
+                    if (month.due > 0) {
+                        requiredMonths += 1;
+                        if (month.inspected > 0) completedMonths += 1;
+                    }
+                });
+                let score = null;
+                let statusLabel = 'ไม่มีรายการต้องตรวจในช่วงที่เลือก';
+                if (requiredMonths > 0) {
+                    if (completedMonths === 0) { score = 1; statusLabel = 'ไม่ทำ'; }
+                    else if (completedMonths === requiredMonths) { score = 5; statusLabel = 'ทำครบทุกเดือน'; }
+                    else { score = 3; statusLabel = 'ทำไม่ครบทุกเดือน'; }
+                }
+                return { department: row.department, requiredMonths, completedMonths, score, statusLabel };
+            });
+        }
+
+        function renderMouScoreReport() {
+            if (!lastMouSourceReport) return;
+            initializeMouReportControls();
+            const fromSelect = document.getElementById('mouReportFromMonth');
+            const toSelect = document.getElementById('mouReportToMonth');
+            const body = document.getElementById('mouScoreTableBody');
+            if (!fromSelect || !toSelect || !body) return;
+            // ถ้าเลือกเดือนเริ่มต้นหลังเดือนสิ้นสุด ให้สลับค่ากันอัตโนมัติเพื่อไม่ให้ช่วงผิดเพี้ยน
+            let from = Number(fromSelect.value);
+            let to = Number(toSelect.value);
+            if (from > to) { 
+                const tmp = from; from = to; to = tmp; 
+                fromSelect.value = from;
+                toSelect.value = to;
+            }
+            const scored = computeEquipmentMouScores(lastMouSourceReport, from, to);
+            const fromLabel = MOU_MONTH_LABELS_[from];
+            const toLabel = MOU_MONTH_LABELS_[to];
+            lastMouScoreReport = { fiscalYear: lastMouSourceReport.fiscalYear, fromMonthKey: from, toMonthKey: to, fromLabel, toLabel, rows: scored, generatedAt: new Date().toISOString() };
+            body.innerHTML = scored.map(row => {
+                const scoreLabel = row.score === null ? '-' : row.score;
+                const badgeColor = row.score === 5 ? '#1e8e50' : row.score === 3 ? '#c68b06' : row.score === 1 ? '#d32f2f' : '#999';
+                return `<tr><td>${escapeHtml(row.department)}</td><td>${row.requiredMonths}</td><td>${row.completedMonths}</td><td>${escapeHtml(row.statusLabel)}</td><td><strong style="color:${badgeColor}">${scoreLabel}</strong></td></tr>`;
+            }).join('') || '<tr><td colspan="5">ไม่พบข้อมูล</td></tr>';
+            const meta = document.getElementById('mouReportMeta');
+            if (meta) meta.textContent = `ปีงบประมาณ พ.ศ. ${lastMouSourceReport.fiscalYear} | รายงานตั้งแต่เดือน ${fromLabel} ถึงเดือน ${toLabel} | จัดทำเมื่อ ${new Date().toLocaleString('th-TH')}`;
+        }
+
+        function exportMouScoreReport() {
+            if (!lastMouScoreReport) {
+                Swal.fire('แจ้งเตือน', 'กรุณาโหลดรายงานก่อนส่งออกไฟล์', 'info');
+                return;
+            }
+            const report = lastMouScoreReport;
+            // ป้องกัน Excel ตีความค่าตัวเลขเป็นวันที่โดยอัตโนมัติ
+            const forceText_ = (value) => '="' + String(value == null ? '' : value).replace(/"/g, '""') + '"';
+            const headers = ['รายงานคะแนนรายหน่วยงานตาม MOU (การตรวจนับเครื่องมือ)', `ปีงบประมาณ พ.ศ. ${report.fiscalYear}`, `รายงานตั้งแต่เดือน ${report.fromLabel} ถึงเดือน ${report.toLabel}`, `วันที่จัดทำ: ${new Date(report.generatedAt).toLocaleString('th-TH')}`];
+            const tableHeaders = ['หน่วยงาน/แผนก', 'เดือนที่ต้องนับ (ในช่วงที่เลือก)', 'เดือนที่ทำครบ', 'ผลการดำเนินงาน', 'คะแนน MOU'];
+            const csvRows = [headers, tableHeaders].concat(report.rows.map(row => [row.department, forceText_(row.requiredMonths), forceText_(row.completedMonths), row.statusLabel, forceText_(row.score === null ? '-' : row.score)]));
+            const csv = '\ufeff' + csvRows.map(row => row.map(value => `"${String(value == null ? '' : value).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `ตรวจนับเครื่องมือ_รายงานคะแนนMOU_ปีงบประมาณ_${report.fiscalYear}_${report.fromMonthKey + 1}ถึง${report.toMonthKey + 1}.csv`;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        }
+
         async function fetchAllEquipmentForAdmin() {
             setLoadingState(true);
             document.getElementById('view-inspection').classList.add('hidden');
@@ -1826,6 +1977,7 @@
                     switchTab('admin');
                     initializeDepartmentReportYears();
                     loadDepartmentSummaryReport();
+                    loadMouScoreReport();
                     markDataSynced();
                 } else {
                     showPageMessage('error', result.message || 'ไม่สามารถดึงข้อมูลภาพรวมได้');
