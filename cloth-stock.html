@@ -1026,6 +1026,47 @@
                             หมายเหตุ: จำนวนคือยอดรวมผ้าทุกประเภทของหน่วยงานนั้น ๆ (ยอดนับได้จริง/ยอดมาตรฐาน รวม) เดือนที่ไม่มีการส่งข้อมูลตรวจนับจะแสดงเป็น "-"
                         </p>
                     </div>
+
+                    <div class="card">
+                        <div class="section-head">
+                            <div>
+                                <h3>รายงานคะแนนรายหน่วยงานตาม MOU (การตรวจนับเครื่องผ้า)</h3>
+                                <p id="clothMouReportMeta" style="margin:4px 0 0; color:#667; font-size:0.85rem;">เลือกปีงบประมาณและเดือนที่ต้องการออกรายงาน</p>
+                            </div>
+                            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                                <label class="field" style="margin:0;">
+                                    ปีงบประมาณ
+                                    <select id="clothMouFiscalYear" onchange="renderClothMouScoreReport()"></select>
+                                </label>
+                                <label class="field" style="margin:0;">
+                                    ตั้งแต่เดือน
+                                    <select id="clothMouFromMonth" onchange="renderClothMouScoreReport()"></select>
+                                </label>
+                                <label class="field" style="margin:0;">
+                                    ถึงเดือน
+                                    <select id="clothMouToMonth" onchange="renderClothMouScoreReport()"></select>
+                                </label>
+                                <button class="ghost-btn" type="button" onclick="exportClothMouScoreReport()">Export CSV</button>
+                            </div>
+                        </div>
+                        <div class="table-wrap">
+                            <table id="clothMouScoreTable">
+                                <thead>
+                                    <tr>
+                                        <th>หน่วยงาน/แผนก</th>
+                                        <th>ไตรมาสที่ต้องนับ (ในช่วงที่เลือก)</th>
+                                        <th>ไตรมาสที่ทำครบ</th>
+                                        <th>ผลการดำเนินงาน</th>
+                                        <th>คะแนน MOU</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="clothMouScoreBody"><tr><td colspan="5">กำลังโหลดรายงาน...</td></tr></tbody>
+                            </table>
+                        </div>
+                        <p style="margin-top:10px; color:#889; font-size:0.8rem;">
+                            เกณฑ์คะแนน: ไม่ทำ = 1 คะแนน, ทำไม่ครบทุกไตรมาส = 3 คะแนน, ทำครบทุก 3 เดือน (ทุกไตรมาส) = 5 คะแนน — นับเฉพาะไตรมาสที่ครบกำหนดส่งภายในช่วงเดือนที่เลือก หน่วยงานที่ไม่มีรายการผ้าที่ต้องนับเลยในช่วงที่เลือกจะไม่ถูกนำมาคิดคะแนน
+                        </p>
+                    </div>
                 </section>
 
                 <section id="adminTracking" class="panel">
@@ -1083,6 +1124,7 @@
         let masterItems = [];
         let allLogs = [];
         let allWards = [];
+        let wardCriteria = {};
         let unitLogs = [];
         let trackingRecords = [];
         let trackingApiAvailable = true;
@@ -1241,6 +1283,8 @@
             renderAdminView();
             initializeClothReportYears();
             renderClothSummaryReport();
+            initializeClothMouReportControls();
+            renderClothMouScoreReport();
         }
 
         async function fetchClothMaster() {
@@ -1267,6 +1311,7 @@
             allLogs = (result.data || []).map(normalizeLog);
             unitLogs = allLogs.filter(log => log.ward === currentWard);
             allWards = Array.isArray(result.allWards) ? result.allWards : [];
+            wardCriteria = result.wardCriteria && typeof result.wardCriteria === "object" ? result.wardCriteria : {};
             document.getElementById("adminWardCount").innerText = allWards.length.toLocaleString();
         }
 
@@ -2232,7 +2277,14 @@
         function parseSortValue(value) {
             if (!value) return 0;
             const direct = Date.parse(value);
-            if (!Number.isNaN(direct)) return direct;
+            if (!Number.isNaN(direct)) {
+                let d = new Date(direct);
+                if (d.getFullYear() > 2400) {
+                    d.setFullYear(d.getFullYear() - 543);
+                    return d.getTime();
+                }
+                return direct;
+            }
 
             const cleaned = String(value).replace(" น.", "");
             const match = cleaned.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
@@ -2353,6 +2405,151 @@
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
             link.download = `ตรวจนับผ้า_รายงานสรุปรายหน่วยงาน_ปีงบประมาณ_${report.fiscalYear}.csv`;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        }
+
+        const CLOTH_MOU_MONTH_LABELS_ = ["ตุลาคม", "พฤศจิกายน", "ธันวาคม", "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน"];
+
+        function initializeClothMouReportControls() {
+            const yearSelect = document.getElementById("clothMouFiscalYear");
+            if (yearSelect && !yearSelect.options.length) {
+                const currentThaiYear = new Date().getFullYear() + 543;
+                for (let year = currentThaiYear; year >= currentThaiYear - 5; year -= 1) {
+                    const option = document.createElement("option");
+                    option.value = year;
+                    option.textContent = `พ.ศ. ${year}`;
+                    yearSelect.appendChild(option);
+                }
+            }
+            const fromSelect = document.getElementById("clothMouFromMonth");
+            const toSelect = document.getElementById("clothMouToMonth");
+            [fromSelect, toSelect].forEach(select => {
+                if (select && !select.options.length) {
+                    CLOTH_MOU_MONTH_LABELS_.forEach((label, idx) => {
+                        const option = document.createElement("option");
+                        option.value = idx;
+                        option.textContent = label;
+                        select.appendChild(option);
+                    });
+                }
+            });
+            if (fromSelect && fromSelect.value === "") fromSelect.value = 0;
+            if (toSelect && toSelect.value === "") toSelect.value = 11;
+        }
+
+        // ไตรมาสตามปฏิทิน (ต.ค.-ธ.ค., ม.ค.-มี.ค., เม.ย.-มิ.ย., ก.ค.-ก.ย.) แมปเป็น offset เดือนในปีงบประมาณ (0=ต.ค. ... 11=ก.ย.)
+        // ไตรมาสจะถือว่า "ต้องนับ" ก็ต่อเมื่อไตรมาสนั้นสิ้นสุดภายในช่วงเดือนที่เลือก (fromMonthKey ถึง toMonthKey)
+        const CLOTH_FISCAL_QUARTERS_ = [
+            { offsets: [0, 1, 2], endOffset: 2, label: "ไตรมาส ต.ค.-ธ.ค." },
+            { offsets: [3, 4, 5], endOffset: 5, label: "ไตรมาส ม.ค.-มี.ค." },
+            { offsets: [6, 7, 8], endOffset: 8, label: "ไตรมาส เม.ย.-มิ.ย." },
+            { offsets: [9, 10, 11], endOffset: 11, label: "ไตรมาส ก.ค.-ก.ย." }
+        ];
+
+        function computeClothMouScores(fiscalYear, fromMonthKey, toMonthKey) {
+            const startYearAD = fiscalYear - 544;
+            const from = Number(fromMonthKey);
+            const to = Number(toMonthKey);
+            const dueQuarters = CLOTH_FISCAL_QUARTERS_.filter(q => q.endOffset >= from && q.endOffset <= to);
+
+            const wardMonthsWithLog = {};
+            allLogs.forEach(log => {
+                const ward = log.ward;
+                if (!ward) return;
+                const ts = log.sortValue;
+                if (!ts) return;
+                const d = new Date(ts);
+                const monthOffset = (d.getFullYear() - startYearAD) * 12 + (d.getMonth() - 9);
+                if (monthOffset < 0 || monthOffset > 11) return;
+                if (!wardMonthsWithLog[ward]) wardMonthsWithLog[ward] = new Set();
+                wardMonthsWithLog[ward].add(monthOffset);
+            });
+
+            const wardsSet = new Set(allWards);
+            Object.keys(wardCriteria || {}).forEach(w => wardsSet.add(w));
+
+            const rows = Array.from(wardsSet).filter(Boolean).sort((a, b) => a.localeCompare(b, "th")).map(ward => {
+                const hasItems = !!(wardCriteria && wardCriteria[ward] > 0);
+                let requiredQuarters = 0;
+                let completedQuarters = 0;
+                
+                if (hasItems) {
+                    dueQuarters.forEach(q => {
+                        requiredQuarters += 1;
+                        const monthsSet = wardMonthsWithLog[ward] || new Set();
+                        const done = q.offsets.some(off => monthsSet.has(off));
+                        if (done) completedQuarters += 1;
+                    });
+                }
+                
+                let score = null;
+                let statusLabel = "ไม่มีรายการที่ต้องนับในช่วงที่เลือก";
+                if (requiredQuarters > 0) {
+                    if (completedQuarters === 0) { score = 1; statusLabel = "ไม่ทำ"; }
+                    else if (completedQuarters === requiredQuarters) { score = 5; statusLabel = "ทำครบทุก 3 เดือน"; }
+                    else { score = 3; statusLabel = "ทำไม่ครบทุกไตรมาส"; }
+                }
+                return { ward, requiredQuarters, completedQuarters, score, statusLabel };
+            });
+
+            return { fiscalYear, fromMonthKey: from, toMonthKey: to, rows, generatedAt: new Date() };
+        }
+
+        let lastClothMouScoreReport = null;
+
+        function renderClothMouScoreReport() {
+            initializeClothMouReportControls();
+            const yearSelect = document.getElementById("clothMouFiscalYear");
+            const fromSelect = document.getElementById("clothMouFromMonth");
+            const toSelect = document.getElementById("clothMouToMonth");
+            const body = document.getElementById("clothMouScoreBody");
+            const meta = document.getElementById("clothMouReportMeta");
+            if (!yearSelect || !fromSelect || !toSelect || !body) return;
+
+            const fiscalYear = Number(yearSelect.value) || (new Date().getFullYear() + 543);
+            // ถ้าเลือกเดือนเริ่มต้นหลังเดือนสิ้นสุด ให้สลับค่ากันอัตโนมัติเพื่อไม่ให้ช่วงผิดเพี้ยน
+            let from = Number(fromSelect.value);
+            let to = Number(toSelect.value);
+            if (from > to) { 
+                const tmp = from; from = to; to = tmp; 
+                fromSelect.value = from;
+                toSelect.value = to;
+            }
+            const report = computeClothMouScores(fiscalYear, from, to);
+            lastClothMouScoreReport = report;
+            const fromLabel = CLOTH_MOU_MONTH_LABELS_[from];
+            const toLabel = CLOTH_MOU_MONTH_LABELS_[to];
+
+            body.innerHTML = report.rows.map(row => {
+                const scoreLabel = row.score === null ? "-" : row.score;
+                const badgeColor = row.score === 5 ? "#1e8e50" : row.score === 3 ? "#c68b06" : row.score === 1 ? "#d32f2f" : "#999";
+                return `<tr><td>${escapeHtml(row.ward)}</td><td>${row.requiredQuarters}</td><td>${row.completedQuarters}</td><td>${escapeHtml(row.statusLabel)}</td><td><strong style="color:${badgeColor}">${scoreLabel}</strong></td></tr>`;
+            }).join("") || `<tr><td colspan="5">ไม่พบข้อมูล</td></tr>`;
+
+            if (meta) meta.textContent = `ปีงบประมาณ พ.ศ. ${report.fiscalYear} | รายงานตั้งแต่เดือน ${fromLabel} ถึงเดือน ${toLabel} | จัดทำเมื่อ ${report.generatedAt.toLocaleString("th-TH")}`;
+        }
+
+        function exportClothMouScoreReport() {
+            if (!lastClothMouScoreReport) {
+                Swal.fire({ icon: "info", title: "แจ้งเตือน", text: "กรุณาโหลดรายงานก่อนส่งออกไฟล์" });
+                return;
+            }
+            const report = lastClothMouScoreReport;
+            const fromLabel = CLOTH_MOU_MONTH_LABELS_[report.fromMonthKey];
+            const toLabel = CLOTH_MOU_MONTH_LABELS_[report.toMonthKey];
+            // ป้องกัน Excel ตีความค่าตัวเลขเป็นวันที่โดยอัตโนมัติ
+            const forceText_ = (value) => '="' + String(value == null ? "" : value).replace(/"/g, '""') + '"';
+            const headerRow = ["รายงานคะแนนรายหน่วยงานตาม MOU (การตรวจนับเครื่องผ้า)", `ปีงบประมาณ พ.ศ. ${report.fiscalYear}`, `รายงานตั้งแต่เดือน ${fromLabel} ถึงเดือน ${toLabel}`, `วันที่จัดทำ: ${report.generatedAt.toLocaleString("th-TH")}`];
+            const tableHeaders = ["หน่วยงาน/แผนก", "ไตรมาสที่ต้องนับ (ในช่วงที่เลือก)", "ไตรมาสที่ทำครบ", "ผลการดำเนินงาน", "คะแนน MOU"];
+            const csvRows = [headerRow, tableHeaders].concat(report.rows.map(row =>
+                [row.ward, forceText_(row.requiredQuarters), forceText_(row.completedQuarters), row.statusLabel, forceText_(row.score === null ? "-" : row.score)]
+            ));
+            const csv = "\ufeff" + csvRows.map(r => r.map(v => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`).join(",")).join("\r\n");
+            const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `ตรวจนับผ้า_รายงานคะแนนMOU_ปีงบประมาณ_${report.fiscalYear}_${report.fromMonthKey + 1}ถึง${report.toMonthKey + 1}.csv`;
             link.click();
             URL.revokeObjectURL(link.href);
         }
