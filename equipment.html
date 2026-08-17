@@ -1882,11 +1882,11 @@
             return (sourceReport.rows || []).map(row => {
                 let requiredMonths = 0;
                 let completedMonths = 0;
-                (row.months || []).forEach((month, idx) => {
-                    if (idx < from || idx > to) return;
+                (row.months || []).forEach(month => {
+                    if (month.key < from || month.key > to) return;
                     if (month.due > 0) {
                         requiredMonths += 1;
-                        if (month.inspected > 0) completedMonths += 1;
+                        if (month.inspected === month.due) completedMonths += 1;
                     }
                 });
                 let score = null;
@@ -1910,11 +1910,7 @@
             // ถ้าเลือกเดือนเริ่มต้นหลังเดือนสิ้นสุด ให้สลับค่ากันอัตโนมัติเพื่อไม่ให้ช่วงผิดเพี้ยน
             let from = Number(fromSelect.value);
             let to = Number(toSelect.value);
-            if (from > to) { 
-                const tmp = from; from = to; to = tmp; 
-                fromSelect.value = from;
-                toSelect.value = to;
-            }
+            if (from > to) { const tmp = from; from = to; to = tmp; }
             const scored = computeEquipmentMouScores(lastMouSourceReport, from, to);
             const fromLabel = MOU_MONTH_LABELS_[from];
             const toLabel = MOU_MONTH_LABELS_[to];
