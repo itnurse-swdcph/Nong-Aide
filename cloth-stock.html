@@ -1130,6 +1130,8 @@
         let trackingApiAvailable = true;
         let isAlreadyCounted = false;
         let lastCountDate = "";
+        let lastCountRecorder = "";
+        let lastCountNote = "";
         let unitChart = null;
         let adminViewMode = "category";
 
@@ -1297,6 +1299,8 @@
             currentQuarter = result.currentQuarter || currentQuarter || "รอบปัจจุบัน";
             isAlreadyCounted = Boolean(result.isAlreadyCounted);
             lastCountDate = result.lastCountDate || "";
+            lastCountRecorder = result.lastCountRecorder || "";
+            lastCountNote = result.lastCountNote || "";
             masterItems = (result.data || []).map(normalizeMasterItem).filter(item => item.itemName);
             updateHeader();
         }
@@ -1379,6 +1383,7 @@
             empty.classList.add("hidden");
             form.classList.remove("hidden");
             container.innerHTML = masterItems.map((item, index) => {
+                const lc = item.lastCount;
                 const rows = COUNT_FIELDS.map(field => `
                     <div class="status-row">
                         <div class="status-label">
@@ -1387,7 +1392,7 @@
                         </div>
                         <div class="stepper">
                             <button type="button" onclick="changeCount(${index}, '${field.key}', -1)">-</button>
-                            <input type="number" id="${field.key}-${index}" value="0" min="0" oninput="calculateItem(${index})">
+                            <input type="number" id="${field.key}-${index}" value="${lc ? lc[field.key] : 0}" min="0" oninput="calculateItem(${index})">
                             <button type="button" onclick="changeCount(${index}, '${field.key}', 1)">+</button>
                         </div>
                     </div>
@@ -1423,6 +1428,11 @@
                     </article>
                 `;
             }).join("");
+
+            // ถ้ามีข้อมูลตรวจนับเดิมของรอบนี้แล้ว ให้คำนวณยอดรวม/ส่วนต่างให้ตรงกับค่าที่เติมไว้ในฟอร์มทันที
+            masterItems.forEach((item, index) => {
+                if (item.lastCount) calculateItem(index);
+            });
         }
 
         function renderCountLockState() {
@@ -1431,7 +1441,12 @@
             notice.classList.toggle("hidden", !disabled);
             if (disabled) {
                 notice.className = "notice info";
-                notice.innerHTML = `<strong>รอบนี้บันทึกแล้ว</strong><span>${escapeHtml(lastCountDate ? `ล่าสุด ${lastCountDate}` : "ปิดการกรอกซ้ำในรอบเดียวกัน")}</span>`;
+                const detailParts = [];
+                if (lastCountDate) detailParts.push(`ตรวจนับเมื่อ ${escapeHtml(lastCountDate)}`);
+                if (lastCountRecorder) detailParts.push(`โดย ${escapeHtml(lastCountRecorder)}`);
+                const detailLine = detailParts.length ? detailParts.join(" ") : "ปิดการกรอกซ้ำในรอบเดียวกัน";
+                const noteLine = lastCountNote ? `<br><small>หมายเหตุ: ${escapeHtml(lastCountNote)}</small>` : "";
+                notice.innerHTML = `<strong>รอบนี้บันทึกแล้ว</strong><span>${detailLine}${noteLine}</span>`;
             }
 
             document.querySelectorAll("#countForm input, #countForm textarea, #countForm button, #countForm select").forEach(el => {
@@ -1718,6 +1733,24 @@
                 appendSubmittedLogs(logs, recorder, note);
                 isAlreadyCounted = true;
                 lastCountDate = new Date().toLocaleString("th-TH");
+                lastCountRecorder = recorder;
+                lastCountNote = note;
+                masterItems.forEach((item, index) => {
+                    const submittedLog = logs[index];
+                    if (!submittedLog) return;
+                    item.lastCount = {
+                        readyStock: submittedLog.readyStock,
+                        inUse: submittedLog.inUse,
+                        inLaundry: submittedLog.inLaundry,
+                        pendingTracking: submittedLog.pendingTracking,
+                        total: submittedLog.totalCounted,
+                        par: submittedLog.parLevel,
+                        diff: submittedLog.difference,
+                        recorder,
+                        note: note || "",
+                        timestamp: lastCountDate
+                    };
+                });
                 renderUnitHero();
                 renderCountLockState();
                 renderUnitDashboard();
@@ -2179,10 +2212,24 @@
         }
 
         function normalizeMasterItem(item) {
+            const rawLastCount = item && typeof item === "object" ? item.lastCount : null;
+            const lastCount = rawLastCount ? {
+                readyStock: toNumber(pickValue(rawLastCount, ["readyStock"]), 0),
+                inUse: toNumber(pickValue(rawLastCount, ["inUse"]), 0),
+                inLaundry: toNumber(pickValue(rawLastCount, ["inLaundry"]), 0),
+                pendingTracking: toNumber(pickValue(rawLastCount, ["pendingTracking"]), 0),
+                total: toNumber(pickValue(rawLastCount, ["total"]), 0),
+                par: toNumber(pickValue(rawLastCount, ["par"]), 0),
+                diff: toNumber(pickValue(rawLastCount, ["diff"]), 0),
+                recorder: String(pickValue(rawLastCount, ["recorder"]) || "").trim(),
+                note: String(pickValue(rawLastCount, ["note"]) || "").trim(),
+                timestamp: String(pickValue(rawLastCount, ["timestamp"]) || "").trim()
+            } : null;
             return {
                 itemName: String(pickValue(item, ["ชื่อรายการผ้า", "itemName", "clothName", "mainType"]) || "").trim(),
                 mainCategory: String(pickValue(item, ["หมวดหมู่หลัก", "category", "mainCategory", "หมวดหมู่ภาพรวม"]) || pickValue(item, ["ชื่อรายการผ้า", "itemName", "clothName"]) || "").trim(),
-                parLevel: toNumber(pickValue(item, ["ยอดมาตรฐาน (Par)", "parLevel", "par", "ยอดมาตรฐาน"]), 0)
+                parLevel: toNumber(pickValue(item, ["ยอดมาตรฐาน (Par)", "parLevel", "par", "ยอดมาตรฐาน"]), 0),
+                lastCount
             };
         }
 
