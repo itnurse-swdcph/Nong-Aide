@@ -236,7 +236,7 @@ tbody tr:hover{background:#f8fbff;}
       <div class="layout-wrapper">
         <aside class="sidebar" id="userSidebar">
           <button class="menu-item active" onclick="switchPanel('user','userDashboard',this)"><i class="fas fa-chart-pie"></i> แดชบอร์ดภาพรวม</button>
-          <button class="menu-item" onclick="switchPanel('user','userCreate',this)"><i class="fas fa-file-circle-plus"></i> สร้างใบเบิกใหม่</button>
+          <button class="menu-item" onclick="startNewRequest()"><i class="fas fa-file-circle-plus"></i> สร้างใบเบิกใหม่</button>
           <button class="menu-item" onclick="switchPanel('user','userList',this)"><i class="fas fa-list-check"></i> รายการใบเบิกของฉัน</button>
         </aside>
         
@@ -260,7 +260,14 @@ tbody tr:hover{background:#f8fbff;}
           </table></div>
         </div>
         <div class="card">
-          <div class="section-head"><div><h3>ล่าสุดที่เสร็จสิ้น</h3><p>แสดง 5 รายการล่าสุด</p></div></div>
+          <div class="section-head"><div><h3>รายการใบเบิกที่กำลังดำเนินการ</h3><p>ใบเบิกที่ยังไม่เสร็จสิ้น อยู่ระหว่างรับใบเบิก นับ หรือเตรียมจ่าย</p></div></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>เลขที่ใบเบิก</th><th>วันที่</th><th>เวร</th><th>สถานะ</th><th>ขอเบิก</th><th>จ่าย</th><th>คงค้าง</th><th></th></tr></thead>
+            <tbody id="userDashProcessingBody"></tbody>
+          </table></div>
+        </div>
+        <div class="card">
+          <div class="section-head"><div><h3>ประวัติรายการของฉัน</h3><p>ใบเบิกที่ลงรับของเสร็จสิ้นแล้ว</p></div></div>
           <div class="table-wrap"><table>
             <thead><tr><th>เลขที่ใบเบิก</th><th>วันที่</th><th>เวร</th><th>สถานะ</th><th>ขอเบิก</th><th>จ่าย</th><th>คงค้าง</th><th></th></tr></thead>
             <tbody id="userDashCompletedBody"></tbody>

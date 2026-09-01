@@ -7,6 +7,7 @@ const DEMO_MODE = false;
 const DEMO_DB_KEY = 'sterileExchangeDemoDB_v1';
 const USER_LIST_PAGE_SIZE = 10;
 let userListPage = 1;
+let editingRequestId = '';
 
 /* ------------------------- DEMO MODE MOCK BACKEND ------------------------- */
 function demoLoadDB() {
@@ -407,21 +408,30 @@ async function loadUserWorkspace() {
 }
 
 function renderUserDashboard() {
-  const open = userRequests.filter(r => ['submitted', 'received', 'processing'].includes(r.status)).length;
-  const awaitReceipt = userRequests.filter(r => r.status === 'issued_waiting_receipt');
+  const orderedRequests = userRequests.slice().sort((a, b) => requestSortValue(b) - requestSortValue(a));
+  const open = orderedRequests.filter(r => ['submitted', 'received', 'processing'].includes(r.status)).length;
+  const awaitReceipt = orderedRequests.filter(r => r.status === 'issued_waiting_receipt');
   document.getElementById('userOpenMetric').textContent = open;
   document.getElementById('userAwaitMetric').textContent = awaitReceipt.length;
-  document.getElementById('dashSubmitted').textContent = userRequests.filter(r => r.status === 'submitted').length;
-  document.getElementById('dashProcessing').textContent = userRequests.filter(r => ['received', 'processing'].includes(r.status)).length;
+  document.getElementById('dashSubmitted').textContent = orderedRequests.filter(r => r.status === 'submitted').length;
+  document.getElementById('dashProcessing').textContent = orderedRequests.filter(r => ['received', 'processing'].includes(r.status)).length;
   document.getElementById('dashWaitingReceipt').textContent = awaitReceipt.length;
-  document.getElementById('dashCompleted').textContent = userRequests.filter(r => r.status === 'completed').length;
+  document.getElementById('dashCompleted').textContent = orderedRequests.filter(r => r.status === 'completed').length;
 
   const awaitBody = document.getElementById('userDashAwaitBody');
   awaitBody.innerHTML = awaitReceipt.length
     ? awaitReceipt.map(rowHtmlUser).join('')
     : `<tr class="empty-row"><td colspan="8">ไม่มีรายการรอลงรับของ</td></tr>`;
 
-  const completed = userRequests.filter(r => r.status === 'completed').slice(0, 5);
+  const processing = orderedRequests.filter(r => ['submitted', 'received', 'processing'].includes(r.status));
+  const processingBody = document.getElementById('userDashProcessingBody');
+  if (processingBody) {
+    processingBody.innerHTML = processing.length
+      ? processing.map(rowHtmlUser).join('')
+      : `<tr class="empty-row"><td colspan="8">ไม่มีรายการที่กำลังดำเนินการ</td></tr>`;
+  }
+
+  const completed = orderedRequests.filter(r => r.status === 'completed');
   const compBody = document.getElementById('userDashCompletedBody');
   compBody.innerHTML = completed.length
     ? completed.map(rowHtmlUser).join('')
@@ -434,6 +444,7 @@ function rowHtmlUser(r) {
     actionBtn += `<button class="table-btn primary" onclick="openReceiveModal('${r.requestId}')"><i class="fas fa-hand-holding"></i> รับของ/ลงชื่อ</button>`;
   }
   if (r.status === 'submitted') {
+    actionBtn += `<button class="table-btn primary" onclick="editRequest('${r.requestId}')"><i class="fas fa-pen"></i> แก้ไข</button>`;
     actionBtn += `<button class="table-btn secondary" onclick="printRequest('${r.requestId}','issue')"><i class="fas fa-print"></i> พิมพ์ใบเบิก</button>`;
   }
   if (r.status === 'completed') {
@@ -549,6 +560,51 @@ function renderDraftLines() {
 
 function removeDraftLine(idx) { draftLines.splice(idx, 1); renderDraftLines(); }
 
+async function editRequest(requestId) {
+  try {
+    const detail = await callApi('getRequestDetail', { requestId });
+    if (!detail || detail.header.status !== 'submitted') {
+      throw new Error('ใบเบิกนี้ถูกรับโดยจ่ายกลางแล้ว จึงไม่สามารถแก้ไขได้');
+    }
+    editingRequestId = requestId;
+    const dateParts = parseThaiDateParts(detail.header.requestDate);
+    if (dateParts) {
+      const year = dateParts.year > 2400 ? dateParts.year - 543 : dateParts.year;
+      document.getElementById('reqDate').value = `${year}-${String(dateParts.month).padStart(2, '0')}-${String(dateParts.day).padStart(2, '0')}`;
+    }
+    document.getElementById('reqShift').value = detail.header.shift || '';
+    document.getElementById('reqRequesterName').value = detail.header.requesterName || '';
+    draftLines = detail.lines.map(line => ({
+      itemName: line.itemName,
+      mainCategory: line.mainCategory,
+      unit: line.unit,
+      carriedQty: num(line.carriedQty),
+      exchangedQty: num(line.exchangedQty),
+      requestedQty: num(line.requestedQty),
+      wardNote: line.wardNote || ''
+    }));
+    const submitButton = document.getElementById('submitReqBtn');
+    if (submitButton) submitButton.innerHTML = '<i class="fas fa-save"></i> บันทึกการแก้ไข';
+    const createButton = document.querySelector('#userSidebar .menu-item[onclick*="startNewRequest"]');
+    if (createButton) switchPanel('user', 'userCreate', createButton);
+    renderDraftLines();
+  } catch (err) {
+    Swal.fire('แก้ไขใบเบิกไม่ได้', err.message, 'warning');
+  }
+}
+
+function startNewRequest() {
+  editingRequestId = '';
+  draftLines = [];
+  const form = document.getElementById('requestForm');
+  if (form) form.reset();
+  const submitButton = document.getElementById('submitReqBtn');
+  if (submitButton) submitButton.innerHTML = '<i class="fas fa-paper-plane"></i> ส่งใบเบิก';
+  const createButton = document.querySelector('#userSidebar .menu-item[onclick*="startNewRequest"]');
+  if (createButton) switchPanel('user', 'userCreate', createButton);
+  renderDraftLines();
+}
+
 function collectRequestLines() { return draftLines.slice(); }
 
 async function submitRequest(event) {
@@ -563,9 +619,12 @@ async function submitRequest(event) {
   const btn = document.getElementById('submitReqBtn');
   btn.disabled = true;
   try {
-    const data = await callApi('submitRequest', { ward: currentWard, requestDate, shift, requesterName, lines });
-    toast('success', 'ส่งใบเบิกเรียบร้อยแล้ว: ' + data.requestNo);
+    const action = editingRequestId ? 'updateRequest' : 'submitRequest';
+    const data = await callApi(action, { requestId: editingRequestId || undefined, ward: currentWard, requestDate, shift, requesterName, lines });
+    toast('success', editingRequestId ? 'แก้ไขใบเบิกเรียบร้อยแล้ว' : 'ส่งใบเบิกเรียบร้อยแล้ว: ' + data.requestNo);
+    editingRequestId = '';
     document.getElementById('requestForm').reset();
+    btn.innerHTML = '<i class="fas fa-paper-plane"></i> ส่งใบเบิก';
     await loadUserWorkspace();
     const result = await Swal.fire({
       icon: 'success', title: 'สร้างใบเบิกสำเร็จ', text: `เลขที่ใบเบิก ${data.requestNo}`,

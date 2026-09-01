@@ -11,6 +11,15 @@
         { href: 'sterile-exchange.html', label: 'วัสดุปราศจากเชื้อ', icon: 'fa-syringe' },
         { href: 'install.html', label: 'วิธีติดตั้ง', icon: 'fa-circle-down' }
     ];
+    const PAGINATED_TABLE_IDS = [
+        'userDashAwaitBody', 'userDashProcessingBody', 'userDashCompletedBody',
+        'adminQueueBody', 'adminProcessingBody', 'adminWaitingBody', 'adminHistoryBody',
+        'unitDashboardAwaitBody', 'unitDashboardCompletedBody', 'unitRequestBody',
+        'laundryPendingReceiveBody', 'laundryPendingIssueBody', 'laundryQueueBody',
+        'laundryHistoryBody', 'stockRequestTableBody', 'adminBody'
+    ];
+    const TABLE_PAGE_SIZE = 10;
+    const tablePageState = {};
 
     function getCurrentContext() {
         const query = new URLSearchParams(window.location.search);
@@ -108,6 +117,54 @@
         });
     }
 
+    function paginateTableBody(tbody) {
+        const rows = Array.from(tbody.children).filter(row => !row.classList.contains('empty-row'));
+        const totalPages = Math.max(1, Math.ceil(rows.length / TABLE_PAGE_SIZE));
+        const page = Math.min(Math.max(1, tablePageState[tbody.id] || 1), totalPages);
+        tablePageState[tbody.id] = page;
+        rows.forEach((row, index) => {
+            row.hidden = index < (page - 1) * TABLE_PAGE_SIZE || index >= page * TABLE_PAGE_SIZE;
+        });
+
+        const tableWrap = tbody.closest('.table-wrap');
+        if (!tableWrap) return;
+        let pagination = tableWrap.parentElement.querySelector(`[data-app-pagination="${tbody.id}"]`);
+        if (rows.length <= TABLE_PAGE_SIZE) {
+            if (pagination) pagination.remove();
+            return;
+        }
+        if (!pagination) {
+            pagination = document.createElement('div');
+            pagination.className = 'app-table-pagination';
+            pagination.dataset.appPagination = tbody.id;
+            tableWrap.insertAdjacentElement('afterend', pagination);
+        }
+        const start = (page - 1) * TABLE_PAGE_SIZE + 1;
+        const end = Math.min(page * TABLE_PAGE_SIZE, rows.length);
+        pagination.innerHTML = `
+            <span>แสดง ${start}-${end} จาก ${rows.length} รายการ | หน้า ${page}/${totalPages}</span>
+            <span class="app-table-pagination-actions">
+                <button type="button" data-page="${page - 1}" ${page === 1 ? 'disabled' : ''}>ก่อนหน้า</button>
+                <button type="button" data-page="${page + 1}" ${page === totalPages ? 'disabled' : ''}>ถัดไป</button>
+            </span>`;
+        pagination.querySelectorAll('button[data-page]').forEach(button => {
+            button.addEventListener('click', () => {
+                tablePageState[tbody.id] = Number(button.dataset.page);
+                paginateTableBody(tbody);
+            });
+        });
+    }
+
+    function bindTablePagination() {
+        PAGINATED_TABLE_IDS.forEach(id => {
+            const tbody = document.getElementById(id);
+            if (!tbody || tbody.dataset.paginationBound) return;
+            tbody.dataset.paginationBound = 'true';
+            new MutationObserver(() => paginateTableBody(tbody)).observe(tbody, { childList: true });
+            paginateTableBody(tbody);
+        });
+    }
+
     function compareVersions(left, right) {
         const a = String(left || '').split('.').map(Number);
         const b = String(right || '').split('.').map(Number);
@@ -190,6 +247,7 @@
         injectToggleButton();
         markActiveLinks();
         closeOnExternalClick();
+        bindTablePagination();
         checkApplicationVersion();
     }
 

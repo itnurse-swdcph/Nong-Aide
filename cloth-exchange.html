@@ -4189,6 +4189,10 @@
             const pendingRequests = Array.isArray(stockRequests)
                 ? stockRequests.filter(row => row.status === 'pending')
                 : [];
+            pendingRequests.sort((a, b) => sortByDate(
+                b.requestedAt || b.updatedAt || b.requestDate,
+                a.requestedAt || a.updatedAt || a.requestDate
+            ));
 
             if (!pendingRequests.length) {
                 tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">ไม่พบรายการคำขอ</td></tr>';

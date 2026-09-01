@@ -236,6 +236,42 @@ body.has-app-shell {
     color: #ffd66a;
 }
 
+.app-table-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 12px 2px 0;
+    color: #667789;
+    font-size: 0.82rem;
+}
+
+.app-table-pagination-actions {
+    display: inline-flex;
+    gap: 6px;
+}
+
+.app-table-pagination button {
+    border: 1px solid #d9e6f2;
+    border-radius: 8px;
+    padding: 5px 10px;
+    background: #fff;
+    color: #193047;
+    cursor: pointer;
+    font: inherit;
+}
+
+.app-table-pagination button:hover:not(:disabled) {
+    background: #153b63;
+    color: #fff;
+}
+
+.app-table-pagination button:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+
 .app-shell-footer {
     margin-top: 18px;
     padding-top: 16px;
