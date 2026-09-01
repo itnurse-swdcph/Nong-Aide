@@ -108,52 +108,6 @@
         });
     }
 
-    let apiLoadingCount = 0;
-    let apiLoadingTimer = null;
-    let apiLoadingPopupOwned = false;
-
-    function bindApiLoadingPopup() {
-        if (typeof window.fetch !== 'function' || window.fetch.__appShellWrapped) return;
-        const nativeFetch = window.fetch.bind(window);
-        const wrappedFetch = (...args) => {
-            const options = args[1] || {};
-            const silent = options.silentLoading === true;
-            if (!silent) {
-                apiLoadingCount += 1;
-                if (apiLoadingCount === 1) {
-                    window.clearTimeout(apiLoadingTimer);
-                    apiLoadingTimer = window.setTimeout(() => {
-                        if (apiLoadingCount > 0 && typeof window.Swal !== 'undefined' && !window.Swal.isVisible()) {
-                            apiLoadingPopupOwned = true;
-                            window.Swal.fire({
-                                title: 'กำลังโหลดข้อมูล...',
-                                text: 'กรุณารอสักครู่',
-                                allowOutsideClick: false,
-                                allowEscapeKey: false,
-                                showConfirmButton: false,
-                                didOpen: () => window.Swal.showLoading()
-                            });
-                        }
-                    }, 350);
-                }
-            }
-
-            return nativeFetch(...args).finally(() => {
-                if (silent) return;
-                apiLoadingCount = Math.max(0, apiLoadingCount - 1);
-                if (apiLoadingCount === 0) {
-                    window.clearTimeout(apiLoadingTimer);
-                    if (apiLoadingPopupOwned && typeof window.Swal !== 'undefined' && window.Swal.isVisible()) {
-                        window.Swal.close();
-                    }
-                    apiLoadingPopupOwned = false;
-                }
-            });
-        };
-        wrappedFetch.__appShellWrapped = true;
-        window.fetch = wrappedFetch;
-    }
-
     function compareVersions(left, right) {
         const a = String(left || '').split('.').map(Number);
         const b = String(right || '').split('.').map(Number);
@@ -236,7 +190,6 @@
         injectToggleButton();
         markActiveLinks();
         closeOnExternalClick();
-        bindApiLoadingPopup();
         checkApplicationVersion();
     }
 
