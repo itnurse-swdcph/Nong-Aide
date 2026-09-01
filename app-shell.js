@@ -1,5 +1,5 @@
 (function () {
-    const APP_VERSION = '2026.09.01.2';
+    const APP_VERSION = '2026.09.01.3';
     const APP_VERSION_FILE = 'app-version.json';
     const VERSION_NOTICE_KEY = 'swd_app_version_notice';
 
