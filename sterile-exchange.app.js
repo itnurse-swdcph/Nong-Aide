@@ -778,13 +778,14 @@ async function printRequest(requestId, mode, existingWindow) {
     <tr>
       <td style="text-align:center;">${i + 1}</td>
       <td>${escapeHtml(l.itemName)}</td>
-      <td style="text-align:center;">${escapeHtml(l.unit)}</td>
       ${isIssue ? `
-        <td style="text-align:center;">${l.carriedQty || '-'}</td>
-        <td style="text-align:center;">${l.exchangedQty || '-'}</td>
-        <td style="text-align:center;">${l.requestedQty || '-'}</td>
-        ${isIssueSlip ? `<td style="text-align:center;">${l.issuedQty || '-'}</td><td>${escapeHtml(l.adminNote || '')}</td>` : `<td>${escapeHtml(l.wardNote || '')}</td>`}
+        <td style="text-align:center;">${l.requestedQty || '-'}${Number(l.carriedQty || 0) > 0 ? `<div class="carry-note">ค้างรอบก่อน ${l.carriedQty}</div>` : ''}</td>
+        <td class="write-cell">${isIssueSlip ? (l.countedQty || '-') : '&nbsp;'}</td>
+        <td class="write-cell">${isIssueSlip ? (l.issuedQty || '-') : '&nbsp;'}</td>
+        <td class="write-cell">${isIssueSlip ? (l.outstandingQty || '-') : '&nbsp;'}</td>
+        <td>${escapeHtml(isIssueSlip ? (l.adminNote || l.wardNote || '') : (l.wardNote || ''))}</td>
       ` : `
+        <td style="text-align:center;">${escapeHtml(l.unit)}</td>
         <td style="text-align:center;">${l.requestedQty || '-'}</td>
         <td style="text-align:center;">${l.countedQty || '-'}</td>
         <td style="text-align:center;">${l.issuedQty || '-'}</td>
@@ -793,10 +794,8 @@ async function printRequest(requestId, mode, existingWindow) {
       `}
     </tr>`).join('');
 
-  const headCols = isIssueSlip
-    ? `<th>ลำดับ</th><th>รายการวัสดุ</th><th>หน่วย</th><th>ยกมา</th><th>ส่งแลก</th><th>ขอเบิก</th><th>จ่ายจริง</th><th>หมายเหตุ</th>`
-    : isIssue
-      ? `<th>ลำดับ</th><th>รายการวัสดุ</th><th>หน่วย</th><th>ยกมา</th><th>ส่งแลก</th><th>ขอเบิก</th><th>หมายเหตุ</th>`
+  const headCols = isIssue
+    ? `<th>ลำดับที่</th><th>รายการ</th><th>จำนวนขอเบิก</th><th>นับได้</th><th>จ่าย</th><th>ค้าง</th><th>หมายเหตุ</th>`
     : `<th>ลำดับ</th><th>รายการวัสดุ</th><th>หน่วย</th><th>ขอเบิก</th><th>นับได้</th><th>จ่าย</th><th>คงค้าง</th><th>หมายเหตุ</th>`;
 
   const w = existingWindow || window.open('', '_blank');
@@ -815,6 +814,8 @@ async function printRequest(requestId, mode, existingWindow) {
     table{width:100%;border-collapse:collapse;font-size:.82rem;margin-bottom:24px;}
     th,td{border:1px solid #c7d6e6;padding:7px 8px;}
     th{background:#eef4fb;}
+    .write-cell{min-width:72px;height:34px;text-align:center;}
+    .carry-note{font-size:.7rem;color:#667789;font-weight:400;margin-top:2px;}
     .sign-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:40px;text-align:center;font-size:.82rem;}
     .sign-line{border-top:1px solid #444;margin-top:46px;padding-top:6px;}
     @media print{ body{padding:10px;} }
