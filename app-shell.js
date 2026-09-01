@@ -8,8 +8,7 @@
         { href: 'equipment.html', label: 'ตรวจนับครุภัณฑ์', icon: 'fa-stethoscope' },
         { href: 'cloth-stock.html', label: 'Stock เครื่องผ้า', icon: 'fa-shirt' },
         { href: 'cloth-exchange.html', label: 'แลกผ้าสะอาด', icon: 'fa-sync-alt' },
-        { href: 'sterile-exchange.html', label: 'วัสดุปราศจากเชื้อ', icon: 'fa-syringe' },
-        { href: 'install.html', label: 'วิธีติดตั้ง', icon: 'fa-circle-down' }
+        { href: 'sterile-exchange.html', label: 'วัสดุปราศจากเชื้อ', icon: 'fa-syringe' }
     ];
     const PAGINATED_TABLE_IDS = [
         'userDashAwaitBody', 'userDashProcessingBody', 'userDashCompletedBody',
