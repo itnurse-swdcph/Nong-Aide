@@ -154,18 +154,8 @@
     }
 
     function bindFetchLoading() {
-        if (typeof window.fetch !== 'function' || window.fetch.__appShellWrapped) return;
-        const nativeFetch = window.fetch.bind(window);
-        const wrappedFetch = (...args) => {
-            const options = args[1] || {};
-            const silent = options.silentLoading === true;
-            if (!silent) startLoading('กำลังเชื่อมต่อฐานข้อมูล กรุณารอสักครู่...');
-            return nativeFetch(...args).finally(() => {
-                if (!silent) stopLoading();
-            });
-        };
-        wrappedFetch.__appShellWrapped = true;
-        window.fetch = wrappedFetch;
+        // Loading is intentionally limited to page navigation. API requests and
+        // confirmation dialogs must not cover an already loaded page.
     }
 
     function compareVersions(left, right) {
@@ -252,7 +242,6 @@
         closeOnExternalClick();
         ensureLoadingOverlay();
         bindLoadingInteractions();
-        bindFetchLoading();
         checkApplicationVersion();
     }
 
