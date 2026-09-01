@@ -109,8 +109,6 @@
     }
 
     let loadingDepth = 0;
-    let loadingTimer = null;
-
     function ensureLoadingOverlay() {
         let overlay = document.querySelector('.app-loading-overlay');
         if (overlay) return overlay;
@@ -136,7 +134,6 @@
         loadingDepth += 1;
         overlay.hidden = false;
         document.body.setAttribute('aria-busy', 'true');
-        window.clearTimeout(loadingTimer);
     }
 
     function stopLoading(force) {
@@ -152,27 +149,20 @@
             const link = event.target.closest('a[data-shell-href]');
             if (link) {
                 startLoading('กำลังเปิดระบบ กรุณารอสักครู่...');
-                return;
             }
-
-            const control = event.target.closest('.menu-item, .tab-btn, button[type="submit"], button[onclick*="save"], button[onclick*="submit"], button[onclick*="admin"], button[onclick*="confirm"], button[onclick*="refresh"]');
-            if (!control || control.disabled || control.matches('button[type="submit"]')) return;
-            startLoading('กำลังโหลดข้อมูล กรุณารอสักครู่...');
-            window.clearTimeout(loadingTimer);
-            loadingTimer = window.setTimeout(() => stopLoading(), 900);
         });
-
-        document.addEventListener('submit', () => {
-            startLoading('กำลังบันทึกข้อมูล กรุณารอสักครู่...');
-        }, true);
     }
 
     function bindFetchLoading() {
         if (typeof window.fetch !== 'function' || window.fetch.__appShellWrapped) return;
         const nativeFetch = window.fetch.bind(window);
         const wrappedFetch = (...args) => {
-            startLoading('กำลังเชื่อมต่อฐานข้อมูล กรุณารอสักครู่...');
-            return nativeFetch(...args).finally(() => stopLoading());
+            const options = args[1] || {};
+            const silent = options.silentLoading === true;
+            if (!silent) startLoading('กำลังเชื่อมต่อฐานข้อมูล กรุณารอสักครู่...');
+            return nativeFetch(...args).finally(() => {
+                if (!silent) stopLoading();
+            });
         };
         wrappedFetch.__appShellWrapped = true;
         window.fetch = wrappedFetch;
@@ -241,7 +231,7 @@
             window.history.replaceState({}, document.title, url.toString());
         }
         try {
-            const response = await window.fetch(`${APP_VERSION_FILE}?_=${Date.now()}`, { cache: 'no-store' });
+            const response = await window.fetch(`${APP_VERSION_FILE}?_=${Date.now()}`, { cache: 'no-store', silentLoading: true });
             if (!response.ok) return;
             const data = await response.json();
             const remoteVersion = String(data.version || '').trim();
