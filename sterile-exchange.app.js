@@ -5,6 +5,8 @@
 
 const DEMO_MODE = false;
 const DEMO_DB_KEY = 'sterileExchangeDemoDB_v1';
+const USER_LIST_PAGE_SIZE = 10;
+let userListPage = 1;
 
 /* ------------------------- DEMO MODE MOCK BACKEND ------------------------- */
 function demoLoadDB() {
@@ -385,6 +387,7 @@ async function loadUserWorkspace() {
   ]);
   masterItems = master || [];
   userRequests = requests || [];
+  userListPage = 1;
   masterSearchTerm = '';
   selectedMasterItemIndex = -1;
   draftLines = [];
@@ -444,9 +447,47 @@ function rowHtmlUser(r) {
 
 function renderUserList() {
   const body = document.getElementById('userListBody');
-  body.innerHTML = userRequests.length
-    ? userRequests.map(rowHtmlUser).join('')
+  if (!body) return;
+  const sortedRequests = userRequests.slice().sort((a, b) => requestSortValue(b) - requestSortValue(a));
+  const totalPages = Math.max(1, Math.ceil(sortedRequests.length / USER_LIST_PAGE_SIZE));
+  userListPage = Math.min(Math.max(1, userListPage), totalPages);
+  const start = (userListPage - 1) * USER_LIST_PAGE_SIZE;
+  const pageRows = sortedRequests.slice(start, start + USER_LIST_PAGE_SIZE);
+  body.innerHTML = pageRows.length
+    ? pageRows.map(rowHtmlUser).join('')
     : `<tr class="empty-row"><td colspan="8">ยังไม่มีใบเบิก</td></tr>`;
+  renderUserListPagination(sortedRequests.length, totalPages);
+}
+
+function requestSortValue(request) {
+  const parts = parseThaiDateParts(request.updatedAt || request.submittedAt || request.requestDate);
+  if (!parts) return 0;
+  return Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+}
+
+function renderUserListPagination(totalItems, totalPages) {
+  const pagination = document.getElementById('userListPagination');
+  if (!pagination) return;
+  if (totalItems <= USER_LIST_PAGE_SIZE) {
+    pagination.innerHTML = '';
+    return;
+  }
+  const buttons = [];
+  for (let page = 1; page <= totalPages; page += 1) {
+    buttons.push(`<button type="button" class="pagination-btn${page === userListPage ? ' active' : ''}" onclick="goToUserListPage(${page})">${page}</button>`);
+  }
+  pagination.innerHTML = `
+    <span>แสดง ${(userListPage - 1) * USER_LIST_PAGE_SIZE + 1}-${Math.min(userListPage * USER_LIST_PAGE_SIZE, totalItems)} จาก ${totalItems} รายการ</span>
+    <div class="pagination-buttons">
+      <button type="button" class="pagination-btn" onclick="goToUserListPage(${userListPage - 1})" ${userListPage === 1 ? 'disabled' : ''}>ก่อนหน้า</button>
+      ${buttons.join('')}
+      <button type="button" class="pagination-btn" onclick="goToUserListPage(${userListPage + 1})" ${userListPage === totalPages ? 'disabled' : ''}>ถัดไป</button>
+    </div>`;
+}
+
+function goToUserListPage(page) {
+  userListPage = Number(page) || 1;
+  renderUserList();
 }
 
 function renderMasterSearchResults() {
@@ -531,7 +572,8 @@ async function submitRequest(event) {
       showCancelButton: true, confirmButtonText: 'พิมพ์ใบเบิก', cancelButtonText: 'ปิด'
     });
     if (result.isConfirmed) printRequest(data.requestId, 'issue');
-    document.querySelector('#userWorkspace .tab-btn').click();
+    const listButton = document.querySelector('#userSidebar .menu-item[onclick*="userList"]');
+    if (listButton) switchPanel('user', 'userList', listButton);
   } catch (err) {
     Swal.fire('เกิดข้อผิดพลาด', err.message, 'error');
   } finally {

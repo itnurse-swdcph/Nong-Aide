@@ -108,54 +108,50 @@
         });
     }
 
-    let loadingDepth = 0;
-    function ensureLoadingOverlay() {
-        let overlay = document.querySelector('.app-loading-overlay');
-        if (overlay) return overlay;
-        overlay = document.createElement('div');
-        overlay.className = 'app-loading-overlay';
-        overlay.hidden = true;
-        overlay.setAttribute('aria-live', 'polite');
-        overlay.innerHTML = `
-            <div class="app-loading-card" role="status">
-                <div class="app-loading-line short"></div>
-                <div class="app-loading-line"></div>
-                <div class="app-loading-block"></div>
-                <div class="app-loading-label">กำลังดำเนินการ กรุณารอสักครู่...</div>
-            </div>`;
-        document.body.appendChild(overlay);
-        return overlay;
-    }
+    let apiLoadingCount = 0;
+    let apiLoadingTimer = null;
+    let apiLoadingPopupOwned = false;
 
-    function startLoading(message) {
-        const overlay = ensureLoadingOverlay();
-        const label = overlay.querySelector('.app-loading-label');
-        if (label) label.textContent = message || 'กำลังดำเนินการ กรุณารอสักครู่...';
-        loadingDepth += 1;
-        overlay.hidden = false;
-        document.body.setAttribute('aria-busy', 'true');
-    }
-
-    function stopLoading(force) {
-        loadingDepth = force ? 0 : Math.max(0, loadingDepth - 1);
-        if (loadingDepth > 0) return;
-        const overlay = document.querySelector('.app-loading-overlay');
-        if (overlay) overlay.hidden = true;
-        document.body.removeAttribute('aria-busy');
-    }
-
-    function bindLoadingInteractions() {
-        document.addEventListener('click', event => {
-            const link = event.target.closest('a[data-shell-href]');
-            if (link) {
-                startLoading('กำลังเปิดระบบ กรุณารอสักครู่...');
+    function bindApiLoadingPopup() {
+        if (typeof window.fetch !== 'function' || window.fetch.__appShellWrapped) return;
+        const nativeFetch = window.fetch.bind(window);
+        const wrappedFetch = (...args) => {
+            const options = args[1] || {};
+            const silent = options.silentLoading === true;
+            if (!silent) {
+                apiLoadingCount += 1;
+                if (apiLoadingCount === 1) {
+                    window.clearTimeout(apiLoadingTimer);
+                    apiLoadingTimer = window.setTimeout(() => {
+                        if (apiLoadingCount > 0 && typeof window.Swal !== 'undefined' && !window.Swal.isVisible()) {
+                            apiLoadingPopupOwned = true;
+                            window.Swal.fire({
+                                title: 'กำลังโหลดข้อมูล...',
+                                text: 'กรุณารอสักครู่',
+                                allowOutsideClick: false,
+                                allowEscapeKey: false,
+                                showConfirmButton: false,
+                                didOpen: () => window.Swal.showLoading()
+                            });
+                        }
+                    }, 350);
+                }
             }
-        });
-    }
 
-    function bindFetchLoading() {
-        // Loading is intentionally limited to page navigation. API requests and
-        // confirmation dialogs must not cover an already loaded page.
+            return nativeFetch(...args).finally(() => {
+                if (silent) return;
+                apiLoadingCount = Math.max(0, apiLoadingCount - 1);
+                if (apiLoadingCount === 0) {
+                    window.clearTimeout(apiLoadingTimer);
+                    if (apiLoadingPopupOwned && typeof window.Swal !== 'undefined' && window.Swal.isVisible()) {
+                        window.Swal.close();
+                    }
+                    apiLoadingPopupOwned = false;
+                }
+            });
+        };
+        wrappedFetch.__appShellWrapped = true;
+        window.fetch = wrappedFetch;
     }
 
     function compareVersions(left, right) {
@@ -240,14 +236,12 @@
         injectToggleButton();
         markActiveLinks();
         closeOnExternalClick();
-        ensureLoadingOverlay();
-        bindLoadingInteractions();
+        bindApiLoadingPopup();
         checkApplicationVersion();
     }
 
     window.AppShell = {
         navigate(target) {
-            startLoading('กำลังเปิดระบบ กรุณารอสักครู่...');
             window.location.href = buildHref(target);
         },
         openSidebar() {
@@ -264,10 +258,6 @@
         refreshLinks() {
             markActiveLinks();
         },
-        loading: {
-            start: startLoading,
-            stop: () => stopLoading(true)
-        }
     };
 
     if (document.readyState === 'loading') {

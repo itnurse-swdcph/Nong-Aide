@@ -310,56 +310,6 @@ body > footer,
     pointer-events: auto;
 }
 
-.app-loading-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 2000;
-    display: grid;
-    place-items: center;
-    padding: 24px;
-    background: rgba(244, 248, 252, 0.78);
-    backdrop-filter: blur(3px);
-}
-
-.app-loading-overlay[hidden] {
-    display: none;
-}
-
-.app-loading-card {
-    width: min(420px, 100%);
-    padding: 22px;
-    border: 1px solid #dce8f2;
-    border-radius: 18px;
-    background: #fff;
-    box-shadow: 0 18px 42px rgba(13, 39, 66, 0.14);
-}
-
-.app-loading-line,
-.app-loading-block {
-    position: relative;
-    overflow: hidden;
-    background: #e8f0f7;
-}
-
-.app-loading-line::after,
-.app-loading-block::after {
-    position: absolute;
-    inset: 0;
-    content: '';
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent);
-    transform: translateX(-100%);
-    animation: app-skeleton-shimmer 1.25s infinite;
-}
-
-.app-loading-line { height: 12px; margin-bottom: 12px; border-radius: 99px; }
-.app-loading-line.short { width: 62%; }
-.app-loading-block { height: 86px; margin-top: 18px; border-radius: 12px; }
-.app-loading-label { margin-top: 16px; color: #47647d; font-size: 0.9rem; text-align: center; }
-
-@keyframes app-skeleton-shimmer {
-    100% { transform: translateX(100%); }
-}
-
 @media (max-width: 1100px) {
     .app-shell-layout {
         display: block;

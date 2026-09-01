@@ -105,6 +105,11 @@ tbody tr:hover{background:#f8fbff;}
 .table-btn[disabled]{opacity:.45;cursor:not-allowed;}
 .actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:10px;}
 .empty-row td{text-align:center;color:var(--muted);padding:24px;}
+.pagination{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-top:14px;color:var(--muted);font-size:.82rem;}
+.pagination-buttons{display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+.pagination-btn{border:1px solid var(--border);background:#fff;color:var(--text);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:.8rem;}
+.pagination-btn:hover,.pagination-btn.active{background:var(--navy);border-color:var(--navy);color:#fff;}
+.pagination-btn:disabled{opacity:.45;cursor:not-allowed;}
 .master-picker-toolbar{display:flex;align-items:end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:14px 0;}
 .master-search-field{flex:1;min-width:240px;}
 .master-picker-hint{color:var(--muted);font-size:.82rem;padding-bottom:10px;}
@@ -314,6 +319,7 @@ tbody tr:hover{background:#f8fbff;}
             <thead><tr><th>เลขที่ใบเบิก</th><th>วันที่</th><th>เวร</th><th>สถานะ</th><th>ขอเบิก</th><th>จ่าย</th><th>คงค้าง</th><th></th></tr></thead>
             <tbody id="userListBody"></tbody>
           </table></div>
+          <div id="userListPagination" class="pagination"></div>
         </div>
       </section>
         </div> <!-- end main-content -->
