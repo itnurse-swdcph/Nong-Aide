@@ -13,12 +13,13 @@
     <meta name="apple-mobile-web-app-title" content="SWD Care Connect">
     <link rel="apple-touch-icon" href="icon-192.png">
 
-    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="app-shell.css">
 </head>
-<body>
+<body class="home-page">
 
     <nav class="navbar">
         <div class="nav-left">
@@ -66,6 +67,24 @@
     </section>
 
     <section id="dashboardSection" class="section-container hidden">
+<div class="app-shell-layout">
+<aside class="app-shell-sidebar" aria-label="เมนูระบบ">
+                <div class="app-shell-section">
+                    <div class="app-shell-section-title">เมนูระบบ</div>
+                    <nav class="app-shell-nav">
+                        <a class="app-shell-link" data-shell-href="index.html" href="index.html"><i class="fas fa-house"></i> หน้าหลัก</a>
+                        <a class="app-shell-link" data-shell-href="equipment.html" href="equipment.html"><i class="fas fa-stethoscope"></i> ตรวจนับครุภัณฑ์</a>
+                        <a class="app-shell-link" data-shell-href="cloth-stock.html" href="cloth-stock.html"><i class="fas fa-shirt"></i> Stock เครื่องผ้า</a>
+                        <a class="app-shell-link" data-shell-href="cloth-exchange.html" href="cloth-exchange.html"><i class="fas fa-sync-alt"></i> แลกผ้าสะอาด</a>
+                        <a class="app-shell-link" data-shell-href="sterile-exchange.html" href="sterile-exchange.html"><i class="fas fa-syringe"></i> วัสดุปราศจากเชื้อ</a>
+                        <a class="app-shell-link" data-shell-href="install.html" href="install.html"><i class="fas fa-circle-down"></i> วิธีติดตั้ง</a>
+                    </nav>
+                </div>
+                <div class="app-shell-footer">
+                    ใช้เมนูนี้เพื่อสลับระบบย่อยได้โดยตรงจากหน้า home
+                </div>
+            </aside>
+            <div class="app-shell-main">
         <div class="dashboard-content">
             <div class="dashboard-hero">
                 <div class="hero-copy">
@@ -117,36 +136,26 @@
                         </div>
                         <span class="menu-arrow"><i class="fas fa-arrow-right"></i></span>
                     </a>
+
+                    <a href="#" class="menu-card" onclick="openSystem('sterile-exchange.html')">
+                        <div class="icon-circle"><i class="fas fa-syringe"></i></div>
+                        <div class="menu-copy">
+                            <h3>ส่งแลกวัสดุปราศจากเชื้อ</h3>
+                            <p>จัดการเบิกส่งแลกวัสดุปราศจากเชื้อ บันทึกข้อมูลและติดตามสถานะจากศูนย์จ่ายกลาง</p>
+                        </div>
+                        <span class="menu-arrow"><i class="fas fa-arrow-right"></i></span>
+                    </a>
                 </div>
             </div>
         </div>
+            </div>
+        </div>
+        <div class="app-shell-overlay" aria-hidden="true"></div>
     </section>
 
-    <footer class="modern-footer">
-        <div class="footer-content">
-            <div class="footer-brand">
-                <img src="icon-192.png" alt="SWD Care Connect Logo">
-                SWD Care Connect
-            </div>
-            <div class="footer-details">
-                ระบบบริหารจัดการงานหน่วยงานอัจฉริยะ<br>
-                <strong>โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน</strong>
-            </div>
-        </div>
-        <div class="footer-bottom">
-            <span>&copy; 2026 SWD Care Connect. All rights reserved. | Developed By Natnarinthorn</span>
-            <span><i class="fas fa-heart" style="color: #ff4757; animation: pulse 1.5s infinite;"></i> พัฒนาเพื่อยกระดับคุณภาพการทำงาน</span>
-        </div>
-    </footer>
+    <footer class="site-footer">© 2026 Developed By Natnarinthorn | Nursing Informatics System</footer>
 
-    <style>
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.2); }
-            100% { transform: scale(1); }
-        }
-    </style>
-
+    <script src="app-shell.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

@@ -6,8 +6,9 @@
     <title>แนะนำและติดตั้ง - SWD Care Connect</title>
     
     <link rel="icon" type="image/png" href="icon-192.png">
-    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="app-shell.css">
     
     <style>
         :root {
@@ -23,7 +24,7 @@
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'Prompt', sans-serif;
+            font-family: 'Sarabun', sans-serif;
         }
 
         body {
@@ -258,7 +259,37 @@
     </style>
 </head>
 <body>
+    <nav class="navbar">
+        <div class="nav-left">
+            <img src="icon-192.png" alt="SWD Care Connect Logo" class="hosp-logo">
+            <div class="brand-text">
+                <span class="app-title">SWD Care Connect</span>
+                <span class="app-subtitle hide-on-mobile">Nursing Informatics System</span>
+            </div>
+        </div>
+        <div class="nav-right">
+            <span class="nav-title">วิธีติดตั้งระบบ</span>
+        </div>
+    </nav>
+    <div class="app-shell-layout">
+        <aside class="app-shell-sidebar" aria-label="เมนูระบบ">
+            <div class="app-shell-section">
+                <div class="app-shell-section-title">เมนูระบบ</div>
+                <nav class="app-shell-nav">
+                    <a class="app-shell-link" data-shell-href="index.html" href="index.html"><i class="fas fa-house"></i> หน้าหลัก</a>
+                    <a class="app-shell-link" data-shell-href="equipment.html" href="equipment.html"><i class="fas fa-stethoscope"></i> ตรวจนับครุภัณฑ์</a>
+                    <a class="app-shell-link" data-shell-href="cloth-stock.html" href="cloth-stock.html"><i class="fas fa-shirt"></i> Stock เครื่องผ้า</a>
+                    <a class="app-shell-link" data-shell-href="cloth-exchange.html" href="cloth-exchange.html"><i class="fas fa-sync-alt"></i> แลกผ้าสะอาด</a>
+                    <a class="app-shell-link" data-shell-href="sterile-exchange.html" href="sterile-exchange.html"><i class="fas fa-syringe"></i> วัสดุปราศจากเชื้อ</a>
+                    <a class="app-shell-link" data-shell-href="install.html" href="install.html"><i class="fas fa-circle-down"></i> วิธีติดตั้ง</a>
+                </nav>
+            </div>
+            <div class="app-shell-footer">
+                ใช้เมนูนี้เพื่อสลับระบบย่อยได้จากทุกหน้า
+            </div>
+        </aside>
 
+        <div class="app-shell-main">
     <div class="container">
         <!-- Header -->
         <div class="header">
@@ -345,10 +376,13 @@
 
         <!-- Footer -->
         <div class="footer">
-            <div>&copy; 2026 SWD Care Connect | รพ.สมเด็จพระยุพราชสว่างแดนดิน</div>
-            <div style="margin-top: 5px; font-size: 0.75rem; opacity: 0.8;">Developed By Natnarinthorn</div>
+            <div>&copy; 2026 Developed By Natnarinthorn | Nursing Informatics System</div>
         </div>
     </div>
+        </div>
+    </div>
+    <div class="app-shell-overlay" aria-hidden="true"></div>
+    <script src="app-shell.js"></script>
 
 </body>
 </html>

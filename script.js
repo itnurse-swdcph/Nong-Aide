@@ -13,7 +13,8 @@ const ADMIN_CREDENTIALS = {
 const AVAILABLE_SYSTEMS = new Set([
     "equipment.html",
     "cloth-stock.html",
-    "cloth-exchange.html"
+    "cloth-exchange.html",
+    "sterile-exchange.html"
 ]);
 
 // --- PWA Service Worker Registration (4. บันทึกหน้าจอเป็นแอพ) ---
@@ -30,7 +31,15 @@ if ('serviceWorker' in navigator) {
 document.addEventListener("DOMContentLoaded", () => {
     checkLoginSession();
     fetchWards();
+    syncShellToggleVisibility();
 });
+
+function syncShellToggleVisibility() {
+    const toggleBtn = document.querySelector('[data-shell-toggle]');
+    if (!toggleBtn) return;
+    const dashboardVisible = !document.getElementById("dashboardSection")?.classList.contains("hidden");
+    toggleBtn.classList.toggle("hidden", !dashboardVisible);
+}
 
 // ดึงข้อมูลหน่วยงานจาก Backend
 async function fetchWards() {
@@ -125,6 +134,8 @@ function showDashboard(wardName, role = "user") {
     
     // ปิดเมนูมือถือถ้าเปิดอยู่
     document.getElementById("navMenu").classList.remove("active");
+    window.AppShell?.closeSidebar?.();
+    syncShellToggleVisibility();
 }
 
 // ฟังก์ชันออกจากระบบ (เปลี่ยนตึก)
@@ -158,6 +169,8 @@ function logout() {
             // ซ่อนเมนูด้านบน
             document.getElementById("currentWardDisplay").classList.add("hidden");
             document.getElementById("logoutBtn").classList.add("hidden");
+            window.AppShell?.closeSidebar?.();
+            syncShellToggleVisibility();
         }
     });
 }
@@ -179,7 +192,8 @@ function openSystem(url) {
         return;
     }
 
-    if (currentRole === "admin") {
+    const isSterileAdminWard = url === "sterile-exchange.html" && currentWard && /จ่ายกลาง/.test(currentWard);
+    if (currentRole === "admin" || isSterileAdminWard) {
         params.set("role", "admin");
     } else if (currentWard) {
         params.set("ward", currentWard);
@@ -231,4 +245,7 @@ function showAdminLogin() {
 function toggleMenu() {
     const navMenu = document.getElementById("navMenu");
     navMenu.classList.toggle("active");
+    if (!document.getElementById("dashboardSection").classList.contains("hidden")) {
+        window.AppShell?.toggleSidebar?.();
+    }
 }

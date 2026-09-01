@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ระบบตรวจนับครุภัณฑ์ - SWD Care Connect</title>
     <link rel="icon" type="image/png" href="icon-192.png">
-    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -37,10 +37,10 @@
         .equipment-shell { width: 100%; max-width: 1180px; display: flex; flex-direction: column; gap: 18px; }
 
         .action-bar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; background: var(--white); padding: 15px; border-radius: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); position: sticky; top: 84px; z-index: 15; }
-        .search-box { flex: 1; padding: 12px 15px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Prompt'; min-width: 200px; outline: none; transition: 0.3s; }
+        .search-box { flex: 1; padding: 12px 15px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Sarabun'; min-width: 200px; outline: none; transition: 0.3s; }
         .search-box:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,51,102,0.1); }
         
-        .btn { padding: 10px 15px; border-radius: 8px; font-weight: 500; cursor: pointer; border: none; font-family: 'Prompt'; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
+        .btn { padding: 10px 15px; border-radius: 8px; font-weight: 500; cursor: pointer; border: none; font-family: 'Sarabun'; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
         .btn-primary { background: var(--primary); color: white; }
         .btn-primary:hover { background: #002244; }
         .btn-accent { background: var(--accent); color: var(--primary); }
@@ -51,7 +51,7 @@
         .btn-sm { padding: 6px 12px; font-size: 0.85rem; }
         
         .tabs-container { display: flex; border-bottom: 2px solid #ddd; margin-bottom: 20px; gap: 10px; overflow-x: auto;}
-        .tab-btn { background: transparent; border: none; padding: 12px 20px; font-family: 'Prompt'; font-size: 1.05rem; font-weight: 500; color: #666; cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; transition: 0.3s; }
+        .tab-btn { background: transparent; border: none; padding: 12px 20px; font-family: 'Sarabun'; font-size: 1.05rem; font-weight: 500; color: #666; cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; transition: 0.3s; }
         .tab-btn:hover { color: var(--primary); }
         .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
 
@@ -94,7 +94,7 @@
         
         .swal-form-group { text-align: left; margin-bottom: 15px; }
         .swal-form-group label { font-weight: 500; font-size: 0.9rem; color: var(--primary); display: block; margin-bottom: 5px; }
-        .swal-input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Prompt'; font-size: 0.95rem; outline: none; }
+        .swal-input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Sarabun'; font-size: 0.95rem; outline: none; }
         .details-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; }
         .details-table th { background: #f4f7f9; padding: 10px; border: 1px solid #eee; width: 40%; color: var(--primary); font-weight: 500; }
         .details-table td { padding: 10px; border: 1px solid #eee; color: #444; }
@@ -193,7 +193,7 @@
             min-width: 0;
             gap: 0.8mm;
             text-align: left;
-            font-family: 'Prompt', sans-serif;
+            font-family: 'Sarabun', sans-serif;
             color: #000;
         }
         .thermal-name {
@@ -265,7 +265,7 @@
             margin-top: 60px;
             position: relative;
             box-shadow: 0 -10px 25px rgba(0,51,102,0.15);
-            font-family: 'Prompt', sans-serif;
+            font-family: 'Sarabun', sans-serif;
             border-top-left-radius: 35px;
             border-top-right-radius: 35px;
             overflow: hidden;
@@ -346,17 +346,40 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="app-shell.css">
 </head>
 <body>
     <nav class="navbar">
-        <div class="nav-left">
-            <span class="app-title" style="cursor: pointer;" onclick="window.location.href='index.html'"><i class="fas fa-arrow-left"></i> กลับหน้าหลัก</span>
+        <div class="nav-brand-stack">
+            <div class="nav-brand-line"><img src="icon-192.png" alt="SWD Care Connect Logo"> <span>SWD Care Connect</span></div>
+            <div class="nav-title"><i class="fas fa-stethoscope"></i> ระบบตรวจนับครุภัณฑ์ทางการแพทย์</div>
+            <div class="nav-meta">
+                <span class="nav-chip"><i class="fas fa-hospital-user"></i> <span id="displayWard">หน่วยงาน: กำลังโหลด...</span></span>
+            </div>
         </div>
-        <div class="nav-right">
-            <span class="ward-badge"><i class="fas fa-hospital-user"></i> <span id="displayWard">กำลังโหลด...</span></span>
+        <div class="nav-actions">
+            <button class="nav-btn" onclick="window.location.href='index.html'"><i class="fas fa-house"></i> หน้าหลัก</button>
         </div>
     </nav>
 
+    <div class="app-shell-layout">
+        <aside class="app-shell-sidebar" aria-label="เมนูระบบ">
+        <div class="app-shell-section">
+                <div class="app-shell-section-title">เมนูระบบ</div>
+                <nav class="app-shell-nav">
+                    <a class="app-shell-link" data-shell-href="index.html" href="index.html"><i class="fas fa-house"></i> หน้าหลัก</a>
+                    <a class="app-shell-link" data-shell-href="equipment.html" href="equipment.html"><i class="fas fa-stethoscope"></i> ตรวจนับครุภัณฑ์</a>
+                    <a class="app-shell-link" data-shell-href="cloth-stock.html" href="cloth-stock.html"><i class="fas fa-shirt"></i> Stock เครื่องผ้า</a>
+                    <a class="app-shell-link" data-shell-href="cloth-exchange.html" href="cloth-exchange.html"><i class="fas fa-sync-alt"></i> แลกผ้าสะอาด</a>
+                    <a class="app-shell-link" data-shell-href="sterile-exchange.html" href="sterile-exchange.html"><i class="fas fa-syringe"></i> วัสดุปราศจากเชื้อ</a>
+                    <a class="app-shell-link" data-shell-href="install.html" href="install.html"><i class="fas fa-circle-down"></i> วิธีติดตั้ง</a>
+                </nav>
+            </div>
+            <div class="app-shell-footer">
+                ใช้เมนูนี้เพื่อสลับระบบย่อยโดยไม่ต้องกลับไปหน้าแรก
+            </div>
+        </aside>
+        <div class="app-shell-main">
     <div class="section-container section-container--workspace">
         <div class="equipment-shell">
             
@@ -621,7 +644,7 @@
                         <i class="fas fa-tools"></i> จัดการข้อมูลหลัก
                     </h3>
                     <div class="admin-actions" style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 10px; align-items: center; width: auto;">
-                        <select id="adminWardFilter" class="swal-input" style="padding: 8px 12px; font-size: 0.95rem; font-family: 'Prompt'; width: auto; margin: 0; min-width: 180px;" onchange="filterAdminByWard()">
+                        <select id="adminWardFilter" class="swal-input" style="padding: 8px 12px; font-size: 0.95rem; font-family: 'Sarabun'; width: auto; margin: 0; min-width: 180px;" onchange="filterAdminByWard()">
                             <option value="all">ดูทุกหน่วยงาน (ทั้ง รพ.)</option>
                         </select>
                         <button class="btn btn-warning" style="color: #000; width: auto;" onclick="openPrintQRModal()">
@@ -736,22 +759,7 @@
         </div>
     </div>
     <div id="printArea"></div>
-    <footer class="modern-footer">
-        <div class="footer-content">
-            <div class="footer-brand">
-                <img src="icon-192.png" alt="SWD Care Connect Logo"> 
-                SWD Care Connect
-            </div>
-            <div class="footer-details">
-                ระบบตรวจนับและบริหารจัดการครุภัณฑ์ทางการแพทย์<br>
-                <strong>โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน</strong>
-            </div>
-        </div>
-        <div class="footer-bottom">
-            <span>&copy; 2026 SWD Care Connect. All rights reserved.| Developed By Natnarinthorn</span>
-            <span><i class="fas fa-heart" style="color: #ff4757; animation: pulse 1.5s infinite;"></i> พัฒนาเพื่อยกระดับคุณภาพการทำงาน</span>
-        </div>
-    </footer>
+    <footer class="modern-footer">&copy; 2026 Developed By Natnarinthorn | Nursing Informatics System</footer>
     
     <style>
         @keyframes pulse {
@@ -1356,7 +1364,7 @@
             }
 
             isAdminLoggedIn = isAdminEntry || (savedRole === 'admin' && entryRole === 'admin');
-            document.getElementById('displayWard').innerText = isAdminLoggedIn ? 'ADMIN MODE' : (currentWard || 'ไม่ได้เลือกหน่วยงาน');
+document.getElementById('displayWard').innerText = isAdminLoggedIn ? 'หน่วยงาน: ทั้งหมด (Admin)' : `หน่วยงาน: ${currentWard || 'ไม่ได้เลือกหน่วยงาน'}`;
             document.getElementById('wardSubtitle').innerText = isAdminLoggedIn ? 'ภาพรวมทั้งโรงพยาบาล (Admin)' : `หน่วยงาน: ${currentWard || '-'}`;
             document.getElementById('roleAccessNotice').classList.remove('hidden');
             document.getElementById('roleAccessNotice').setAttribute('aria-hidden', 'false');
@@ -3983,5 +3991,9 @@
 
         document.addEventListener('DOMContentLoaded', bootstrapEquipmentPage);
     </script>
+        </div>
+    </div>
+    <div class="app-shell-overlay" aria-hidden="true"></div>
+    <script src="app-shell.js"></script>
 </body>
 </html>

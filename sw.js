@@ -1,7 +1,7 @@
 // Service Worker แบบพื้นฐาน เพื่อรองรับ PWA
 // ไม่มีการทำ Caching ขั้นสูง เพื่อป้องกันปัญหาข้อมูลไม่อัปเดต
 
-const CACHE_NAME = 'aide-swd-v1';
+const CACHE_NAME = 'aide-swd-v2026.09.01.2';
 
 self.addEventListener('install', event => {
   self.skipWaiting();

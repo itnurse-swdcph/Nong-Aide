@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ระบบส่งแลกวัสดุปราศจากเชื้อ</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+:root{
+  --navy:#153b63; --navy-dark:#0d2742; --bg:#f4f7fb; --surface:#fff;
+  --border:#d9e6f2; --text:#193047; --muted:#667789;
+  --success:#16885b; --warning:#b98016; --danger:#c44f4f;
+  --ward-soft:#eef7ff; --admin-soft:#f1eefc;
+  --shadow:0 14px 28px rgba(21,59,99,.08); --radius:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Sarabun',sans-serif;}
+body{background:linear-gradient(180deg,#eef4fb 0%,#f8fafc 100%);color:var(--text);min-height:100vh;}
+body.modal-open{overflow:hidden;}
+button,input,select,textarea{font:inherit;}
+.hidden{display:none !important;}
+.navbar{position:sticky;top:0;z-index:30;display:flex;justify-content:space-between;align-items:center;
+  gap:16px;padding:14px 28px;color:#fff;background:linear-gradient(135deg,var(--navy-dark),var(--navy));
+  box-shadow:0 10px 26px rgba(13,39,66,.18);width:100%;}
+.nav-title{font-size:1.15rem;font-weight:600;}
+.nav-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;}
+.nav-chip{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;background:rgba(255,255,255,.14);
+  padding:4px 10px;border-radius:99px;}
+.nav-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.nav-btn{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);
+  color:#fff;padding:8px 14px;border-radius:10px;cursor:pointer;font-size:.85rem;transition:.15s;}
+.nav-btn:hover{background:rgba(255,255,255,.24);}
+.page{width:100%;padding:24px 28px 60px;}
+.hero{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px 26px;
+  box-shadow:var(--shadow);margin-bottom:18px;}
+.hero h2{font-size:1.3rem;margin-bottom:4px;}
+.hero p{color:var(--muted);font-size:.88rem;max-width:640px;}
+.hero-side{display:flex;gap:12px;flex-wrap:wrap;}
+.metric{position:relative;overflow:hidden;background:var(--surface);border:1px solid var(--border);
+  border-radius:14px;padding:14px 18px;min-width:130px;box-shadow:var(--shadow);}
+.metric small{color:var(--muted);font-size:.75rem;display:block;margin-bottom:4px;}
+.metric strong{font-size:1.5rem;}
+.metric-watermark{position:absolute;right:10px;bottom:6px;font-size:1.6rem;opacity:.12;}
+.metric-blue strong{color:var(--navy);} .metric-amber strong{color:var(--warning);}
+.metric-purple strong{color:#6c4fb0;} .metric-green strong{color:var(--success);}
+.metric-red strong{color:var(--danger);}
+.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:18px;}
+.toolbar{display:none;} /* Hidden, using sidebar instead */
+.tabs{display:none;}
+.panel{display:none;}
+.panel.active{display:block; animation: fadeIn 0.3s ease;}
+@keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px 22px;box-shadow:var(--shadow);margin-bottom:18px;}
+.section-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px;}
+.section-head h3{font-size:1.05rem;}
+.section-head p{color:var(--muted);font-size:.82rem;margin-top:2px;}
+
+/* Sidebar Layout */
+  .layout-wrapper { display: block; min-height: calc(100vh - 140px); margin-top: 18px; }
+  .sidebar { width: 100%; display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; padding: 8px; border: 1px solid var(--border); border-radius: 16px; background: #fff; box-shadow: var(--shadow); }
+  .main-content { flex: 1; min-width: 0; }
+  .menu-item { display: flex; align-items: center; gap: 12px; flex: 0 1 auto; padding: 12px 16px; border: none; border-radius: 10px; background: transparent; 
+  border-radius: 12px; cursor: pointer; font-size: .95rem; color: var(--muted); font-weight: 500; transition: .15s; text-align: left; }
+.menu-item:hover { background: #e8f0fe; color: var(--navy); }
+.menu-item.active { background: var(--navy); color: #fff; box-shadow: var(--shadow); }
+.menu-item i { font-size: 1.15rem; width: 24px; text-align: center; }
+.section-head h3{font-size:1.05rem;}
+.section-head p{color:var(--muted);font-size:.82rem;margin-top:2px;}
+.field-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:18px; max-width:800px;}
+.field{display:flex;flex-direction:column;gap:6px;font-size:.85rem;color:var(--text);font-weight:500;}
+.field input,.field select,.field textarea{border:1px solid var(--border);border-radius:9px;padding:9px 12px;
+  font-size:.92rem;color:var(--text);background:#fff;}
+.field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--navy);outline-offset:1px;}
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px;}
+table{width:100%;border-collapse:collapse;font-size:.86rem;min-width:640px;}
+thead th{background:#f2f6fb;color:var(--navy);text-align:left;padding:10px 12px;font-weight:600;
+  white-space:nowrap;border-bottom:1px solid var(--border);}
+tbody td{padding:9px 12px;border-bottom:1px solid #eef2f7;vertical-align:middle;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:#f8fbff;}
+.qty-input{width:80px;padding:6px 8px;border:1px solid var(--border);border-radius:7px;text-align:right;}
+.note-input{width:150px;padding:6px 8px;border:1px solid var(--border);border-radius:7px;}
+.tag{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;font-size:.75rem;font-weight:600;}
+.tag-submitted{background:#e8f0fe;color:#1a56b0;}
+.tag-received{background:#fdf3e4;color:var(--warning);}
+.tag-processing{background:#fdf3e4;color:var(--warning);}
+.tag-issued_waiting_receipt{background:#f1eefc;color:#6c4fb0;}
+.tag-completed{background:#e6f6ee;color:var(--success);}
+.tag-cancelled{background:#fbeaea;color:var(--danger);}
+.carry-badge{background:#fff4e5;color:#a15c00;font-size:.72rem;padding:2px 8px;border-radius:99px;font-weight:600;}
+.primary-btn{background:var(--navy);color:#fff;border:none;padding:10px 20px;border-radius:10px;
+  cursor:pointer;font-size:.9rem;font-weight:500;display:inline-flex;align-items:center;gap:7px;transition:.15s;}
+.primary-btn:hover{background:var(--navy-dark);}
+.ghost-btn{background:#fff;color:var(--navy);border:1px solid var(--border);padding:9px 16px;border-radius:10px;
+  cursor:pointer;font-size:.85rem;display:inline-flex;align-items:center;gap:6px;}
+.ghost-btn:hover{background:#f2f6fb;}
+.table-btn{border:none;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:500;
+  display:inline-flex;align-items:center;gap:5px;margin:2px;}
+.table-btn.primary{background:var(--navy);color:#fff;}
+.table-btn.secondary{background:#eef2f7;color:var(--text);}
+.table-btn.success{background:var(--success);color:#fff;}
+.table-btn[disabled]{opacity:.45;cursor:not-allowed;}
+.actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:10px;}
+.empty-row td{text-align:center;color:var(--muted);padding:24px;}
+.master-picker-toolbar{display:flex;align-items:end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:14px 0;}
+.master-search-field{flex:1;min-width:240px;}
+.master-picker-hint{color:var(--muted);font-size:.82rem;padding-bottom:10px;}
+.builder-fields{grid-template-columns:minmax(220px,2fr) minmax(90px,.7fr) repeat(2,minmax(110px,.8fr)) minmax(180px,1.4fr);max-width:none;align-items:end;}
+.master-search-results{display:grid;gap:6px;margin-top:-8px;margin-bottom:12px;}
+.master-search-result{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:#fff;color:var(--text);text-align:left;cursor:pointer;}
+.master-search-result:hover,.master-search-result.active{border-color:var(--navy);background:var(--ward-soft);}
+.master-search-result small{color:var(--muted);}
+.draft-empty{padding:24px;text-align:center;color:var(--muted);}
+@media (max-width:1100px){
+  .builder-fields{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .builder-fields .field:first-child,.builder-fields .field:last-child{grid-column:1/-1;}
+}
+.loader{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;}
+.stack{display:flex;flex-direction:column;gap:18px;}
+
+/* Modal */
+.modal-backdrop{position:fixed;inset:0;background:rgba(13,39,66,.45);display:flex;align-items:flex-start;
+  justify-content:center;padding:30px 16px;z-index:60;overflow-y:auto;}
+.modal-box{background:#fff;border-radius:18px;max-width:920px;width:100%;box-shadow:0 30px 60px rgba(0,0,0,.3);
+  animation:modalIn .15s ease;}
+@keyframes modalIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+.modal-head{display:flex;justify-content:space-between;align-items:flex-start;padding:20px 24px;border-bottom:1px solid var(--border);}
+.modal-head h3{font-size:1.05rem;color:var(--navy);}
+.modal-head p{color:var(--muted);font-size:.8rem;margin-top:2px;}
+.modal-close{border:none;background:#f2f6fb;width:32px;height:32px;border-radius:9px;cursor:pointer;color:var(--muted);}
+.modal-body{padding:20px 24px;}
+.modal-foot{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;}
+
+@media (max-width:820px){
+  .navbar{flex-direction:column;align-items:flex-start;}
+  .page{padding:16px;}
+  .layout-wrapper { flex-direction: column; gap: 16px; }
+  .sidebar { width: 100%; flex-direction: row; overflow-x: auto; padding-bottom: 8px; }
+  .menu-item { white-space: nowrap; padding: 10px 16px; font-size: 0.9rem; }
+}
+
+/* ---------------- PRINT STYLES ---------------- */
+@media print {
+  body * { visibility: hidden; }
+  .print-area, .print-area * { visibility: visible; }
+  .print-area { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; }
+  
+  .print-header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+  .print-header h2 { font-size: 1.5rem; margin-bottom: 5px; }
+  .print-meta { display: flex; justify-content: space-between; font-size: 1rem; margin-bottom: 15px; }
+  
+  .print-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 0.9rem; }
+  .print-table th, .print-table td { border: 1px solid #000; padding: 8px; text-align: left; }
+  .print-table th { background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; }
+  
+  .print-signatures { display: flex; justify-content: space-between; margin-top: 40px; }
+  .print-sig-box { text-align: center; width: 30%; }
+  .print-sig-line { border-bottom: 1px solid #000; height: 30px; margin-bottom: 5px; }
+  .print-sig-name { font-size: 0.9rem; margin-top: 5px; }
+  .print-sig-time { font-size: 0.75rem; color: #555; }
+}
+</style>
+<link rel="stylesheet" href="app-shell.css">
+</head>
+<body>
+
+<nav class="navbar hidden" id="navbar">
+  <div class="nav-brand-stack">
+    <div class="nav-brand-line"><img src="icon-192.png" alt="SWD Care Connect Logo"> <span>SWD Care Connect</span></div>
+    <div class="nav-title"><i class="fas fa-syringe"></i> ระบบส่งแลกวัสดุปราศจากเชื้อ</div>
+    <div class="nav-meta">
+      <span class="nav-chip"><i class="fas fa-hospital-user"></i> <span id="navWardText">หน่วยงาน: -</span></span>
+      <span class="nav-chip"><i class="fas fa-id-badge"></i> <span id="navRoleText">บทบาท: หน่วยงาน</span></span>
+    </div>
+  </div>
+  <div class="nav-actions">
+    <div id="navNotificationBtn" class="notification-wrap hidden">
+      <button class="nav-btn notification-btn" onclick="toggleAdminNotifications()">
+        <i class="fas fa-bell"></i>
+        <span id="navNotificationBadge" class="notification-badge hidden">0</span>
+      </button>
+    </div>
+    <button class="nav-btn" onclick="refreshWorkspace()"><i class="fas fa-rotate-right"></i> รีเฟรช</button>
+    <button class="nav-btn" onclick="logoutSystem()"><i class="fas fa-right-from-bracket"></i> ออกจากระบบ</button>
+  </div>
+</nav>
+
+<div class="app-shell-layout">
+  <aside class="app-shell-sidebar hidden" id="appSidebar" aria-label="เมนูระบบ">
+    <div class="app-shell-section">
+      <div class="app-shell-section-title">เมนูระบบ</div>
+      <nav class="app-shell-nav">
+        <a class="app-shell-link" data-shell-href="index.html" href="index.html"><i class="fas fa-house"></i> หน้าหลัก</a>
+        <a class="app-shell-link" data-shell-href="equipment.html" href="equipment.html"><i class="fas fa-stethoscope"></i> ตรวจนับครุภัณฑ์</a>
+        <a class="app-shell-link" data-shell-href="cloth-stock.html" href="cloth-stock.html"><i class="fas fa-shirt"></i> Stock เครื่องผ้า</a>
+        <a class="app-shell-link" data-shell-href="cloth-exchange.html" href="cloth-exchange.html"><i class="fas fa-sync-alt"></i> แลกผ้าสะอาด</a>
+        <a class="app-shell-link" data-shell-href="sterile-exchange.html" href="sterile-exchange.html"><i class="fas fa-syringe"></i> วัสดุปราศจากเชื้อ</a>
+        <a class="app-shell-link" data-shell-href="install.html" href="install.html"><i class="fas fa-circle-down"></i> วิธีติดตั้ง</a>
+      </nav>
+    </div>
+    <div class="app-shell-footer">
+      ใช้เมนูนี้เพื่อสลับระบบย่อยโดยไม่ต้องกลับไปหน้าแรก
+    </div>
+  </aside>
+  <div class="app-shell-main">
+<div class="page hidden" id="page">
+  <section id="loaderSection" class="loader">
+    <i class="fas fa-spinner fa-spin fa-3x" style="color:var(--navy);margin-bottom:12px;"></i>
+    <div>กำลังโหลดข้อมูล...</div>
+  </section>
+
+  <main id="app" class="hidden">
+    <!-- ================= USER WORKSPACE ================= -->
+    <section id="userWorkspace" class="hidden">
+      <div class="hero">
+        <div>
+          <h2>ใบเบิก/ส่งแลกวัสดุปราศจากเชื้อ</h2>
+          <p>สร้างใบเบิก บันทึกจำนวนส่งแลก/ขอเบิก พิมพ์ใบเบิก และติดตามสถานะจนถึงลงรับของ</p>
+        </div>
+        <div class="hero-side">
+          <div class="metric metric-blue"><small>ใบเบิกที่เปิดอยู่</small><strong id="userOpenMetric">0</strong>
+            <span class="metric-watermark"><i class="fas fa-layer-group"></i></span></div>
+          <div class="metric metric-purple"><small>รอรับของ</small><strong id="userAwaitMetric">0</strong>
+            <span class="metric-watermark"><i class="fas fa-hourglass-half"></i></span></div>
+        </div>
+      </div>
+
+      <div class="layout-wrapper">
+        <aside class="sidebar" id="userSidebar">
+          <button class="menu-item active" onclick="switchPanel('user','userDashboard',this)"><i class="fas fa-chart-pie"></i> แดชบอร์ดภาพรวม</button>
+          <button class="menu-item" onclick="switchPanel('user','userCreate',this)"><i class="fas fa-file-circle-plus"></i> สร้างใบเบิกใหม่</button>
+          <button class="menu-item" onclick="switchPanel('user','userList',this)"><i class="fas fa-list-check"></i> รายการใบเบิกของฉัน</button>
+        </aside>
+        
+        <div class="main-content">
+          <section id="userDashboard" class="panel active">
+        <div class="metric-grid">
+          <div class="metric metric-blue"><small>รอแอดมินรับใบเบิก</small><strong id="dashSubmitted">0</strong>
+            <span class="metric-watermark"><i class="fas fa-file-import"></i></span></div>
+          <div class="metric metric-amber"><small>กำลังดำเนินการ</small><strong id="dashProcessing">0</strong>
+            <span class="metric-watermark"><i class="fas fa-box-open"></i></span></div>
+          <div class="metric metric-purple"><small>รอลงรับของ</small><strong id="dashWaitingReceipt">0</strong>
+            <span class="metric-watermark"><i class="fas fa-hand-holding"></i></span></div>
+          <div class="metric metric-green"><small>เสร็จสิ้น</small><strong id="dashCompleted">0</strong>
+            <span class="metric-watermark"><i class="fas fa-circle-check"></i></span></div>
+        </div>
+        <div class="card">
+          <div class="section-head"><div><h3>รายการรอลงรับของ</h3><p>แอดมินจ่ายของแล้ว รอหน่วยงานตรวจสอบและลงรับ</p></div></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>เลขที่ใบเบิก</th><th>วันที่</th><th>เวร</th><th>สถานะ</th><th>ขอเบิก</th><th>จ่าย</th><th>คงค้าง</th><th></th></tr></thead>
+            <tbody id="userDashAwaitBody"></tbody>
+          </table></div>
+        </div>
+        <div class="card">
+          <div class="section-head"><div><h3>ล่าสุดที่เสร็จสิ้น</h3><p>แสดง 5 รายการล่าสุด</p></div></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>เลขที่ใบเบิก</th><th>วันที่</th><th>เวร</th><th>สถานะ</th><th>ขอเบิก</th><th>จ่าย</th><th>คงค้าง</th><th></th></tr></thead>
+            <tbody id="userDashCompletedBody"></tbody>
+          </table></div>
+        </div>
+      </section>
+
+      <section id="userCreate" class="panel">
+        <div class="card">
+          <div class="section-head"><div><h3>สร้างใบเบิกใหม่</h3>
+            <p>เลือกวันที่ เวร กรอกจำนวนส่งแลก/ขอเบิกต่อรายการ (ยอดค้างจากใบก่อนหน้าจะถูกดึงมาแสดงให้อัตโนมัติ)</p></div></div>
+          <form id="requestForm" onsubmit="submitRequest(event)">
+            <div class="field-grid">
+              <label class="field">วันที่<input type="date" id="reqDate" required onkeydown="return false" onbeforeinput="return false" onpaste="return false" ondrop="return false"></label>
+              <label class="field">เวร
+                <select id="reqShift" required>
+                  <option value="">เลือกเวร</option>
+                  <option value="เช้า">เช้า</option>
+                  <option value="บ่าย">บ่าย</option>
+                </select>
+              </label>
+              <label class="field">ผู้เบิก (ลงชื่อ)<input type="text" id="reqRequesterName" placeholder="ชื่อ-นามสกุล" required></label>
+            </div>
+            <div class="master-picker-toolbar">
+              <label class="field master-search-field">ค้นหารายการวัสดุกลาง
+                <input type="search" id="masterItemSearch" placeholder="พิมพ์ชื่อรายการหรือประเภทเพื่อค้นหา" autocomplete="off">
+              </label>
+              <span class="master-picker-hint">ค้นหาและบันทึกทีละรายการจากฐานข้อมูลกลาง</span>
+            </div>
+            <div id="masterSearchResults" class="master-search-results"></div>
+            <div class="field-grid builder-fields">
+              <label class="field">รายการที่เลือก<input type="text" id="selectedMasterItem" readonly placeholder="เลือกจากผลการค้นหา"></label>
+              <label class="field">หน่วยนับ<input type="text" id="selectedMasterUnit" readonly placeholder="-"></label>
+              <label class="field">ส่งแลก<input type="number" min="0" id="builderExchangedQty" value="0"></label>
+              <label class="field">ขอเบิก<input type="number" min="0" id="builderRequestedQty" value="0"></label>
+              <label class="field">หมายเหตุ<input type="text" id="builderWardNote" placeholder="หมายเหตุ"></label>
+            </div>
+            <div class="actions" style="justify-content:flex-start;margin:12px 0 16px;">
+              <button type="button" class="primary-btn" onclick="saveDraftLine()"><i class="fas fa-plus"></i> บันทึกรายการ</button>
+            </div>
+            <div class="table-wrap"><table>
+              <thead><tr><th>รายการวัสดุที่บันทึก</th><th>หน่วยนับ</th><th>ยกมา</th><th>ส่งแลก</th><th>ขอเบิก</th><th>หมายเหตุ</th><th></th></tr></thead>
+              <tbody id="requestLineBody"></tbody>
+            </table></div>
+            <div class="actions">
+              <button type="submit" class="primary-btn" id="submitReqBtn"><i class="fas fa-paper-plane"></i> ส่งใบเบิก</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section id="userList" class="panel">
+        <div class="card">
+          <div class="section-head"><div><h3>รายการใบเบิกของหน่วยงาน</h3><p>ติดตามสถานะ พิมพ์เอกสาร และลงรับของ</p></div></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>เลขที่ใบเบิก</th><th>วันที่</th><th>เวร</th><th>สถานะ</th><th>ขอเบิก</th><th>จ่าย</th><th>คงค้าง</th><th></th></tr></thead>
+            <tbody id="userListBody"></tbody>
+          </table></div>
+        </div>
+      </section>
+        </div> <!-- end main-content -->
+      </div> <!-- end layout-wrapper -->
+    </section>
+
+    <!-- ================= ADMIN WORKSPACE ================= -->
+    <section id="adminWorkspace" class="hidden">
+      <div class="hero">
+        <div>
+          <h2>ศูนย์จ่ายกลาง — รับ/ตอบรับ/จ่ายวัสดุปราศจากเชื้อ</h2>
+          <p>รับใบเบิกจากหน่วยงาน นับ/บันทึกจำนวน จ่ายของ และปิดงานเมื่อหน่วยงานลงรับครบ</p>
+        </div>
+        <div class="hero-side">
+          <div class="metric metric-blue"><small>คิวรอรับ</small><strong id="adminQueueMetric">0</strong>
+            <span class="metric-watermark"><i class="fas fa-inbox"></i></span></div>
+          <div class="metric metric-amber"><small>กำลังดำเนินการ</small><strong id="adminProcMetric">0</strong>
+            <span class="metric-watermark"><i class="fas fa-clipboard-list"></i></span></div>
+        </div>
+      </div>
+      
+      <div class="layout-wrapper">
+        <aside class="sidebar" id="adminSidebar">
+          <button class="menu-item active" onclick="switchPanel('admin','adminQueue',this)"><i class="fas fa-inbox"></i> คิวงานรอรับ</button>
+          <button class="menu-item" onclick="switchPanel('admin','adminProcessing',this)"><i class="fas fa-clipboard-check"></i> กำลังดำเนินการ</button>
+          <button class="menu-item" onclick="switchPanel('admin','adminWaiting',this)"><i class="fas fa-hand-holding-medical"></i> รอหน่วยงานรับของ</button>
+          <button class="menu-item" onclick="switchPanel('admin','adminHistory',this)"><i class="fas fa-history"></i> ประวัติทั้งหมด</button>
+        </aside>
+
+        <div class="main-content">
+          <section id="adminQueue" class="panel active">
+        <div class="card">
+          <div class="section-head"><div><h3>ใบเบิกที่รอรับ</h3><p>หน่วยงานส่งใบเบิกมาแล้ว รอแอดมินกดรับเข้าคิว</p></div></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>เลขที่ใบเบิก</th><th>หน่วยงาน</th><th>วันที่</th><th>เวร</th><th>ผู้เบิก</th><th>รวมขอเบิก</th><th></th></tr></thead>
+            <tbody id="adminQueueBody"></tbody>
+          </table></div>
+        </div>
+      </section>
+
+      <section id="adminProcessing" class="panel">
+        <div class="card">
+          <div class="section-head"><div><h3>กำลังดำเนินการ</h3><p>รับแล้ว รอลงรายการตอบรับ / จ่ายของ</p></div></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>เลขที่ใบเบิก</th><th>หน่วยงาน</th><th>วันที่</th><th>เวร</th><th>สถานะ</th><th>รวมขอเบิก</th><th></th></tr></thead>
+            <tbody id="adminProcessingBody"></tbody>
+          </table></div>
+        </div>
+      </section>
+
+      <section id="adminWaiting" class="panel">
+        <div class="card">
+          <div class="section-head"><div><h3>รอหน่วยงานรับของ</h3><p>จ่ายของแล้ว รอหน่วยงานลงรับปิดงาน</p></div></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>เลขที่ใบเบิก</th><th>หน่วยงาน</th><th>วันที่</th><th>เวร</th><th>รวมจ่าย</th><th>คงค้าง</th><th>การทำงาน</th></tr></thead>
+            <tbody id="adminWaitingBody"></tbody>
+          </table></div>
+        </div>
+      </section>
+
+      <section id="adminHistory" class="panel">
+        <div class="card">
+          <div class="section-head"><div><h3>ประวัติใบเบิกทั้งหมด</h3><p>ทุกสถานะ เรียงล่าสุดก่อน</p></div></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>เลขที่ใบเบิก</th><th>หน่วยงาน</th><th>วันที่</th><th>เวร</th><th>สถานะ</th><th>ขอเบิก</th><th>จ่าย</th><th>คงค้าง</th><th></th></tr></thead>
+            <tbody id="adminHistoryBody"></tbody>
+          </table></div>
+        </div>
+      </section>
+        </div> <!-- end main-content -->
+      </div> <!-- end layout-wrapper -->
+    </section>
+  </main>
+      </div>
+    </div>
+</div>
+<div class="app-shell-overlay hidden" id="appShellOverlay" aria-hidden="true"></div>
+
+<div id="modalRoot"></div>
+
+<!-- ================= PRINT TEMPLATE ================= -->
+<div id="printArea" class="print-area hidden">
+  <div class="print-header">
+    <h2 id="printTitle">ใบเบิก-จ่ายเครื่องมือและวัสดุปราศจากเชื้อ<br><small>โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน</small></h2>
+  </div>
+  <div class="print-meta">
+    <div><strong>หน่วยงาน:</strong> <span id="printWard"></span></div>
+    <div><strong>เลขที่ใบเบิก:</strong> <span id="printReqNo"></span></div>
+  </div>
+  <div class="print-meta">
+    <div><strong>วันที่:</strong> <span id="printDate"></span></div>
+    <div><strong>เวร:</strong> <span id="printShift"></span></div>
+  </div>
+  
+  <table class="print-table">
+    <thead>
+      <tr id="printTableHead">
+        <!-- ไดนามิกหัวตาราง -->
+      </tr>
+    </thead>
+    <tbody id="printTableBody">
+      <!-- ไดนามิกเนื้อหา -->
+    </tbody>
+  </table>
+  
+  <div class="print-signatures" id="printSignatures">
+    <div class="print-sig-box">
+      <div>ผู้เบิก (หน่วยงาน)</div>
+      <div class="print-sig-line"></div>
+      <div class="print-sig-name" id="printSigRequester">-</div>
+      <div class="print-sig-time" id="printTimeRequester"></div>
+    </div>
+    <div class="print-sig-box">
+      <div>ผู้จ่าย (จ่ายกลาง)</div>
+      <div class="print-sig-line"></div>
+      <div class="print-sig-name" id="printSigIssuer">-</div>
+      <div class="print-sig-time" id="printTimeIssuer"></div>
+    </div>
+    <div class="print-sig-box">
+      <div>ผู้รับของ (หน่วยงาน)</div>
+      <div class="print-sig-line"></div>
+      <div class="print-sig-name" id="printSigReceiver">-</div>
+      <div class="print-sig-time" id="printTimeReceiver"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ======================= CONFIG ======================= */
+const STERILE_API = 'https://script.google.com/macros/s/AKfycbw_9NdlWvBPZQjK_6BrUiTZ6Ii7eh9LqqFbwXdK2yVQpqjHRK05Ici33WDO4K76KT0n/exec'; // <-- ใส่ Web App URL ของ Sterile_Exchange.gs ที่นี่
+const ADMIN_PASSWORD = '11450'; // <-- เปลี่ยนรหัสผ่านแอดมินตามต้องการ
+
+let currentRole = sessionStorage.getItem('sterile_role') || '';
+let currentWard = sessionStorage.getItem('sterile_ward') || '';
+let wardList = [];
+let masterItems = [];
+let masterSearchTerm = '';
+let selectedMasterItemIndex = -1;
+let draftLines = [];
+let userRequests = [];
+let adminRequests = [];
+</script>
+<footer class="modern-footer">&copy; 2026 Developed By Natnarinthorn | Nursing Informatics System</footer>
+<script src="app-shell.js"></script>
+<script src="sterile-exchange.app.js"></script>
+</body>
+</html>

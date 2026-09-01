@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ระบบส่งแลกผ้าสะอาด</title>
     <link rel="icon" type="image/png" href="icon-192.png">
-    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
@@ -30,7 +30,7 @@
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'Prompt', sans-serif;
+            font-family: 'Sarabun', sans-serif;
         }
 
         body {
@@ -1285,10 +1285,12 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="app-shell.css">
 </head>
 <body>
     <nav class="navbar">
-        <div>
+        <div class="nav-brand-stack">
+            <div class="nav-brand-line"><img src="icon-192.png" alt="SWD Care Connect Logo"> <span>SWD Care Connect</span></div>
             <div class="nav-title" id="systemTitle">ระบบส่งแลกผ้าสะอาด</div>
             <div class="nav-meta">
                 <span class="nav-chip"><i class="fas fa-hospital-user"></i> <span id="navWardText">หน่วยงาน: -</span></span>
@@ -1320,6 +1322,24 @@
         </div>
     </nav>
 
+    <div class="app-shell-layout">
+        <aside class="app-shell-sidebar" aria-label="เมนูระบบ">
+        <div class="app-shell-section">
+                <div class="app-shell-section-title">เมนูระบบ</div>
+                <nav class="app-shell-nav">
+                    <a class="app-shell-link" data-shell-href="index.html" href="index.html"><i class="fas fa-house"></i> หน้าหลัก</a>
+                    <a class="app-shell-link" data-shell-href="equipment.html" href="equipment.html"><i class="fas fa-stethoscope"></i> ตรวจนับครุภัณฑ์</a>
+                    <a class="app-shell-link" data-shell-href="cloth-stock.html" href="cloth-stock.html"><i class="fas fa-shirt"></i> Stock เครื่องผ้า</a>
+                    <a class="app-shell-link" data-shell-href="cloth-exchange.html" href="cloth-exchange.html"><i class="fas fa-sync-alt"></i> แลกผ้าสะอาด</a>
+                    <a class="app-shell-link" data-shell-href="sterile-exchange.html" href="sterile-exchange.html"><i class="fas fa-syringe"></i> วัสดุปราศจากเชื้อ</a>
+                    <a class="app-shell-link" data-shell-href="install.html" href="install.html"><i class="fas fa-circle-down"></i> วิธีติดตั้ง</a>
+                </nav>
+            </div>
+            <div class="app-shell-footer">
+                ใช้เมนูนี้เพื่อสลับระบบย่อยโดยไม่ต้องกลับไปหน้าแรก
+            </div>
+        </aside>
+        <div class="app-shell-main">
     <div class="page">
         <section id="globalNotice" class="notice hidden"></section>
         <section id="loader" class="loader">
@@ -1836,8 +1856,13 @@
                 <div id="adminDetailCard" class="card hidden"></div>
             </section>
         </main>
-        <footer class="site-footer">© 2026 SWD Care Connect. All rights reserved.| Developed By Natnarinthorn</footer>
+<footer class="site-footer">© 2026 Developed By Natnarinthorn | Nursing Informatics System</footer>
     </div>
+        </div>
+    </div>
+    <div class="app-shell-overlay" aria-hidden="true"></div>
+
+    <script src="app-shell.js"></script>
 
     <div id="stockRequestModal" class="record-modal hidden">
         <div class="record-sheet" style="max-width: 900px; width: 95%;">
@@ -4437,7 +4462,7 @@
                     <meta charset="UTF-8">
                     <title>${title}</title>
                     <style>
-                        body { font-family: 'Sarabun', 'Prompt', sans-serif; padding: 24px; color: #193047; }
+                        body { font-family: 'Sarabun', sans-serif; padding: 24px; color: #193047; }
                         h1 { margin: 0 0 8px 0; font-size: 24px; }
                         .meta { margin-bottom: 18px; color: #506276; line-height: 1.8; }
                         .note { margin-bottom: 18px; padding: 12px 14px; border: 1px solid #d9e6f2; background: #f7fbff; border-radius: 10px; line-height: 1.7; }
