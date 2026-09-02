@@ -2706,7 +2706,56 @@
             const response = await fetch(`${EXCHANGE_API}?action=getExchangeRequestDetail&requestId=${encodeURIComponent(requestId)}`);
             const result = await response.json();
             if (result.status !== 'success') throw new Error(result.message || 'โหลดรายละเอียดไม่สำเร็จ');
-            return result.data;
+            return normalizeExchangeDetail_(result.data);
+        }
+
+        // Supabase (exchange_request_lines) ส่งคอลัมน์กลับมาเป็น snake_case
+        // (par_level, stock_balance, sent_laundry_qty, ...) แต่หน้าเว็บทั้งหมด
+        // อ้างอิงฟิลด์แบบ camelCase (parLevel, stockBalance, sentLaundryQty, ...)
+        // ที่มาจากแบ็กเอนด์ GAS เดิม จึงต้องแปลงชื่อคอลัมน์ที่นี่ก่อนนำไปแสดงผล
+        // (ค่าที่ได้จาก Supabase ยังเป็น string เช่น "57.0" จึงต้องแปลงเป็นตัวเลขด้วย)
+        function toExchangeNumber_(value, fallback) {
+            if (typeof fallback === 'undefined') fallback = 0;
+            if (typeof value === 'number') return isNaN(value) ? fallback : value;
+            if (value === null || value === undefined) return fallback;
+            const text = String(value).trim().replace(/,/g, '');
+            if (!text) return fallback;
+            const num = Number(text);
+            return isNaN(num) ? fallback : num;
+        }
+
+        function pickExchangeField_(obj, camelKey, snakeKey) {
+            if (!obj) return undefined;
+            return obj[camelKey] !== undefined && obj[camelKey] !== null ? obj[camelKey] : obj[snakeKey];
+        }
+
+        function normalizeExchangeLine_(line) {
+            if (!line || typeof line !== 'object') return line;
+            return {
+                ...line,
+                requestId: pickExchangeField_(line, 'requestId', 'request_id'),
+                lineNo: pickExchangeField_(line, 'lineNo', 'line_no'),
+                itemName: pickExchangeField_(line, 'itemName', 'cloth_item') || '',
+                mainCategory: pickExchangeField_(line, 'mainCategory', 'main_category') || '',
+                parLevel: toExchangeNumber_(pickExchangeField_(line, 'parLevel', 'par_level')),
+                stockBalance: toExchangeNumber_(pickExchangeField_(line, 'stockBalance', 'stock_balance')),
+                sentLaundryQty: toExchangeNumber_(pickExchangeField_(line, 'sentLaundryQty', 'sent_laundry_qty')),
+                suggestedQty: toExchangeNumber_(pickExchangeField_(line, 'suggestedQty', 'suggested_qty')),
+                requestedQty: toExchangeNumber_(pickExchangeField_(line, 'requestedQty', 'requested_qty')),
+                wardNote: pickExchangeField_(line, 'wardNote', 'ward_note') || '',
+                laundryReceivedQty: toExchangeNumber_(pickExchangeField_(line, 'laundryReceivedQty', 'laundry_received_qty')),
+                issuedQty: toExchangeNumber_(pickExchangeField_(line, 'issuedQty', 'issued_qty')),
+                outstandingQty: toExchangeNumber_(pickExchangeField_(line, 'outstandingQty', 'outstanding_qty')),
+                laundryNote: pickExchangeField_(line, 'laundryNote', 'laundry_note') || ''
+            };
+        }
+
+        function normalizeExchangeDetail_(detail) {
+            if (!detail || typeof detail !== 'object') return detail;
+            return {
+                ...detail,
+                lines: Array.isArray(detail.lines) ? detail.lines.map(normalizeExchangeLine_) : []
+            };
         }
 
         function renderUnitWorkspace() {
