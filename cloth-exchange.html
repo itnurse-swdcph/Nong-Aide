@@ -2665,12 +2665,15 @@
             globalClothItems = Array.isArray(result.data) ? result.data : [];
         }
 
+        const exchangeRequestDetailCache = new Map();
+
         async function fetchWardRequests() {
             ensureExchangeApiReady();
             const response = await fetch(`${EXCHANGE_API}?action=getWardExchangeRequests&ward=${encodeURIComponent(currentWard)}`);
             const result = await response.json();
             if (result.status !== 'success') throw new Error(result.message || 'โหลดรายการไม่สำเร็จ');
-            unitRequests = Array.isArray(result.data) ? result.data : [];
+            const raw = Array.isArray(result.data) ? result.data : [];
+            unitRequests = await enrichRequestsWithTotals(raw);
         }
 
         async function fetchStockRequests(ward = '') {
@@ -2698,15 +2701,20 @@
             const response = await fetch(`${EXCHANGE_API}?action=getLaundryExchangeRequests`);
             const result = await response.json();
             if (result.status !== 'success') throw new Error(result.message || 'โหลดรายการไม่สำเร็จ');
-            allRequests = Array.isArray(result.data) ? result.data : [];
+            const raw = Array.isArray(result.data) ? result.data : [];
+            allRequests = await enrichRequestsWithTotals(raw);
         }
 
         async function fetchRequestDetail(requestId) {
             ensureExchangeApiReady();
+            const cached = exchangeRequestDetailCache.get(requestId);
+            if (cached) return cached;
             const response = await fetch(`${EXCHANGE_API}?action=getExchangeRequestDetail&requestId=${encodeURIComponent(requestId)}`);
             const result = await response.json();
             if (result.status !== 'success') throw new Error(result.message || 'โหลดรายละเอียดไม่สำเร็จ');
-            return normalizeExchangeDetail_(result.data);
+            const detail = normalizeExchangeDetail_(result.data);
+            exchangeRequestDetailCache.set(requestId, detail);
+            return detail;
         }
 
         // Supabase (exchange_request_lines) ส่งคอลัมน์กลับมาเป็น snake_case
@@ -2722,6 +2730,12 @@
             if (!text) return fallback;
             const num = Number(text);
             return isNaN(num) ? fallback : num;
+        }
+
+        function toExchangeDisplayNumber_(value, fallback = '0') {
+            if (value === null || value === undefined || value === '') return fallback;
+            const num = toExchangeNumber_(value, NaN);
+            return isNaN(num) ? fallback : num.toLocaleString();
         }
 
         function pickExchangeField_(obj, camelKey, snakeKey) {
@@ -2756,6 +2770,47 @@
                 ...detail,
                 lines: Array.isArray(detail.lines) ? detail.lines.map(normalizeExchangeLine_) : []
             };
+        }
+
+        async function enrichRequestsWithTotals(requests) {
+            if (!Array.isArray(requests) || requests.length === 0) return [];
+
+            return await Promise.all(requests.map(async (req) => {
+                const rawTotalReq = pickExchangeField_(req, 'totalRequested', 'total_requested');
+                const rawTotalIss = pickExchangeField_(req, 'totalIssued', 'total_issued');
+                const rawTotalOut = pickExchangeField_(req, 'totalOutstanding', 'total_outstanding');
+
+                if (rawTotalReq !== undefined && rawTotalIss !== undefined && rawTotalOut !== undefined && rawTotalReq !== null) {
+                    return {
+                        ...req,
+                        totalRequested: toExchangeNumber_(rawTotalReq),
+                        totalIssued: toExchangeNumber_(rawTotalIss),
+                        totalOutstanding: toExchangeNumber_(rawTotalOut)
+                    };
+                }
+
+                try {
+                    const detail = await fetchRequestDetail(req.requestId);
+                    const lines = Array.isArray(detail.lines) ? detail.lines : [];
+                    const totalRequested = lines.reduce((sum, l) => sum + (toExchangeNumber_(l.requestedQty) || 0), 0);
+                    const totalIssued = lines.reduce((sum, l) => sum + (toExchangeNumber_(l.issuedQty) || 0), 0);
+                    const totalOutstanding = lines.reduce((sum, l) => sum + (toExchangeNumber_(l.outstandingQty) || 0), 0);
+                    return {
+                        ...req,
+                        totalRequested,
+                        totalIssued,
+                        totalOutstanding
+                    };
+                } catch (err) {
+                    console.warn('Could not load line totals for request', req.requestId, err);
+                    return {
+                        ...req,
+                        totalRequested: toExchangeNumber_(rawTotalReq, 0),
+                        totalIssued: toExchangeNumber_(rawTotalIss, 0),
+                        totalOutstanding: toExchangeNumber_(rawTotalOut, 0)
+                    };
+                }
+            }));
         }
 
         function renderUnitWorkspace() {
@@ -3010,9 +3065,9 @@
                             <td>${escapeHtml(formatThaiDate(row.requestDate))}</td>
                             <td>${escapeHtml(row.shift)}</td>
                             <td>${renderStatus(row.status)}</td>
-                            <td>${row.totalRequested}</td>
-                            <td>${row.totalIssued}</td>
-                            <td>${row.totalOutstanding}</td>
+                            <td>${toExchangeDisplayNumber_(row.totalRequested)}</td>
+                            <td>${toExchangeDisplayNumber_(row.totalIssued)}</td>
+                            <td>${toExchangeDisplayNumber_(row.totalOutstanding)}</td>
                             <td>${buildUnitActionButtons(row)}</td>
                         </tr>
                     `).join('');
@@ -3029,9 +3084,9 @@
                             <td>${escapeHtml(formatThaiDate(row.requestDate))}</td>
                             <td>${escapeHtml(row.shift)}</td>
                             <td>${renderStatus(row.status)}</td>
-                            <td>${row.totalRequested}</td>
-                            <td>${row.totalIssued}</td>
-                            <td>${row.totalOutstanding}</td>
+                            <td>${toExchangeDisplayNumber_(row.totalRequested)}</td>
+                            <td>${toExchangeDisplayNumber_(row.totalIssued)}</td>
+                            <td>${toExchangeDisplayNumber_(row.totalOutstanding)}</td>
                             <td>${buildUnitActionButtons(row)}</td>
                         </tr>
                     `).join('');
@@ -3045,9 +3100,9 @@
                         <td>${escapeHtml(formatThaiDate(row.requestDate))}</td>
                         <td>${escapeHtml(row.shift)}</td>
                         <td>${renderStatus(row.status)}</td>
-                        <td>${row.totalRequested}</td>
-                        <td>${row.totalIssued}</td>
-                        <td>${row.totalOutstanding}</td>
+                        <td>${toExchangeDisplayNumber_(row.totalRequested)}</td>
+                        <td>${toExchangeDisplayNumber_(row.totalIssued)}</td>
+                        <td>${toExchangeDisplayNumber_(row.totalOutstanding)}</td>
                         <td>${buildUnitActionButtons(row)}</td>
                     </tr>
                 `).join('');
@@ -3183,8 +3238,8 @@
                         <td>${escapeHtml(formatThaiDate(row.requestDate))}</td>
                         <td>${escapeHtml(row.shift)}</td>
                         <td>${renderStatus(row.status)}</td>
-                        <td>${row.totalRequested}</td>
-                        <td>${row.totalOutstanding}</td>
+                        <td>${toExchangeDisplayNumber_(row.totalRequested)}</td>
+                        <td>${toExchangeDisplayNumber_(row.totalOutstanding)}</td>
                         <td><button class="table-btn" onclick="openLaundryRequest('${escapeJs(row.requestId)}')">เปิด</button></td>
                     </tr>
                 `).join('');
@@ -3197,8 +3252,8 @@
                         <td>${escapeHtml(row.ward)}</td>
                         <td>${escapeHtml(formatThaiDate(row.requestDate))}</td>
                         <td>${renderStatus(row.status)}</td>
-                        <td>${row.totalIssued}</td>
-                        <td>${row.totalOutstanding}</td>
+                        <td>${toExchangeDisplayNumber_(row.totalIssued)}</td>
+                        <td>${toExchangeDisplayNumber_(row.totalOutstanding)}</td>
                         <td><button class="table-btn" onclick="openLaundryRequest('${escapeJs(row.requestId)}')">ดู</button></td>
                     </tr>
                 `).join('');
@@ -3397,8 +3452,8 @@
                         <td>${escapeHtml(formatThaiDate(row.requestDate))}</td>
                         <td>${escapeHtml(row.shift)}</td>
                         <td>${renderStatus(row.status)}</td>
-                        <td>${row.totalRequested}</td>
-                        <td>${row.totalOutstanding}</td>
+                        <td>${toExchangeDisplayNumber_(row.totalRequested)}</td>
+                        <td>${toExchangeDisplayNumber_(row.totalOutstanding)}</td>
                         <td><button class="table-btn" onclick="openAdminRequest('${escapeJs(row.requestId)}')">ดู</button></td>
                     </tr>
                 `).join('');
@@ -4141,8 +4196,8 @@
                     <td>${escapeHtml(row.ward)}</td>
                     <td>${escapeHtml(formatThaiDate(row.requestDate))}</td>
                     <td>${escapeHtml(row.shift || '-')}</td>
-                    <td>${mode === 'receipt' ? row.totalIssued : row.totalRequested}</td>
-                    ${mode === 'receive' ? '' : `<td>${row.totalOutstanding}</td>`}
+                    <td>${mode === 'receipt' ? toExchangeDisplayNumber_(row.totalIssued) : toExchangeDisplayNumber_(row.totalRequested)}</td>
+                    ${mode === 'receive' ? '' : `<td>${toExchangeDisplayNumber_(row.totalOutstanding)}</td>`}
                     <td>${buildLaundryActionButtons(row, mode)}</td>
                 </tr>
             `).join('');
@@ -4224,7 +4279,7 @@
                         <td>${escapeHtml(row.ward)}</td>
                         <td>${escapeHtml(formatThaiDate(row.requestDate))}</td>
                         <td>${renderStatus(row.status)}</td>
-                        <td>${row.totalIssued}</td>
+                        <td>${toExchangeDisplayNumber_(row.totalIssued)}</td>
                         <td><button class="table-btn" onclick="openLaundryRequest('${escapeJs(row.requestId)}')">เปิดดู</button></td>
                     </tr>
                 `).join('');
