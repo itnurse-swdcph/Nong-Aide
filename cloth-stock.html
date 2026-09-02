@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ระบบตรวจนับ Stock เครื่องผ้า</title>
     <link rel="icon" type="image/png" href="icon-192.png">
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -559,6 +561,7 @@
         }
 
         @media (max-width: 980px) {
+
             .hero,
             .grid-2 {
                 grid-template-columns: 1fr;
@@ -591,22 +594,32 @@
     </style>
     <link rel="stylesheet" href="app-shell.css">
 </head>
+
 <body>
     <nav class="navbar">
         <div class="nav-brand-stack">
-            <div class="nav-brand-line"><img src="icon-192.png" alt="SWD Care Connect Logo"> <span>SWD Care Connect</span></div>
+            <div class="nav-brand-line"><img src="icon-192.png" alt="SWD Care Connect Logo"> <span>SWD Care
+                    Connect</span></div>
             <div class="nav-title" id="systemTitle">ระบบตรวจนับ Stock เครื่องผ้า</div>
             <div class="nav-meta">
-                <span class="nav-chip"><i class="fas fa-hospital-user"></i> <span id="navWardText">หน่วยงาน: -</span></span>
-                <span class="nav-chip"><i class="fas fa-calendar-alt"></i> <span id="navQuarterText">รอบ: -</span></span>
+                <span class="nav-chip"><i class="fas fa-hospital-user"></i> <span id="navWardText">หน่วยงาน:
+                        -</span></span>
+                <span class="nav-chip"><i class="fas fa-calendar-alt"></i> <span id="navQuarterText">รอบ:
+                        -</span></span>
             </div>
         </div>
         <div class="nav-actions">
             <button class="nav-btn" onclick="reloadPage()"><i class="fas fa-rotate-right"></i> รีเฟรช</button>
-            <button id="btnAdminLogin" class="nav-btn" onclick="showAdminLogin()"><i class="fas fa-user-shield"></i> Admin</button>
-            <button id="btnExitAdmin" class="nav-btn hidden" onclick="exitAdminMode()"><i class="fas fa-shield-halved"></i> ออกจาก Admin</button>
+            <button id="btnViewReport" class="nav-btn hidden" onclick="enterAdminFromLaundry()"
+                style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border-color:transparent;"><i
+                    class="fas fa-chart-bar"></i> ดูรายงาน</button>
+            <button id="btnAdminLogin" class="nav-btn" onclick="showAdminLogin()"><i class="fas fa-user-shield"></i>
+                Admin</button>
+            <button id="btnExitAdmin" class="nav-btn hidden" onclick="exitAdminMode()"><i
+                    class="fas fa-shield-halved"></i> ออกจาก Admin</button>
             <button class="nav-btn" onclick="goHome()"><i class="fas fa-house"></i> หน้าหลัก</button>
-            <button class="nav-btn" onclick="logoutSystem()"><i class="fas fa-right-from-bracket"></i> ออกจากระบบ</button>
+            <button class="nav-btn" onclick="logoutSystem()"><i class="fas fa-right-from-bracket"></i>
+                ออกจากระบบ</button>
         </div>
     </nav>
 
@@ -615,11 +628,16 @@
             <div class="app-shell-section">
                 <div class="app-shell-section-title">เมนูระบบ</div>
                 <nav class="app-shell-nav">
-                    <a class="app-shell-link" data-shell-href="index.html" href="index.html"><i class="fas fa-house"></i> หน้าหลัก</a>
-                    <a class="app-shell-link" data-shell-href="equipment.html" href="equipment.html"><i class="fas fa-stethoscope"></i> ตรวจนับครุภัณฑ์</a>
-                    <a class="app-shell-link" data-shell-href="cloth-stock.html" href="cloth-stock.html"><i class="fas fa-shirt"></i> Stock เครื่องผ้า</a>
-                    <a class="app-shell-link" data-shell-href="cloth-exchange.html" href="cloth-exchange.html"><i class="fas fa-sync-alt"></i> แลกผ้าสะอาด</a>
-                    <a class="app-shell-link" data-shell-href="sterile-exchange.html" href="sterile-exchange.html"><i class="fas fa-syringe"></i> วัสดุปราศจากเชื้อ</a>
+                    <a class="app-shell-link" data-shell-href="index.html" href="index.html"><i
+                            class="fas fa-house"></i> หน้าหลัก</a>
+                    <a class="app-shell-link" data-shell-href="equipment.html" href="equipment.html"><i
+                            class="fas fa-stethoscope"></i> ตรวจนับครุภัณฑ์</a>
+                    <a class="app-shell-link" data-shell-href="cloth-stock.html" href="cloth-stock.html"><i
+                            class="fas fa-shirt"></i> Stock เครื่องผ้า</a>
+                    <a class="app-shell-link" data-shell-href="cloth-exchange.html" href="cloth-exchange.html"><i
+                            class="fas fa-sync-alt"></i> แลกผ้าสะอาด</a>
+                    <a class="app-shell-link" data-shell-href="sterile-exchange.html" href="sterile-exchange.html"><i
+                            class="fas fa-syringe"></i> วัสดุปราศจากเชื้อ</a>
                 </nav>
             </div>
             <div class="app-shell-footer">
@@ -627,496 +645,571 @@
             </div>
         </aside>
         <div class="app-shell-main">
-    <div class="page">
-        <section id="globalNotice" class="notice info hidden"></section>
+            <div class="page">
+                <section id="globalNotice" class="notice info hidden"></section>
 
-        <section id="loader" class="loader">
-            <i class="fas fa-spinner fa-spin fa-3x"></i>
-            <div id="loaderText">กำลังโหลดข้อมูล</div>
-        </section>
-
-        <main id="app" class="hidden">
-            <section id="unitSection" class="hidden">
-                <div class="hero">
-                    <div>
-                        <h2>ภาพรวมหน่วยงาน</h2>
-                        <p>ฟอร์มตรวจนับใช้ 4 สถานะหลัก: พร้อมใช้, กำลังใช้งาน, ส่งซัก, ติดผู้ป่วยกลับบ้านรอติดตาม</p>
-                    </div>
-                    <div class="hero-side">
-                        <div class="metric">
-                            <small>จำนวนรายการมาตรฐาน</small>
-                            <strong id="unitItemCount">0</strong>
-                        </div>
-                        <div class="metric">
-                            <small>สถานะรอบปัจจุบัน</small>
-                            <strong id="unitRoundStatus">รอตรวจนับ</strong>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="toolbar">
-                    <div class="tabs">
-                        <button class="tab-btn active" data-tab="unitDashboard" onclick="switchPanel('unitSection', 'unitDashboard', this)">Dashboard</button>
-                        <button class="tab-btn" data-tab="unitCount" onclick="switchPanel('unitSection', 'unitCount', this)">ตรวจนับ</button>
-                        <button class="tab-btn" data-tab="unitTracking" onclick="switchPanel('unitSection', 'unitTracking', this)">แจ้งติดตาม</button>
-                        <button class="tab-btn" data-tab="unitHistory" onclick="switchPanel('unitSection', 'unitHistory', this)">ประวัติ</button>
-                    </div>
-                    <div class="filters">
-                        <label class="field">
-                            รอบข้อมูล
-                            <select id="unitQuarterFilter" onchange="renderUnitDashboard(); renderUnitHistory();"></select>
-                        </label>
-                    </div>
-                </div>
-
-                <section id="unitDashboard" class="panel active">
-                    <div class="metric-stack">
-                        <div class="metric"><small>Stock หน่วยงาน รวม</small><strong id="metricPar">0</strong></div>
-                        <div class="metric"><small>พร้อมใช้</small><strong id="metricReady">0</strong></div>
-                        <div class="metric"><small>กำลังใช้งาน</small><strong id="metricInUse">0</strong></div>
-                        <div class="metric"><small>ส่งซัก</small><strong id="metricLaundry">0</strong></div>
-                        <div class="metric"><small>ติดผู้ป่วยกลับบ้าน</small><strong id="metricPending">0</strong></div>
-                    </div>
-                    <div class="grid-2">
-                        <div class="card">
-                            <div class="section-head">
-                                <div>
-                                    <h3>กราฟตามหมวดหมู่หลัก</h3>
-                                    <p>ดูสัดส่วนแต่ละสถานะของผ้าในรอบที่เลือก</p>
-                                </div>
-                            </div>
-                            <div class="chart-box">
-                                <canvas id="unitChart"></canvas>
-                            </div>
-                        </div>
-                        <div class="card">
-                            <div class="section-head">
-                                <div>
-                                    <h3>สถานะติดตามผ้าติดผู้ป่วยกลับบ้าน</h3>
-                                    <p>สรุปรายการของหน่วยงาน</p>
-                                </div>
-                            </div>
-                            <div id="unitTrackingSummary" class="empty">ยังไม่มีข้อมูล</div>
-                        </div>
-                    </div>
+                <section id="loader" class="loader">
+                    <i class="fas fa-spinner fa-spin fa-3x"></i>
+                    <div id="loaderText">กำลังโหลดข้อมูล</div>
                 </section>
 
-                <section id="unitCount" class="panel">
-                    <section id="countLockedNotice" class="notice info hidden"></section>
-                    <form id="countForm" onsubmit="submitCountForm(event)">
-                        <div id="countCards" class="count-grid"></div>
-                        <div class="card">
-                            <div class="section-head">
-                                <div>
-                                    <h3>ผู้บันทึก</h3>
-                                    <p>ระบุชื่อผู้บันทึกก่อนส่งข้อมูล</p>
-                                </div>
-                            </div>
-                            <div class="grid-2">
-                                <label class="field">
-                                    ชื่อผู้บันทึก
-                                    <input type="text" id="countRecorder" placeholder="ชื่อ-นามสกุล" required>
-                                </label>
-                                <label class="field">
-                                    หมายเหตุรวม
-                                    <textarea id="countNote" placeholder="ระบุเฉพาะกรณีมีส่วนต่างหรือมีเหตุพิเศษ"></textarea>
-                                </label>
-                            </div>
-                            <div class="form-actions">
-                                <button type="submit" class="primary-btn" id="countSubmitBtn"><i class="fas fa-floppy-disk"></i> บันทึกการตรวจนับ</button>
-                            </div>
-                        </div>
-                    </form>
-                    <div id="countEmpty" class="empty hidden">ไม่พบรายการมาตรฐานของหน่วยงานนี้</div>
-                </section>
-
-                <section id="unitTracking" class="panel">
-                    <div class="card">
-                        <div class="section-head">
+                <main id="app" class="hidden">
+                    <section id="unitSection" class="hidden">
+                        <div class="hero">
                             <div>
-                                <h3>แจ้งผ้าติดผู้ป่วยกลับบ้าน</h3>
-                                <p>แจ้งได้ทุกวัน รายการจะเข้าสู่คิวของหน่วยงานซักฟอก</p>
+                                <h2>ภาพรวมหน่วยงาน</h2>
+                                <p>ฟอร์มตรวจนับใช้ 4 สถานะหลัก: พร้อมใช้, กำลังใช้งาน, ส่งซัก,
+                                    ติดผู้ป่วยกลับบ้านรอติดตาม</p>
+                            </div>
+                            <div class="hero-side">
+                                <div class="metric">
+                                    <small>จำนวนรายการมาตรฐาน</small>
+                                    <strong id="unitItemCount">0</strong>
+                                </div>
+                                <div class="metric">
+                                    <small>สถานะรอบปัจจุบัน</small>
+                                    <strong id="unitRoundStatus">รอตรวจนับ</strong>
+                                </div>
                             </div>
                         </div>
-                        <form id="trackingForm" onsubmit="submitTrackingForm(event)">
+
+                        <div class="toolbar">
+                            <div class="tabs">
+                                <button class="tab-btn active" data-tab="unitDashboard"
+                                    onclick="switchPanel('unitSection', 'unitDashboard', this)">Dashboard</button>
+                                <button class="tab-btn" data-tab="unitCount"
+                                    onclick="switchPanel('unitSection', 'unitCount', this)">ตรวจนับ</button>
+                                <button class="tab-btn" data-tab="unitTracking"
+                                    onclick="switchPanel('unitSection', 'unitTracking', this)">แจ้งติดตาม</button>
+                                <button class="tab-btn" data-tab="unitHistory"
+                                    onclick="switchPanel('unitSection', 'unitHistory', this)">ประวัติ</button>
+                            </div>
+                            <div class="filters">
+                                <label class="field">
+                                    รอบข้อมูล
+                                    <select id="unitQuarterFilter"
+                                        onchange="renderUnitDashboard(); renderUnitHistory();"></select>
+                                </label>
+                            </div>
+                        </div>
+
+                        <section id="unitDashboard" class="panel active">
+                            <div class="metric-stack">
+                                <div class="metric"><small>Stock หน่วยงาน รวม</small><strong id="metricPar">0</strong>
+                                </div>
+                                <div class="metric"><small>พร้อมใช้</small><strong id="metricReady">0</strong></div>
+                                <div class="metric"><small>กำลังใช้งาน</small><strong id="metricInUse">0</strong></div>
+                                <div class="metric"><small>ส่งซัก</small><strong id="metricLaundry">0</strong></div>
+                                <div class="metric"><small>ติดผู้ป่วยกลับบ้าน</small><strong
+                                        id="metricPending">0</strong></div>
+                            </div>
                             <div class="grid-2">
+                                <div class="card">
+                                    <div class="section-head">
+                                        <div>
+                                            <h3>กราฟตามหมวดหมู่หลัก</h3>
+                                            <p>ดูสัดส่วนแต่ละสถานะของผ้าในรอบที่เลือก</p>
+                                        </div>
+                                    </div>
+                                    <div class="chart-box">
+                                        <canvas id="unitChart"></canvas>
+                                    </div>
+                                </div>
+                                <div class="card">
+                                    <div class="section-head">
+                                        <div>
+                                            <h3>สถานะติดตามผ้าติดผู้ป่วยกลับบ้าน</h3>
+                                            <p>สรุปรายการของหน่วยงาน</p>
+                                        </div>
+                                    </div>
+                                    <div id="unitTrackingSummary" class="empty">ยังไม่มีข้อมูล</div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section id="unitCount" class="panel">
+                            <div class="card"
+                                style="margin-bottom: 16px; padding: 14px 18px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
+                                <div style="display:flex; align-items:center; gap: 10px;">
+                                    <i class="fas fa-calendar-check" style="font-size: 1.3rem; color: var(--navy);"></i>
+                                    <div>
+                                        <strong style="font-size: 0.95rem; color: var(--text);">รอบการตรวจนับ:</strong>
+                                        <span id="countPeriodDisplay"
+                                            style="color: #334155; font-weight: 600; margin-left: 4px;">-</span>
+                                    </div>
+                                </div>
+                                <div style="display:flex; align-items:center; gap: 8px;">
+                                    <label for="countMonthSelect"
+                                        style="font-size: 0.88rem; color: #475569; font-weight: 600;">เลือกเดือนที่ตรวจนับ:</label>
+                                    <select id="countMonthSelect" onchange="onCountMonthSelectChange()"
+                                        style="padding: 6px 12px; border-radius: 8px; border: 1px solid #cbd5e1; background: white; font-size: 0.9rem;"></select>
+                                </div>
+                            </div>
+                            <section id="countLockedNotice" class="notice info hidden"></section>
+                            <form id="countForm" onsubmit="submitCountForm(event)">
+                                <div id="countCards" class="count-grid"></div>
+                                <div class="card">
+                                    <div class="section-head">
+                                        <div>
+                                            <h3>ผู้บันทึก</h3>
+                                            <p>ระบุชื่อผู้บันทึกก่อนส่งข้อมูล</p>
+                                        </div>
+                                    </div>
+                                    <div class="grid-2">
+                                        <label class="field">
+                                            ชื่อผู้บันทึก
+                                            <input type="text" id="countRecorder" placeholder="ชื่อ-นามสกุล" required>
+                                        </label>
+                                        <label class="field">
+                                            หมายเหตุรวม
+                                            <textarea id="countNote"
+                                                placeholder="ระบุเฉพาะกรณีมีส่วนต่างหรือมีเหตุพิเศษ"></textarea>
+                                        </label>
+                                    </div>
+                                    <div class="form-actions">
+                                        <button type="submit" class="primary-btn" id="countSubmitBtn"><i
+                                                class="fas fa-floppy-disk"></i> บันทึกการตรวจนับ</button>
+                                    </div>
+                                </div>
+                            </form>
+                            <div id="countEmpty" class="empty hidden">ไม่พบรายการมาตรฐานของหน่วยงานนี้</div>
+                        </section>
+
+                        <section id="unitTracking" class="panel">
+                            <div class="card">
+                                <div class="section-head">
+                                    <div>
+                                        <h3>แจ้งผ้าติดผู้ป่วยกลับบ้าน</h3>
+                                        <p>แจ้งได้ทุกวัน รายการจะเข้าสู่คิวของหน่วยงานซักฟอก</p>
+                                    </div>
+                                </div>
+                                <form id="trackingForm" onsubmit="submitTrackingForm(event)">
+                                    <div class="grid-2">
+                                        <label class="field">
+                                            วันที่แจ้ง
+                                            <input type="date" id="trackingDate" required>
+                                        </label>
+                                        <label class="field">
+                                            ผู้แจ้ง
+                                            <input type="text" id="trackingReporter" placeholder="ชื่อ-นามสกุล"
+                                                required>
+                                        </label>
+                                        <label class="field">
+                                            รายการผ้า
+                                            <select id="trackingItem" required></select>
+                                        </label>
+                                        <label class="field">
+                                            จำนวน
+                                            <input type="number" id="trackingQty" min="1" value="1" required>
+                                        </label>
+                                        <label class="field">
+                                            สาเหตุ
+                                            <select id="trackingReason" required>
+                                                <option value="">เลือกสาเหตุ</option>
+                                                <option value="Refer">Refer</option>
+                                                <option value="กลับบ้าน">ผู้ป่วยกลับบ้าน</option>
+                                                <option value="ย้ายหน่วยงาน">ย้ายหน่วยงาน</option>
+                                                <option value="อื่นๆ">อื่นๆ</option>
+                                            </select>
+                                        </label>
+                                        <label class="field">
+                                            หมายเหตุ
+                                            <textarea id="trackingNote"
+                                                placeholder="ระบุรายละเอียดเพิ่มเติมถ้ามี"></textarea>
+                                        </label>
+                                    </div>
+                                    <div class="form-actions">
+                                        <button type="submit" class="primary-btn" id="trackingSubmitBtn"><i
+                                                class="fas fa-paper-plane"></i> ส่งรายการติดตาม</button>
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="card" style="margin-top: 16px;">
+                                <div class="section-head">
+                                    <div>
+                                        <h3>รายการติดตามของหน่วยงาน</h3>
+                                        <p>ดูสถานะล่าสุดของรายการที่แจ้งไปแล้ว</p>
+                                    </div>
+                                </div>
+                                <div class="table-wrap">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>วันที่แจ้ง</th>
+                                                <th>รายการผ้า</th>
+                                                <th>จำนวน</th>
+                                                <th>สาเหตุ</th>
+                                                <th>สถานะ</th>
+                                                <th>ผลติดตาม</th>
+                                                <th>หมายเหตุ</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="unitTrackingBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section id="unitHistory" class="panel">
+                            <div class="card">
+                                <div class="section-head">
+                                    <div>
+                                        <h3 id="unitHistoryTitle">ประวัติการตรวจนับ</h3>
+                                        <p>แสดงตามรายการผ้า</p>
+                                    </div>
+                                    <button class="ghost-btn" type="button" onclick="exportUnitHistory()">Export
+                                        CSV</button>
+                                </div>
+                                <div class="table-wrap">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>วัน/เวลา</th>
+                                                <th>รอบ</th>
+                                                <th>หมวดหมู่หลัก</th>
+                                                <th>ชื่อรายการผ้า</th>
+                                                <th>พร้อมใช้</th>
+                                                <th>ใช้งาน</th>
+                                                <th>ส่งซัก</th>
+                                                <th>ติดผู้ป่วยกลับบ้าน</th>
+                                                <th>รวม</th>
+                                                <th>Stock หน่วยงาน</th>
+                                                <th>ส่วนต่าง</th>
+                                                <th>ผู้บันทึก</th>
+                                                <th>หมายเหตุ</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="unitHistoryBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </section>
+                    </section>
+
+                    <section id="laundrySection" class="hidden">
+                        <div class="hero">
+                            <div>
+                                <h2>คิวติดตามผ้าติดผู้ป่วยกลับบ้าน</h2>
+                                <p>หน่วยงานซักฟอกใช้ส่วนนี้เพื่อติดตามและเปลี่ยนสถานะรายการ</p>
+                            </div>
+                            <div class="hero-side">
+                                <div class="metric">
+                                    <small>รายการค้างติดตาม</small>
+                                    <strong id="laundryOpenCount">0</strong>
+                                </div>
+                                <div class="metric">
+                                    <small>รายการปิดแล้ว</small>
+                                    <strong id="laundryClosedCount">0</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="toolbar">
+                            <div class="tabs">
+                                <button class="tab-btn active" data-tab="laundryQueue"
+                                    onclick="switchPanel('laundrySection', 'laundryQueue', this)">คิวติดตาม</button>
+                                <button class="tab-btn" data-tab="laundryHistory"
+                                    onclick="switchPanel('laundrySection', 'laundryHistory', this)">ประวัติ</button>
+                            </div>
+                            <div class="filters">
                                 <label class="field">
-                                    วันที่แจ้ง
-                                    <input type="date" id="trackingDate" required>
-                                </label>
-                                <label class="field">
-                                    ผู้แจ้ง
-                                    <input type="text" id="trackingReporter" placeholder="ชื่อ-นามสกุล" required>
-                                </label>
-                                <label class="field">
-                                    รายการผ้า
-                                    <select id="trackingItem" required></select>
-                                </label>
-                                <label class="field">
-                                    จำนวน
-                                    <input type="number" id="trackingQty" min="1" value="1" required>
-                                </label>
-                                <label class="field">
-                                    สาเหตุ
-                                    <select id="trackingReason" required>
-                                        <option value="">เลือกสาเหตุ</option>
-                                        <option value="Refer">Refer</option>
-                                        <option value="กลับบ้าน">ผู้ป่วยกลับบ้าน</option>
-                                        <option value="ย้ายหน่วยงาน">ย้ายหน่วยงาน</option>
-                                        <option value="อื่นๆ">อื่นๆ</option>
+                                    สถานะ
+                                    <select id="laundryStatusFilter" onchange="renderLaundryTables()">
+                                        <option value="all">ทั้งหมด</option>
+                                        <option value="open">แจ้งใหม่</option>
+                                        <option value="in_progress">กำลังติดตาม</option>
+                                        <option value="returned">คืนคลังแล้ว</option>
+                                        <option value="lost">ติดตามไม่ได้</option>
+                                        <option value="cancelled">ยกเลิก</option>
                                     </select>
                                 </label>
+                            </div>
+                        </div>
+
+                        <section id="laundryQueue" class="panel active">
+                            <div class="card">
+                                <div class="section-head">
+                                    <div>
+                                        <h3>อัปเดตสถานะ</h3>
+                                        <p>เปลี่ยนสถานะและบันทึกผลติดตาม</p>
+                                    </div>
+                                </div>
+                                <div class="table-wrap">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>วันที่แจ้ง</th>
+                                                <th>หน่วยงาน</th>
+                                                <th>รายการผ้า</th>
+                                                <th>จำนวน</th>
+                                                <th>สาเหตุ</th>
+                                                <th>สถานะ</th>
+                                                <th class="tight">สถานะใหม่</th>
+                                                <th>ผลติดตาม</th>
+                                                <th class="tight">ผู้ดำเนินการ</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="laundryQueueBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section id="laundryHistory" class="panel">
+                            <div class="card">
+                                <div class="section-head">
+                                    <div>
+                                        <h3>ประวัติรายการติดตาม</h3>
+                                        <p>ดูผลการติดตามย้อนหลัง</p>
+                                    </div>
+                                </div>
+                                <div class="table-wrap">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>วันที่แจ้ง</th>
+                                                <th>หน่วยงาน</th>
+                                                <th>รายการผ้า</th>
+                                                <th>จำนวน</th>
+                                                <th>สาเหตุ</th>
+                                                <th>สถานะ</th>
+                                                <th>ผลติดตาม</th>
+                                                <th>ผู้ดำเนินการ</th>
+                                                <th>อัปเดตล่าสุด</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="laundryHistoryBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </section>
+                    </section>
+
+                    <section id="adminSection" class="hidden">
+                        <div class="hero">
+                            <div>
+                                <h2>ภาพรวมแอดมิน</h2>
+                                <p>ดูข้อมูลตรวจนับและรายการติดตามทุกหน่วยงาน</p>
+                            </div>
+                            <div class="hero-side">
+                                <div class="metric">
+                                    <small>จำนวนหน่วยงาน</small>
+                                    <strong id="adminWardCount">0</strong>
+                                </div>
+                                <div class="metric">
+                                    <small>รายการติดตามค้าง</small>
+                                    <strong id="adminTrackingOpen">0</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="toolbar">
+                            <div class="tabs">
+                                <button class="tab-btn active" data-tab="adminLogs"
+                                    onclick="switchPanel('adminSection', 'adminLogs', this)">ตรวจนับ</button>
+                                <button class="tab-btn" data-tab="adminSummaryReport"
+                                    onclick="switchPanel('adminSection', 'adminSummaryReport', this)">รายงานสรุป</button>
+                                <button class="tab-btn" data-tab="adminTracking"
+                                    onclick="switchPanel('adminSection', 'adminTracking', this)">ติดตามผ้า</button>
+                            </div>
+                            <div class="filters">
                                 <label class="field">
-                                    หมายเหตุ
-                                    <textarea id="trackingNote" placeholder="ระบุรายละเอียดเพิ่มเติมถ้ามี"></textarea>
+                                    หน่วยงาน
+                                    <select id="adminWardFilter" onchange="renderAdminViews()"></select>
+                                </label>
+                                <label class="field">
+                                    รอบ
+                                    <select id="adminQuarterFilter" onchange="renderAdminViews()"></select>
                                 </label>
                             </div>
-                            <div class="form-actions">
-                                <button type="submit" class="primary-btn" id="trackingSubmitBtn"><i class="fas fa-paper-plane"></i> ส่งรายการติดตาม</button>
-                            </div>
-                        </form>
-                    </div>
-                    <div class="card" style="margin-top: 16px;">
-                        <div class="section-head">
-                            <div>
-                                <h3>รายการติดตามของหน่วยงาน</h3>
-                                <p>ดูสถานะล่าสุดของรายการที่แจ้งไปแล้ว</p>
-                            </div>
                         </div>
-                        <div class="table-wrap">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>วันที่แจ้ง</th>
-                                        <th>รายการผ้า</th>
-                                        <th>จำนวน</th>
-                                        <th>สาเหตุ</th>
-                                        <th>สถานะ</th>
-                                        <th>ผลติดตาม</th>
-                                        <th>หมายเหตุ</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="unitTrackingBody"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </section>
 
-                <section id="unitHistory" class="panel">
-                    <div class="card">
-                        <div class="section-head">
-                            <div>
-                                <h3 id="unitHistoryTitle">ประวัติการตรวจนับ</h3>
-                                <p>แสดงตามรายการผ้า</p>
+                        <section id="adminLogs" class="panel active">
+                            <div class="metric-stack">
+                                <div class="metric"><small>Stock หน่วยงาน</small><strong id="adminParMetric">0</strong>
+                                </div>
+                                <div class="metric"><small>พร้อมใช้</small><strong id="adminReadyMetric">0</strong>
+                                </div>
+                                <div class="metric"><small>กำลังใช้งาน</small><strong id="adminUseMetric">0</strong>
+                                </div>
+                                <div class="metric"><small>ส่งซัก</small><strong id="adminLaundryMetric">0</strong>
+                                </div>
+                                <div class="metric"><small>ติดผู้ป่วยกลับบ้าน</small><strong
+                                        id="adminPendingMetric">0</strong></div>
                             </div>
-                            <button class="ghost-btn" type="button" onclick="exportUnitHistory()">Export CSV</button>
-                        </div>
-                        <div class="table-wrap">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>วัน/เวลา</th>
-                                        <th>รอบ</th>
-                                        <th>หมวดหมู่หลัก</th>
-                                        <th>ชื่อรายการผ้า</th>
-                                        <th>พร้อมใช้</th>
-                                        <th>ใช้งาน</th>
-                                        <th>ส่งซัก</th>
-                                        <th>ติดผู้ป่วยกลับบ้าน</th>
-                                        <th>รวม</th>
-                                        <th>Stock หน่วยงาน</th>
-                                        <th>ส่วนต่าง</th>
-                                        <th>ผู้บันทึก</th>
-                                        <th>หมายเหตุ</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="unitHistoryBody"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </section>
-            </section>
-
-            <section id="laundrySection" class="hidden">
-                <div class="hero">
-                    <div>
-                        <h2>คิวติดตามผ้าติดผู้ป่วยกลับบ้าน</h2>
-                        <p>หน่วยงานซักฟอกใช้ส่วนนี้เพื่อติดตามและเปลี่ยนสถานะรายการ</p>
-                    </div>
-                    <div class="hero-side">
-                        <div class="metric">
-                            <small>รายการค้างติดตาม</small>
-                            <strong id="laundryOpenCount">0</strong>
-                        </div>
-                        <div class="metric">
-                            <small>รายการปิดแล้ว</small>
-                            <strong id="laundryClosedCount">0</strong>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="toolbar">
-                    <div class="tabs">
-                        <button class="tab-btn active" data-tab="laundryQueue" onclick="switchPanel('laundrySection', 'laundryQueue', this)">คิวติดตาม</button>
-                        <button class="tab-btn" data-tab="laundryHistory" onclick="switchPanel('laundrySection', 'laundryHistory', this)">ประวัติ</button>
-                    </div>
-                    <div class="filters">
-                        <label class="field">
-                            สถานะ
-                            <select id="laundryStatusFilter" onchange="renderLaundryTables()">
-                                <option value="all">ทั้งหมด</option>
-                                <option value="open">แจ้งใหม่</option>
-                                <option value="in_progress">กำลังติดตาม</option>
-                                <option value="returned">คืนคลังแล้ว</option>
-                                <option value="lost">ติดตามไม่ได้</option>
-                                <option value="cancelled">ยกเลิก</option>
-                            </select>
-                        </label>
-                    </div>
-                </div>
-
-                <section id="laundryQueue" class="panel active">
-                    <div class="card">
-                        <div class="section-head">
-                            <div>
-                                <h3>อัปเดตสถานะ</h3>
-                                <p>เปลี่ยนสถานะและบันทึกผลติดตาม</p>
+                            <div class="toolbar" style="margin-bottom: 16px;">
+                                <div class="tabs">
+                                    <button id="btnAdminViewCategory" class="tab-btn active"
+                                        onclick="setAdminViewMode('category')">ดูตามหมวดหมู่หลัก</button>
+                                    <button id="btnAdminViewItem" class="tab-btn"
+                                        onclick="setAdminViewMode('item')">ดูตามชื่อรายการผ้า</button>
+                                    <button id="btnAdminViewWard" class="tab-btn"
+                                        onclick="setAdminViewMode('ward')">ดูประวัติแยกตามหน่วยงาน</button>
+                                </div>
                             </div>
-                        </div>
-                        <div class="table-wrap">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>วันที่แจ้ง</th>
-                                        <th>หน่วยงาน</th>
-                                        <th>รายการผ้า</th>
-                                        <th>จำนวน</th>
-                                        <th>สาเหตุ</th>
-                                        <th>สถานะ</th>
-                                        <th class="tight">สถานะใหม่</th>
-                                        <th>ผลติดตาม</th>
-                                        <th class="tight">ผู้ดำเนินการ</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="laundryQueueBody"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </section>
-
-                <section id="laundryHistory" class="panel">
-                    <div class="card">
-                        <div class="section-head">
-                            <div>
-                                <h3>ประวัติรายการติดตาม</h3>
-                                <p>ดูผลการติดตามย้อนหลัง</p>
+                            <div class="card">
+                                <div class="section-head">
+                                    <div>
+                                        <h3 id="adminLogsTitle">สรุปแยกตามหมวดหมู่หลัก</h3>
+                                    </div>
+                                    <button id="btnExportAdminLogs" class="ghost-btn" type="button"
+                                        onclick="exportAdminLogs()">Export CSV (แยกตามหมวดหมู่)</button>
+                                </div>
+                                <div class="table-wrap">
+                                    <table>
+                                        <thead id="adminLogHeader">
+                                            <tr>
+                                                <th>หมวดหมู่หลัก</th>
+                                                <th>ยอดพร้อมใช้ (รวม)</th>
+                                                <th>ยอดกำลังใช้งาน (รวม)</th>
+                                                <th>ยอดส่งซัก (รวม)</th>
+                                                <th>ยอดติดผู้ป่วยกลับบ้าน (รวม)</th>
+                                                <th>ยอดรวมที่นับได้</th>
+                                                <th>Stock หน่วยงาน</th>
+                                                <th>ส่วนต่าง</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="adminLogBody"></tbody>
+                                    </table>
+                                </div>
                             </div>
-                        </div>
-                        <div class="table-wrap">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>วันที่แจ้ง</th>
-                                        <th>หน่วยงาน</th>
-                                        <th>รายการผ้า</th>
-                                        <th>จำนวน</th>
-                                        <th>สาเหตุ</th>
-                                        <th>สถานะ</th>
-                                        <th>ผลติดตาม</th>
-                                        <th>ผู้ดำเนินการ</th>
-                                        <th>อัปเดตล่าสุด</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="laundryHistoryBody"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </section>
-            </section>
+                        </section>
 
-            <section id="adminSection" class="hidden">
-                <div class="hero">
-                    <div>
-                        <h2>ภาพรวมแอดมิน</h2>
-                        <p>ดูข้อมูลตรวจนับและรายการติดตามทุกหน่วยงาน</p>
-                    </div>
-                    <div class="hero-side">
-                        <div class="metric">
-                            <small>จำนวนหน่วยงาน</small>
-                            <strong id="adminWardCount">0</strong>
-                        </div>
-                        <div class="metric">
-                            <small>รายการติดตามค้าง</small>
-                            <strong id="adminTrackingOpen">0</strong>
-                        </div>
-                    </div>
-                </div>
+                        <section id="adminSummaryReport" class="panel">
+                            <div class="card">
+                                <div class="section-head">
+                                    <div>
+                                        <h3>รายงานสรุปการตรวจนับผ้ารายหน่วยงาน</h3>
+                                        <p id="clothReportMeta" style="margin:4px 0 0; color:#667; font-size:0.85rem;">
+                                            เลือกปีงบประมาณเพื่อดูผลการตรวจนับ</p>
+                                    </div>
+                                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                                        <label class="field" style="margin:0;">
+                                            ปีงบประมาณ
+                                            <select id="clothReportFiscalYear"
+                                                onchange="renderClothSummaryReport()"></select>
+                                        </label>
+                                        <button class="ghost-btn" type="button"
+                                            onclick="exportClothSummaryReport()">Export CSV</button>
+                                    </div>
+                                </div>
+                                <div class="table-wrap">
+                                    <table id="clothSummaryTable">
+                                        <thead>
+                                            <tr>
+                                                <th>หน่วยงาน/แผนก</th>
+                                                <th>ต.ค.</th>
+                                                <th>พ.ย.</th>
+                                                <th>ธ.ค.</th>
+                                                <th>ม.ค.</th>
+                                                <th>ก.พ.</th>
+                                                <th>มี.ค.</th>
+                                                <th>เม.ย.</th>
+                                                <th>พ.ค.</th>
+                                                <th>มิ.ย.</th>
+                                                <th>ก.ค.</th>
+                                                <th>ส.ค.</th>
+                                                <th>ก.ย.</th>
+                                                <th>รวมทั้งปี</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="clothSummaryBody">
+                                            <tr>
+                                                <td colspan="14">กำลังโหลดรายงาน...</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <p style="margin-top:10px; color:#889; font-size:0.8rem;">
+                                    หมายเหตุ: จำนวนคือยอดรวมผ้าทุกประเภทของหน่วยงานนั้น ๆ (ยอดนับได้จริง/ยอดมาตรฐาน รวม)
+                                    เดือนที่ไม่มีการส่งข้อมูลตรวจนับจะแสดงเป็น "-"
+                                </p>
+                            </div>
 
-                <div class="toolbar">
-                    <div class="tabs">
-                        <button class="tab-btn active" data-tab="adminLogs" onclick="switchPanel('adminSection', 'adminLogs', this)">ตรวจนับ</button>
-                        <button class="tab-btn" data-tab="adminSummaryReport" onclick="switchPanel('adminSection', 'adminSummaryReport', this)">รายงานสรุป</button>
-                        <button class="tab-btn" data-tab="adminTracking" onclick="switchPanel('adminSection', 'adminTracking', this)">ติดตามผ้า</button>
-                    </div>
-                    <div class="filters">
-                        <label class="field">
-                            หน่วยงาน
-                            <select id="adminWardFilter" onchange="renderAdminViews()"></select>
-                        </label>
-                        <label class="field">
-                            รอบ
-                            <select id="adminQuarterFilter" onchange="renderAdminViews()"></select>
-                        </label>
-                    </div>
-                </div>
+                            <div class="card">
+                                <div class="section-head">
+                                    <div>
+                                        <h3>รายงานคะแนนรายหน่วยงานตาม MOU (การตรวจนับเครื่องผ้า)</h3>
+                                        <p id="clothMouReportMeta"
+                                            style="margin:4px 0 0; color:#667; font-size:0.85rem;">
+                                            เลือกปีงบประมาณและเดือนที่ต้องการออกรายงาน</p>
+                                    </div>
+                                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                                        <label class="field" style="margin:0;">
+                                            ปีงบประมาณ
+                                            <select id="clothMouFiscalYear"
+                                                onchange="renderClothMouScoreReport()"></select>
+                                        </label>
+                                        <label class="field" style="margin:0;">
+                                            ตั้งแต่เดือน
+                                            <select id="clothMouFromMonth"
+                                                onchange="renderClothMouScoreReport()"></select>
+                                        </label>
+                                        <label class="field" style="margin:0;">
+                                            ถึงเดือน
+                                            <select id="clothMouToMonth"
+                                                onchange="renderClothMouScoreReport()"></select>
+                                        </label>
+                                        <button class="ghost-btn" type="button"
+                                            onclick="exportClothMouScoreReport()">Export CSV</button>
+                                    </div>
+                                </div>
+                                <div class="table-wrap">
+                                    <table id="clothMouScoreTable">
+                                        <thead>
+                                            <tr>
+                                                <th>หน่วยงาน/แผนก</th>
+                                                <th>ไตรมาสที่ต้องนับ (ในช่วงที่เลือก)</th>
+                                                <th>ไตรมาสที่ทำครบ</th>
+                                                <th>ผลการดำเนินงาน</th>
+                                                <th>คะแนน MOU</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="clothMouScoreBody">
+                                            <tr>
+                                                <td colspan="5">กำลังโหลดรายงาน...</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <p style="margin-top:10px; color:#889; font-size:0.8rem;">
+                                    เกณฑ์คะแนน: ไม่ทำ = 1 คะแนน, ทำไม่ครบทุกไตรมาส = 3 คะแนน, ทำครบทุก 3 เดือน
+                                    (ทุกไตรมาส) = 5 คะแนน — นับเฉพาะไตรมาสที่ครบกำหนดส่งภายในช่วงเดือนที่เลือก
+                                    หน่วยงานที่ไม่มีรายการผ้าที่ต้องนับเลยในช่วงที่เลือกจะไม่ถูกนำมาคิดคะแนน
+                                </p>
+                            </div>
+                        </section>
 
-                <section id="adminLogs" class="panel active">
-                    <div class="metric-stack">
-                        <div class="metric"><small>Stock หน่วยงาน</small><strong id="adminParMetric">0</strong></div>
-                        <div class="metric"><small>พร้อมใช้</small><strong id="adminReadyMetric">0</strong></div>
-                        <div class="metric"><small>กำลังใช้งาน</small><strong id="adminUseMetric">0</strong></div>
-                        <div class="metric"><small>ส่งซัก</small><strong id="adminLaundryMetric">0</strong></div>
-                        <div class="metric"><small>ติดผู้ป่วยกลับบ้าน</small><strong id="adminPendingMetric">0</strong></div>
-                    </div>
-                    <div class="toolbar" style="margin-bottom: 16px;">
-                        <div class="tabs">
-                            <button id="btnAdminViewCategory" class="tab-btn active" onclick="setAdminViewMode('category')">ดูตามหมวดหมู่หลัก</button>
-                            <button id="btnAdminViewItem" class="tab-btn" onclick="setAdminViewMode('item')">ดูตามชื่อรายการผ้า</button>
-                            <button id="btnAdminViewWard" class="tab-btn" onclick="setAdminViewMode('ward')">ดูประวัติแยกตามหน่วยงาน</button>
-                        </div>
-                    </div>
-                    <div class="card">
-                        <div class="section-head">
-                            <div>
-                                <h3 id="adminLogsTitle">สรุปแยกตามหมวดหมู่หลัก</h3>
+                        <section id="adminTracking" class="panel">
+                            <div class="card">
+                                <div class="section-head">
+                                    <div>
+                                        <h3>รายการติดตามทุกหน่วยงาน</h3>
+                                    </div>
+                                </div>
+                                <div class="table-wrap">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>วันที่แจ้ง</th>
+                                                <th>หน่วยงาน</th>
+                                                <th>รายการผ้า</th>
+                                                <th>จำนวน</th>
+                                                <th>สาเหตุ</th>
+                                                <th>สถานะ</th>
+                                                <th>ผลติดตาม</th>
+                                                <th>ผู้ดำเนินการ</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="adminTrackingBody"></tbody>
+                                    </table>
+                                </div>
                             </div>
-                            <button id="btnExportAdminLogs" class="ghost-btn" type="button" onclick="exportAdminLogs()">Export CSV (แยกตามหมวดหมู่)</button>
-                        </div>
-                        <div class="table-wrap">
-                            <table>
-                                <thead id="adminLogHeader">
-                                    <tr>
-                                        <th>หมวดหมู่หลัก</th>
-                                        <th>ยอดพร้อมใช้ (รวม)</th>
-                                        <th>ยอดกำลังใช้งาน (รวม)</th>
-                                        <th>ยอดส่งซัก (รวม)</th>
-                                        <th>ยอดติดผู้ป่วยกลับบ้าน (รวม)</th>
-                                        <th>ยอดรวมที่นับได้</th>
-                                        <th>Stock หน่วยงาน</th>
-                                        <th>ส่วนต่าง</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="adminLogBody"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </section>
-
-                <section id="adminSummaryReport" class="panel">
-                    <div class="card">
-                        <div class="section-head">
-                            <div>
-                                <h3>รายงานสรุปการตรวจนับผ้ารายหน่วยงาน</h3>
-                                <p id="clothReportMeta" style="margin:4px 0 0; color:#667; font-size:0.85rem;">เลือกปีงบประมาณเพื่อดูผลการตรวจนับ</p>
-                            </div>
-                            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                                <label class="field" style="margin:0;">
-                                    ปีงบประมาณ
-                                    <select id="clothReportFiscalYear" onchange="renderClothSummaryReport()"></select>
-                                </label>
-                                <button class="ghost-btn" type="button" onclick="exportClothSummaryReport()">Export CSV</button>
-                            </div>
-                        </div>
-                        <div class="table-wrap">
-                            <table id="clothSummaryTable">
-                                <thead>
-                                    <tr>
-                                        <th>หน่วยงาน/แผนก</th>
-                                        <th>ต.ค.</th><th>พ.ย.</th><th>ธ.ค.</th><th>ม.ค.</th><th>ก.พ.</th><th>มี.ค.</th>
-                                        <th>เม.ย.</th><th>พ.ค.</th><th>มิ.ย.</th><th>ก.ค.</th><th>ส.ค.</th><th>ก.ย.</th>
-                                        <th>รวมทั้งปี</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="clothSummaryBody"><tr><td colspan="14">กำลังโหลดรายงาน...</td></tr></tbody>
-                            </table>
-                        </div>
-                        <p style="margin-top:10px; color:#889; font-size:0.8rem;">
-                            หมายเหตุ: จำนวนคือยอดรวมผ้าทุกประเภทของหน่วยงานนั้น ๆ (ยอดนับได้จริง/ยอดมาตรฐาน รวม) เดือนที่ไม่มีการส่งข้อมูลตรวจนับจะแสดงเป็น "-"
-                        </p>
-                    </div>
-
-                    <div class="card">
-                        <div class="section-head">
-                            <div>
-                                <h3>รายงานคะแนนรายหน่วยงานตาม MOU (การตรวจนับเครื่องผ้า)</h3>
-                                <p id="clothMouReportMeta" style="margin:4px 0 0; color:#667; font-size:0.85rem;">เลือกปีงบประมาณและเดือนที่ต้องการออกรายงาน</p>
-                            </div>
-                            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                                <label class="field" style="margin:0;">
-                                    ปีงบประมาณ
-                                    <select id="clothMouFiscalYear" onchange="renderClothMouScoreReport()"></select>
-                                </label>
-                                <label class="field" style="margin:0;">
-                                    ตั้งแต่เดือน
-                                    <select id="clothMouFromMonth" onchange="renderClothMouScoreReport()"></select>
-                                </label>
-                                <label class="field" style="margin:0;">
-                                    ถึงเดือน
-                                    <select id="clothMouToMonth" onchange="renderClothMouScoreReport()"></select>
-                                </label>
-                                <button class="ghost-btn" type="button" onclick="exportClothMouScoreReport()">Export CSV</button>
-                            </div>
-                        </div>
-                        <div class="table-wrap">
-                            <table id="clothMouScoreTable">
-                                <thead>
-                                    <tr>
-                                        <th>หน่วยงาน/แผนก</th>
-                                        <th>ไตรมาสที่ต้องนับ (ในช่วงที่เลือก)</th>
-                                        <th>ไตรมาสที่ทำครบ</th>
-                                        <th>ผลการดำเนินงาน</th>
-                                        <th>คะแนน MOU</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="clothMouScoreBody"><tr><td colspan="5">กำลังโหลดรายงาน...</td></tr></tbody>
-                            </table>
-                        </div>
-                        <p style="margin-top:10px; color:#889; font-size:0.8rem;">
-                            เกณฑ์คะแนน: ไม่ทำ = 1 คะแนน, ทำไม่ครบทุกไตรมาส = 3 คะแนน, ทำครบทุก 3 เดือน (ทุกไตรมาส) = 5 คะแนน — นับเฉพาะไตรมาสที่ครบกำหนดส่งภายในช่วงเดือนที่เลือก หน่วยงานที่ไม่มีรายการผ้าที่ต้องนับเลยในช่วงที่เลือกจะไม่ถูกนำมาคิดคะแนน
-                        </p>
-                    </div>
-                </section>
-
-                <section id="adminTracking" class="panel">
-                    <div class="card">
-                        <div class="section-head">
-                            <div>
-                                <h3>รายการติดตามทุกหน่วยงาน</h3>
-                            </div>
-                        </div>
-                        <div class="table-wrap">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>วันที่แจ้ง</th>
-                                        <th>หน่วยงาน</th>
-                                        <th>รายการผ้า</th>
-                                        <th>จำนวน</th>
-                                        <th>สาเหตุ</th>
-                                        <th>สถานะ</th>
-                                        <th>ผลติดตาม</th>
-                                        <th>ผู้ดำเนินการ</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="adminTrackingBody"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </section>
-            </section>
-        </main>
-    </div>
+                        </section>
+                    </section>
+                </main>
+            </div>
         </div>
     </div>
     <div class="app-shell-overlay" aria-hidden="true"></div>
@@ -1159,6 +1252,166 @@
         let lastCountNote = "";
         let unitChart = null;
         let adminViewMode = "category";
+        let selectedCountMonthKey = "";
+
+        const THAI_MONTHS = [
+            "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+            "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
+        ];
+
+        function getClothFiscalInfo(dateInput) {
+            let d;
+            if (dateInput instanceof Date) {
+                d = dateInput;
+            } else if (typeof dateInput === "number") {
+                d = new Date(dateInput);
+            } else if (typeof dateInput === "string" && dateInput.trim()) {
+                const parsed = parseSortValue(dateInput);
+                d = parsed ? new Date(parsed) : new Date(dateInput);
+                if (isNaN(d.getTime())) d = new Date();
+            } else {
+                d = new Date();
+            }
+
+            const month = isNaN(d.getTime()) ? new Date().getMonth() : d.getMonth();
+            const yearAD = isNaN(d.getTime()) ? new Date().getFullYear() : d.getFullYear();
+            const fiscalYear = month >= 9 ? yearAD + 544 : yearAD + 543;
+            const thaiYear = yearAD + 543;
+            const monthName = THAI_MONTHS[month];
+
+            let qNum = 1;
+            let quarterMonths = "ตุลาคม - ธันวาคม";
+            let monthOffsets = [0, 1, 2];
+            if (month >= 9) {
+                qNum = 1;
+                quarterMonths = "ตุลาคม - ธันวาคม";
+                monthOffsets = [0, 1, 2];
+            } else if (month <= 2) {
+                qNum = 2;
+                quarterMonths = "มกราคม - มีนาคม";
+                monthOffsets = [3, 4, 5];
+            } else if (month <= 5) {
+                qNum = 3;
+                quarterMonths = "เมษายน - มิถุนายน";
+                monthOffsets = [6, 7, 8];
+            } else {
+                qNum = 4;
+                quarterMonths = "กรกฎาคม - กันยายน";
+                monthOffsets = [9, 10, 11];
+            }
+
+            const monthOffset = (yearAD - (fiscalYear - 544)) * 12 + (month - 9);
+            const quarterShort = `ไตรมาส ${qNum}/${fiscalYear}`;
+            const quarterLabel = `ไตรมาส ${qNum}/${fiscalYear} (${quarterMonths})`;
+            const monthLabel = `ประจำเดือน${monthName} ${thaiYear}`;
+            const fullRoundLabel = `ประจำเดือน${monthName} ${thaiYear} (${quarterShort})`;
+            const monthKey = `${yearAD}-${String(month + 1).padStart(2, "0")}`;
+
+            return {
+                date: d,
+                yearAD,
+                thaiYear,
+                fiscalYear,
+                month,
+                monthName,
+                qNum,
+                quarterShort,
+                quarterLabel,
+                quarterMonths,
+                monthOffsets,
+                monthOffset,
+                monthLabel,
+                fullRoundLabel,
+                monthKey
+            };
+        }
+
+        function getSelectedCountFiscalInfo() {
+            if (selectedCountMonthKey) {
+                const parts = selectedCountMonthKey.split("-");
+                const y = Number(parts[0]);
+                const m = Number(parts[1]);
+                if (y && m) {
+                    return getClothFiscalInfo(new Date(y, m - 1, 15));
+                }
+            }
+            return getClothFiscalInfo(new Date());
+        }
+
+        function populateCountMonthSelect() {
+            const select = document.getElementById("countMonthSelect");
+            if (!select) return;
+            const now = new Date();
+            const currentFiscal = getClothFiscalInfo(now);
+            const currentMonthKey = currentFiscal.monthKey;
+            if (!selectedCountMonthKey) selectedCountMonthKey = currentMonthKey;
+
+            const options = [];
+            for (let i = 1; i >= -11; i--) {
+                const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+                const info = getClothFiscalInfo(d);
+                options.push({
+                    key: info.monthKey,
+                    label: `${info.monthName} ${info.thaiYear} (${info.quarterShort})`,
+                    info
+                });
+            }
+
+            select.innerHTML = options.map(opt => `
+                <option value="${escapeAttribute(opt.key)}" ${opt.key === selectedCountMonthKey ? "selected" : ""}>
+                    ${escapeHtml(opt.label)}
+                </option>
+            `).join("");
+
+            updateCountPeriodDisplay();
+        }
+
+        function updateCountPeriodDisplay() {
+            const info = getSelectedCountFiscalInfo();
+            const disp = document.getElementById("countPeriodDisplay");
+            if (disp) {
+                disp.innerText = info.fullRoundLabel;
+            }
+        }
+
+        function onCountMonthSelectChange() {
+            const select = document.getElementById("countMonthSelect");
+            if (select) {
+                selectedCountMonthKey = select.value;
+                updateCountPeriodDisplay();
+                renderCountLockState();
+            }
+        }
+
+        function checkUnitQuarterStatus(fiscalInfo) {
+            const quarterLogs = unitLogs.filter(log => {
+                const ts = log.sortValue;
+                if (!ts) return false;
+                const f = getClothFiscalInfo(ts);
+                return f.fiscalYear === fiscalInfo.fiscalYear && f.qNum === fiscalInfo.qNum;
+            }).sort((a, b) => b.sortValue - a.sortValue);
+
+            const monthLogs = unitLogs.filter(log => {
+                const ts = log.sortValue;
+                if (!ts) return false;
+                const f = getClothFiscalInfo(ts);
+                return f.fiscalYear === fiscalInfo.fiscalYear && f.month === fiscalInfo.month && f.yearAD === fiscalInfo.yearAD;
+            }).sort((a, b) => b.sortValue - a.sortValue);
+
+            const hasQuarterCount = quarterLogs.length > 0;
+            const hasMonthCount = monthLogs.length > 0;
+            const latestQuarterLog = hasQuarterCount ? quarterLogs[0] : null;
+            const latestMonthLog = hasMonthCount ? monthLogs[0] : null;
+
+            return {
+                hasQuarterCount,
+                hasMonthCount,
+                latestQuarterLog,
+                latestMonthLog,
+                quarterLogs,
+                monthLogs
+            };
+        }
 
         const isAdminMode = () => currentRole === "admin";
         const isLaundryUnit = () => !isAdminMode() && currentWard === "ซักฟอก";
@@ -1212,12 +1465,16 @@
                 title = `ระบบตรวจนับ Stock เครื่องผ้า หน่วยงาน : ${currentWard}`;
             }
 
+            const currentInfo = getClothFiscalInfo(new Date());
+            const displayRound = currentQuarter || currentInfo.fullRoundLabel;
+
             document.title = title;
             document.getElementById("systemTitle").innerText = title;
             document.getElementById("navWardText").innerText = `หน่วยงาน: ${wardText}`;
-            document.getElementById("navQuarterText").innerText = `รอบ: ${currentQuarter || "-"}`;
-            document.getElementById("btnAdminLogin").classList.toggle("hidden", isAdminMode());
+            document.getElementById("navQuarterText").innerText = `รอบ: ${displayRound}`;
+            document.getElementById("btnAdminLogin").classList.toggle("hidden", isAdminMode() || isLaundryUnit());
             document.getElementById("btnExitAdmin").classList.toggle("hidden", !isAdminMode());
+            document.getElementById("btnViewReport").classList.toggle("hidden", !isLaundryUnit() || isAdminMode());
         }
 
         function showNotice(title, detail, type = "info") {
@@ -1358,6 +1615,7 @@
         }
 
         function renderUnitView() {
+            populateCountMonthSelect();
             renderUnitHero();
             populateUnitQuarterFilter();
             populateTrackingItemOptions();
@@ -1370,20 +1628,29 @@
 
         function renderUnitHero() {
             document.getElementById("unitItemCount").innerText = masterItems.length.toLocaleString();
-            document.getElementById("unitRoundStatus").innerText = isAlreadyCounted
-                ? `บันทึกแล้ว${lastCountDate ? ` (${lastCountDate})` : ""}`
-                : "รอตรวจนับ";
+            const currentInfo = getClothFiscalInfo(new Date());
+            const status = checkUnitQuarterStatus(currentInfo);
+
+            let statusText = "รอตรวจนับ (ไตรมาสนี้ยังไม่ได้นับ)";
+            if (status.hasMonthCount) {
+                statusText = `บันทึกประจำเดือนนี้แล้ว (${status.latestMonthLog.timestamp || lastCountDate})`;
+            } else if (status.hasQuarterCount) {
+                statusText = `ตรวจนับไตรมาสนี้แล้ว (${status.latestQuarterLog.timestamp || lastCountDate}) • บันทึกเพิ่มได้`;
+            }
+            document.getElementById("unitRoundStatus").innerText = statusText;
         }
 
         function populateUnitQuarterFilter() {
             const select = document.getElementById("unitQuarterFilter");
+            if (!select) return;
+            const currentInfo = getClothFiscalInfo(new Date());
             const quarters = [...new Set(unitLogs.map(log => log.quarter).filter(Boolean))].sort().reverse();
             const options = [];
-            if (currentQuarter) {
-                options.push({ value: "__current__", label: `รอบปัจจุบัน: ${currentQuarter}` });
+            options.push({ value: "all", label: "ทุกรอบ/ทุกเดือน" });
+            if (currentInfo.fullRoundLabel) {
+                options.push({ value: "__current__", label: `รอบปัจจุบัน: ${currentInfo.fullRoundLabel}` });
             }
-            options.push({ value: "all", label: "ทุกช่วง" });
-            quarters.filter(q => q !== currentQuarter).forEach(q => options.push({ value: q, label: q }));
+            quarters.filter(q => q !== currentInfo.fullRoundLabel).forEach(q => options.push({ value: q, label: q }));
             select.innerHTML = options.map(option => `<option value="${escapeAttribute(option.value)}">${escapeHtml(option.label)}</option>`).join("");
         }
 
@@ -1462,20 +1729,57 @@
 
         function renderCountLockState() {
             const notice = document.getElementById("countLockedNotice");
-            const disabled = isAlreadyCounted;
-            notice.classList.toggle("hidden", !disabled);
-            if (disabled) {
+            if (!notice) return;
+
+            const currentInfo = getSelectedCountFiscalInfo();
+            const status = checkUnitQuarterStatus(currentInfo);
+
+            notice.classList.remove("hidden");
+            if (status.hasQuarterCount) {
                 notice.className = "notice info";
-                const detailParts = [];
-                if (lastCountDate) detailParts.push(`ตรวจนับเมื่อ ${escapeHtml(lastCountDate)}`);
-                if (lastCountRecorder) detailParts.push(`โดย ${escapeHtml(lastCountRecorder)}`);
-                const detailLine = detailParts.length ? detailParts.join(" ") : "ปิดการกรอกซ้ำในรอบเดียวกัน";
-                const noteLine = lastCountNote ? `<br><small>หมายเหตุ: ${escapeHtml(lastCountNote)}</small>` : "";
-                notice.innerHTML = `<strong>รอบนี้บันทึกแล้ว</strong><span>${detailLine}${noteLine}</span>`;
+                const countDate = status.latestQuarterLog.timestamp || "-";
+                const countRecorder = status.latestQuarterLog.recorder ? `โดย ${status.latestQuarterLog.recorder}` : "";
+                const monthNote = status.hasMonthCount
+                    ? `<div style="margin-top:6px; color:#0369a1;"><i class="fas fa-check-circle"></i> ประจำเดือน <b>${escapeHtml(currentInfo.monthName)} ${currentInfo.thaiYear}</b> มีบันทึกไว้แล้วเมื่อ ${escapeHtml(status.latestMonthLog.timestamp || countDate)} (สามารถตรวจนับและบันทึกเพิ่มเติมเพื่อปรับปรุงข้อมูลได้)</div>`
+                    : `<div style="margin-top:6px; color:#15803d;"><i class="fas fa-plus-circle"></i> ท่านสามารถตรวจนับและบันทึกข้อมูลประจำเดือน <b>${escapeHtml(currentInfo.monthName)} ${currentInfo.thaiYear}</b> เพิ่มเติมได้ตามต้องการ</div>`;
+
+                notice.innerHTML = `
+                    <div style="display:flex; align-items:flex-start; gap:10px;">
+                        <i class="fas fa-circle-info" style="font-size:1.25rem; color:var(--navy); margin-top:2px;"></i>
+                        <div style="flex:1;">
+                            <strong style="font-size:0.95rem;">แจ้งเตือน: ไตรมาสนี้ได้รับการตรวจนับแล้ว</strong>
+                            <div style="font-size:0.9rem; color:var(--text); line-height:1.6; margin-top:2px;">
+                                ไตรมาสนี้ (<b>${escapeHtml(currentInfo.quarterShort)}</b>) ได้ตรวจนับไปแล้วเมื่อ <b>${escapeHtml(countDate)}</b> ${escapeHtml(countRecorder)}
+                                ${monthNote}
+                                <div style="margin-top:4px; font-size:0.82rem; color:#64748b;">
+                                    <i class="fas fa-bullseye"></i> เกณฑ์การประเมิน: กำหนดให้ตรวจนับอย่างน้อยไตรมาสละ 1 ครั้ง
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                notice.className = "notice warning";
+                notice.innerHTML = `
+                    <div style="display:flex; align-items:flex-start; gap:10px;">
+                        <i class="fas fa-triangle-exclamation" style="font-size:1.25rem; color:var(--warning); margin-top:2px;"></i>
+                        <div style="flex:1;">
+                            <strong style="font-size:0.95rem;">ไตรมาสนี้ยังไม่มีการตรวจนับ</strong>
+                            <div style="font-size:0.9rem; color:var(--text); line-height:1.6; margin-top:2px;">
+                                หน่วยงานยังไม่ได้บันทึกการตรวจนับในไตรมาสนี้ (<b>${escapeHtml(currentInfo.quarterLabel)}</b>)<br>
+                                กรุณาตรวจนับและบันทึกข้อมูลประจำเดือน <b>${escapeHtml(currentInfo.monthName)} ${currentInfo.thaiYear}</b>
+                                <div style="margin-top:4px; font-size:0.82rem; color:#64748b;">
+                                    <i class="fas fa-bullseye"></i> เกณฑ์การประเมิน: กำหนดให้ตรวจนับอย่างน้อยไตรมาสละ 1 ครั้ง
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
             }
 
+            // ฟอร์มตรวจนับเปิดให้บันทึกได้ตลอดเวลา
             document.querySelectorAll("#countForm input, #countForm textarea, #countForm button, #countForm select").forEach(el => {
-                el.disabled = disabled;
+                el.disabled = false;
             });
         }
 
@@ -1508,8 +1812,15 @@
 
         function getFilteredUnitLogs() {
             const quarter = getSelectedQuarter();
+            const currentInfo = getClothFiscalInfo(new Date());
             if (quarter === "__current__") {
-                return unitLogs.filter(log => log.quarter === currentQuarter);
+                return unitLogs.filter(log => {
+                    if (log.quarter === currentInfo.fullRoundLabel || log.quarter === currentQuarter) return true;
+                    const ts = log.sortValue;
+                    if (!ts) return false;
+                    const f = getClothFiscalInfo(ts);
+                    return f.fiscalYear === currentInfo.fiscalYear && f.month === currentInfo.month;
+                });
             }
             if (quarter === "all") {
                 return [...unitLogs];
@@ -1647,10 +1958,10 @@
         function renderUnitHistory() {
             const tbody = document.getElementById("unitHistoryBody");
             const logs = getFilteredUnitLogs().sort((a, b) => b.sortValue - a.sortValue);
-            
+
             const quarter = getSelectedQuarter();
             const unitQuarters = [...new Set(unitLogs.map(log => log.quarter).filter(Boolean))].sort().reverse();
-            const activeQuarterText = (quarter === "all") 
+            const activeQuarterText = (quarter === "all")
                 ? (unitQuarters.length > 0 ? `${unitQuarters[0]} (ล่าสุด)` : "ทั้งหมด")
                 : (quarter === "__current__" ? currentQuarter : quarter);
             document.getElementById("unitHistoryTitle").innerText = `ประวัติการตรวจนับ (รอบ: ${activeQuarterText})`;
@@ -1681,15 +1992,41 @@
 
         async function submitCountForm(event) {
             event.preventDefault();
-            if (isAlreadyCounted) {
-                return;
-            }
 
             const recorder = document.getElementById("countRecorder").value.trim();
             const note = document.getElementById("countNote").value.trim();
             if (!recorder) {
                 Swal.fire({ icon: "warning", title: "กรุณาระบุผู้บันทึก" });
                 return;
+            }
+
+            const currentInfo = getSelectedCountFiscalInfo();
+            const status = checkUnitQuarterStatus(currentInfo);
+
+            // หากไตรมาสนี้มีการตรวจนับไปแล้ว ให้มีแจ้งเตือนและสอบถามความต้องการบันทึกประจำเดือนเพิ่มเติม
+            if (status.hasQuarterCount) {
+                const countDate = status.latestQuarterLog.timestamp || "-";
+                const countRecorder = status.latestQuarterLog.recorder ? `โดย ${status.latestQuarterLog.recorder}` : "";
+                const confirmResult = await Swal.fire({
+                    icon: "question",
+                    title: "แจ้งเตือนการตรวจนับในไตรมาส",
+                    html: `
+                        <div style="text-align: left; font-size: 0.95rem; line-height: 1.6;">
+                            <p style="margin-bottom: 8px;">ไตรมาสนี้ (<strong>${escapeHtml(currentInfo.quarterShort)}</strong>) ได้ตรวจนับไปแล้วเมื่อ <strong>${escapeHtml(countDate)}</strong> ${escapeHtml(countRecorder)}</p>
+                            <p style="margin-bottom: 8px; color: #1d4ed8; font-weight: 600;">คุณต้องการตรวจนับประจำเดือน ${escapeHtml(currentInfo.monthName)} ${currentInfo.thaiYear} เพิ่มเติมใช่หรือไม่?</p>
+                            <p style="font-size: 0.82rem; color: #64748b; margin: 0;"><i class="fas fa-bullseye"></i> เกณฑ์การประเมิน: กำหนดให้ตรวจนับอย่างน้อยไตรมาสละ 1 ครั้ง</p>
+                        </div>
+                    `,
+                    showCancelButton: true,
+                    confirmButtonText: "ยืนยันการบันทึก",
+                    cancelButtonText: "ยกเลิก",
+                    confirmButtonColor: "#2563eb",
+                    cancelButtonColor: "#64748b"
+                });
+
+                if (!confirmResult.isConfirmed) {
+                    return;
+                }
             }
 
             const logs = masterItems.map((item, index) => {
@@ -1721,6 +2058,8 @@
             btn.disabled = true;
             btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก`;
 
+            const roundLabel = currentInfo.fullRoundLabel;
+
             try {
                 const response = await fetch(CLOTH_API, {
                     method: "POST",
@@ -1729,7 +2068,7 @@
                         action: "submitClothLog",
                         countModel: "hospital_v2",
                         ward: currentWard,
-                        quarter: currentQuarter,
+                        quarter: roundLabel,
                         recorder,
                         note,
                         logs: logs.map(log => ({
@@ -1755,7 +2094,7 @@
                     throw new Error(result?.message || "บันทึกข้อมูลไม่สำเร็จ");
                 }
 
-                appendSubmittedLogs(logs, recorder, note);
+                appendSubmittedLogs(logs, recorder, note, roundLabel);
                 isAlreadyCounted = true;
                 lastCountDate = new Date().toLocaleString("th-TH");
                 lastCountRecorder = recorder;
@@ -1778,24 +2117,30 @@
                 });
                 renderUnitHero();
                 renderCountLockState();
+                populateUnitQuarterFilter();
                 renderUnitDashboard();
                 renderUnitHistory();
 
-                Swal.fire({ icon: "success", title: "บันทึกสำเร็จ" });
+                Swal.fire({
+                    icon: "success",
+                    title: "บันทึกสำเร็จ",
+                    text: `บันทึกการตรวจนับประจำเดือน ${currentInfo.monthName} ${currentInfo.thaiYear} เรียบร้อยแล้ว`
+                });
             } catch (error) {
                 Swal.fire({ icon: "error", title: "บันทึกไม่สำเร็จ", text: error.message || "เกิดข้อผิดพลาด" });
             } finally {
-                btn.disabled = isAlreadyCounted;
+                btn.disabled = false;
                 btn.innerHTML = `<i class="fas fa-floppy-disk"></i> บันทึกการตรวจนับ`;
             }
         }
 
-        function appendSubmittedLogs(logs, recorder, note) {
+        function appendSubmittedLogs(logs, recorder, note, roundLabel) {
             const timestamp = new Date().toLocaleString("th-TH");
+            const activeRound = roundLabel || (getSelectedCountFiscalInfo().fullRoundLabel);
             const appended = logs.map(log => normalizeLog({
                 Timestamp: timestamp,
                 หน่วยงาน: currentWard,
-                รอบการตรวจ: currentQuarter,
+                รอบการตรวจ: activeRound,
                 ชื่อรายการผ้า: log.itemName,
                 หมวดหมู่ภาพรวม: log.mainCategory,
                 "ผ้าพร้อมใช้": log.readyStock,
@@ -2056,14 +2401,14 @@
             const bodyEl = document.getElementById("adminLogBody");
 
             const quarters = [...new Set(allLogs.map(log => log.quarter).filter(Boolean))].sort().reverse();
-            const activeQuarterText = (quarter === "all") 
-                ? (quarters.length > 0 ? `${quarters[0]} (ล่าสุด)` : "ทั้งหมด") 
+            const activeQuarterText = (quarter === "all")
+                ? (quarters.length > 0 ? `${quarters[0]} (ล่าสุด)` : "ทั้งหมด")
                 : quarter;
 
             if (adminViewMode === "category") {
                 exportBtn.innerText = "Export CSV (แยกตามหมวดหมู่)";
                 logsTitle.innerText = `สรุปแยกตามหมวดหมู่หลัก (รอบ: ${activeQuarterText})`;
-                
+
                 headerEl.innerHTML = `
                     <tr>
                         <th>หมวดหมู่หลัก</th>
@@ -2545,7 +2890,7 @@
                 const hasItems = !!(wardCriteria && wardCriteria[ward] > 0);
                 let requiredQuarters = 0;
                 let completedQuarters = 0;
-                
+
                 if (hasItems) {
                     dueQuarters.forEach(q => {
                         requiredQuarters += 1;
@@ -2554,7 +2899,7 @@
                         if (done) completedQuarters += 1;
                     });
                 }
-                
+
                 let score = null;
                 let statusLabel = "ไม่มีรายการที่ต้องนับในช่วงที่เลือก";
                 if (requiredQuarters > 0) {
@@ -2583,8 +2928,8 @@
             // ถ้าเลือกเดือนเริ่มต้นหลังเดือนสิ้นสุด ให้สลับค่ากันอัตโนมัติเพื่อไม่ให้ช่วงผิดเพี้ยน
             let from = Number(fromSelect.value);
             let to = Number(toSelect.value);
-            if (from > to) { 
-                const tmp = from; from = to; to = tmp; 
+            if (from > to) {
+                const tmp = from; from = to; to = tmp;
                 fromSelect.value = from;
                 toSelect.value = to;
             }
@@ -2766,6 +3111,16 @@
             link.click();
         }
 
+        async function enterAdminFromLaundry() {
+            // หน่วยซักฟอกเข้า Admin ได้โดยตรง ไม่ต้องใส่รหัสผ่าน
+            currentRole = "admin";
+            sessionStorage.setItem(SESSION_KEYS.role, "admin");
+            updateHeader();
+            setLoading(true, "กำลังโหลดข้อมูล");
+            await loadAdminMode();
+            setLoading(false);
+        }
+
         function showAdminLogin() {
             Swal.fire({
                 title: "เข้าสู่ระบบ Admin",
@@ -2850,4 +3205,5 @@
         }
     </script>
 </body>
+
 </html>
