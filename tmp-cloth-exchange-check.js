@@ -1,4 +1,4 @@
-﻿
+
         const EXCHANGE_API = 'https://script.google.com/macros/s/AKfycbwB42c0EM8n64wEGm76Ap5Kq-VSJKaBNfCPnBUEEN_TztQ_f5za1bOlJU_vfYo05T7nVw/exec';
         const APP_VERSION = '2026.04.21.01';
         const SESSION_KEYS = { ward: 'aide_ward', role: 'aide_role' };
@@ -834,8 +834,54 @@
                     </div>
                 `;
             } catch (error) {
-                Swal.fire({ icon: 'error', title: 'เนเธซเธฅเธ”เธฃเธฒเธขเธฅเธฐเน€เธญเธตเธขเธ”เนเธกเนเธชเธณเน€เธฃเนเธ', text: error.message || 'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”' });
+                Swal.fire({ icon: 'error', title: 'เน‚เธซเธฅเธ”เธฃเธฒเธขเธฅเธฐเน€เธญเธตเธขเธ”เน„เธกเนˆเธชเธณเน€เธฃเน‡เธˆ', text: error.message || 'เน€เธ เธดเธ”เธ‚เน‰เธญเธœเธดเธ”เธžเธฅเธฒเธ”' });
             }
+        }
+
+        function showAdminLogin() {
+            Swal.fire({
+                title: 'เข้าสู่ระบบ Admin',
+                html: `
+                    <input type="text" id="adminUser" class="swal2-input" placeholder="ชื่อผู้ใช้">
+                    <input type="password" id="adminPass" class="swal2-input" placeholder="รหัสผ่าน">
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'เข้าสู่ระบบ',
+                cancelButtonText: 'ยกเลิก',
+                preConfirm: async () => {
+                    const username = document.getElementById('adminUser').value.trim();
+                    const password = document.getElementById('adminPass').value.trim();
+                    if (!username || !password) {
+                        Swal.showValidationMessage('กรุณากรอกชื่อผู้ใช้และรหัสผ่าน');
+                        return false;
+                    }
+                    try {
+                        const AUTH_API = "https://aqhrfwqbroezrrcenyyb.supabase.co/functions/v1/cloth-exchange";
+                        const response = await fetch(AUTH_API, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ action: "adminLogin", username, password })
+                        });
+                        const result = await response.json();
+                        if (result.status !== "success") {
+                            Swal.showValidationMessage(result.message || "รหัสผ่านไม่ถูกต้อง");
+                            return false;
+                        }
+                        return true;
+                    } catch (err) {
+                        Swal.showValidationMessage("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
+                        return false;
+                    }
+                }
+            }).then(async result => {
+                if (!result.isConfirmed) return;
+                currentRole = 'admin';
+                sessionStorage.setItem(SESSION_KEYS.role, 'admin');
+                updateHeader();
+                setLoading(true, 'เธ เธณเธฅเธฑเธ‡เน‚เธซเธฅเธ”เธ‚เน‰เธญเธกเธนเธฅ');
+                await loadAdminWorkspace();
+                setLoading(false);
+            });
         }
 
         function renderStatus(status) {

@@ -1611,15 +1611,33 @@ document.getElementById('displayWard').innerText = isAdminLoggedIn ? 'หน่�
                 confirmButtonText: 'เข้าสู่ระบบ',
                 confirmButtonColor: '#003366',
                 focusConfirm: false,
-                preConfirm: () => {
+                preConfirm: async () => {
                     const user = Swal.getPopup().querySelector('#adminUser').value;
                     const pass = Swal.getPopup().querySelector('#adminPass').value;
-                    if (!user || !pass) { Swal.showValidationMessage(`กรุณากรอกข้อมูลให้ครบ`); }
-                    return { user: user, pass: pass }
+                    if (!user || !pass) { 
+                        Swal.showValidationMessage(`กรุณากรอกข้อมูลให้ครบ`); 
+                        return false; 
+                    }
+                    try {
+                        const AUTH_API = "https://aqhrfwqbroezrrcenyyb.supabase.co/functions/v1/cloth-exchange";
+                        const response = await fetch(AUTH_API, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ action: "adminLogin", username: user, password: pass })
+                        });
+                        const result = await response.json();
+                        if (result.status !== "success") {
+                            Swal.showValidationMessage(result.message || "รหัสผ่านไม่ถูกต้อง");
+                            return false;
+                        }
+                        return true;
+                    } catch (err) {
+                        Swal.showValidationMessage("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
+                        return false;
+                    }
                 }
             }).then((result) => {
                 if (result.isConfirmed) {
-                    if (result.value.user === '11450' && result.value.pass === '11450') {
                         isAdminLoggedIn = true;
                         sessionStorage.setItem('aide_role', 'admin');
                         document.getElementById('btnAdminLogin').style.display = 'none';

@@ -75,7 +75,7 @@ button,input,select,textarea{font:inherit;}
   font-size:.92rem;color:var(--text);background:#fff;}
 .field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--navy);outline-offset:1px;}
 .table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px;}
-table{width:100%;border-collapse:collapse;font-size:.86rem;min-width:640px;}
+table{width:100%;border-collapse:collapse;font-size:.86rem;min-width:auto;}
 thead th{background:#f2f6fb;color:var(--navy);text-align:left;padding:10px 12px;font-weight:600;
   white-space:nowrap;border-bottom:1px solid var(--border);}
 tbody td{padding:9px 12px;border-bottom:1px solid #eef2f7;vertical-align:middle;}
@@ -455,8 +455,7 @@ tbody tr:hover{background:#f8fbff;}
 
 <script>
 /* ======================= CONFIG ======================= */
-const STERILE_API = 'https://script.google.com/macros/s/AKfycbwuARkeDhmqhPu7-Y3a55qWxK_cWCgFMtsrEhcrE4_MQwH0nWlLP_TeivgFUDWy7T9x/exec'; // <-- ใส่ Web App URL ของ Sterile_Exchange.gs ที่นี่
-const ADMIN_PASSWORD = '11450'; // <-- เปลี่ยนรหัสผ่านแอดมินตามต้องการ
+const STERILE_API = 'https://aqhrfwqbroezrrcenyyb.supabase.co/functions/v1/sterile-exchange'; // <-- Supabase Edge Function URL
 
 let currentRole = sessionStorage.getItem('sterile_role') || '';
 let currentWard = sessionStorage.getItem('sterile_ward') || '';

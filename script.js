@@ -1,14 +1,10 @@
-// 🔴 ใส่ URL Web App ที่ได้จาก Google Apps Script ตรงนี้ (ใช้ URL เดิมที่เคยทำ)
-const API_URL = "https://script.google.com/macros/s/AKfycbx_xuBauWvjIYplrefNTSf6J0Y9ZzAv-FQhOvPk1SYC1qOU7C3sdrU6LL4wQI3Uz9dTeg/exec"; 
+// 🔴 API ของ Supabase Edge Function
+const API_URL = "https://aqhrfwqbroezrrcenyyb.supabase.co/functions/v1/cloth-exchange"; 
 
 let wardList = [];
 const SESSION_KEYS = {
     ward: "aide_ward",
     role: "aide_role"
-};
-const ADMIN_CREDENTIALS = {
-    username: "11450",
-    password: "11450"
 };
 const AVAILABLE_SYSTEMS = new Set([
     "equipment.html",
@@ -43,14 +39,12 @@ function syncShellToggleVisibility() {
 
 // ดึงข้อมูลหน่วยงานจาก Backend
 async function fetchWards() {
-    if (API_URL === "YOUR_WEB_APP_URL_FROM_GAS_HERE") return; // ป้องกัน Error ถ้ายังไม่ได้ใส่ URL
-
     try {
-        const response = await fetch(API_URL);
+        const response = await fetch(`${API_URL}?action=getAppMeta`);
         const result = await response.json();
         
         if (result.status === 'success') {
-            wardList = result.data;
+            wardList = result.data.wards.map(w => w.ward);
             const wardSelect = document.getElementById('wardInput');
             wardSelect.innerHTML = '<option value="" selected disabled>-- กรุณาเลือกหน่วยงาน --</option>';
             
@@ -216,7 +210,7 @@ function showAdminLogin() {
         showCancelButton: true,
         cancelButtonText: 'ยกเลิก',
         focusConfirm: false,
-        preConfirm: () => {
+        preConfirm: async () => {
             const username = document.getElementById('adminUser').value.trim();
             const password = document.getElementById('adminPass').value.trim();
 
@@ -225,12 +219,28 @@ function showAdminLogin() {
                 return false;
             }
 
-            if (username !== ADMIN_CREDENTIALS.username || password !== ADMIN_CREDENTIALS.password) {
-                Swal.showValidationMessage('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'adminLogin',
+                        username: username,
+                        password: password
+                    })
+                });
+                const result = await response.json();
+                
+                if (result.status !== 'success') {
+                    Swal.showValidationMessage(result.message || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+                    return false;
+                }
+                
+                return true;
+            } catch (error) {
+                Swal.showValidationMessage('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
                 return false;
             }
-
-            return true;
         }
     }).then((result) => {
         if (result.isConfirmed) {

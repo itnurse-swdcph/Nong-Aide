@@ -2,7 +2,7 @@
 
 :root {
     --shell-sidebar-width: 276px;
-    --shell-header-height: 76px;
+    --shell-header-height: 60px;
 }
 
 html,
@@ -137,6 +137,7 @@ body.has-app-shell {
     max-width: none;
     margin: 0 auto;
     padding: 0 28px 40px calc(var(--shell-sidebar-width) + 28px);
+    transition: padding-left 0.24s ease;
 }
 
 .app-shell-sidebar {
@@ -157,6 +158,7 @@ body.has-app-shell {
     color: #fff;
     box-shadow: 0 24px 44px rgba(13, 39, 66, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: transform 0.24s ease;
 }
 
 .app-shell-brand {
@@ -328,7 +330,18 @@ body > footer,
 }
 
 .shell-menu-toggle {
-    display: none;
+    display: inline-flex !important;
+    align-items: center;
+    gap: 8px;
+}
+
+@media (min-width: 1101px) {
+    body.shell-sidebar-open .app-shell-sidebar {
+        transform: translateX(-102%);
+    }
+    body.shell-sidebar-open .app-shell-layout {
+        padding-left: 28px;
+    }
 }
 
 .app-shell-overlay {

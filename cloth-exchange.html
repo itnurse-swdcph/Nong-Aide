@@ -462,7 +462,7 @@
 
         table {
             width: 100%;
-            min-width: 1100px;
+            min-width: auto;
             border-collapse: collapse;
             background: #fff;
         }
@@ -2521,7 +2521,23 @@
         }
 
         function hideLoadingPopup() {
-            if (Swal.isVisible()) Swal.close();
+            if (typeof Swal !== 'undefined') {
+                if (typeof Swal.hideLoading === 'function') Swal.hideLoading();
+                if (Swal.isVisible()) Swal.close();
+            }
+        }
+
+        function showSuccessToast(title, text = '') {
+            hideLoadingPopup();
+            return Swal.fire({
+                icon: 'success',
+                title: title,
+                text: text,
+                timer: 2000,
+                showConfirmButton: true,
+                confirmButtonText: 'ตกลง',
+                confirmButtonColor: '#153b63'
+            });
         }
 
         async function withLoadingPopup(text, task) {
@@ -3822,17 +3838,36 @@
         function showAdminLogin() {
             Swal.fire({
                 title: 'เข้าสู่ระบบ Admin',
-                html: `<input type="password" id="adminPass" class="swal2-input" placeholder="รหัสผ่าน">`,
+                html: `
+                    <input type="text" id="adminUser" class="swal2-input" placeholder="ชื่อผู้ใช้">
+                    <input type="password" id="adminPass" class="swal2-input" placeholder="รหัสผ่าน">
+                `,
                 showCancelButton: true,
                 confirmButtonText: 'เข้าสู่ระบบ',
                 cancelButtonText: 'ยกเลิก',
-                preConfirm: () => {
+                preConfirm: async () => {
+                    const username = document.getElementById('adminUser').value.trim();
                     const password = document.getElementById('adminPass').value.trim();
-                    if (password !== ADMIN_PASSWORD) {
-                        Swal.showValidationMessage('รหัสผ่านไม่ถูกต้อง');
+                    if (!username || !password) {
+                        Swal.showValidationMessage('กรุณากรอกชื่อผู้ใช้และรหัสผ่าน');
                         return false;
                     }
-                    return true;
+                    try {
+                        const response = await fetch(EXCHANGE_API, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'adminLogin', username, password })
+                        });
+                        const result = await response.json();
+                        if (result.status !== 'success') {
+                            Swal.showValidationMessage(result.message || 'รหัสผ่านไม่ถูกต้อง');
+                            return false;
+                        }
+                        return true;
+                    } catch (err) {
+                        Swal.showValidationMessage('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+                        return false;
+                    }
                 }
             }).then(async result => {
                 if (!result.isConfirmed) return;
@@ -4355,7 +4390,7 @@
 
                 await Promise.all([fetchAllRequests(), fetchStockRequests()]);
                 renderLaundryWorkspace();
-                Swal.fire({ icon: 'success', title: `${actionLabel}คำขอเรียบร้อยแล้ว` });
+                showSuccessToast(`${actionLabel}คำขอเรียบร้อยแล้ว`);
             } catch (error) {
                 Swal.fire({ icon: 'error', title: `${actionLabel}คำขอไม่สำเร็จ`, text: error.message || 'เกิดข้อผิดพลาด' });
             }
@@ -4718,7 +4753,7 @@
 
                 closeRecordModal();
                 await reloadWardStockReport();
-                Swal.fire({ icon: 'success', title: 'บันทึก STOCK เรียบร้อยแล้ว' });
+                showSuccessToast('บันทึก STOCK เรียบร้อยแล้ว');
             } catch (error) {
                 Swal.fire({ icon: 'error', title: 'บันทึก STOCK ไม่สำเร็จ', text: error.message || 'เกิดข้อผิดพลาด' });
             }
@@ -5030,7 +5065,7 @@
                 await fetchWardRequests();
                 renderUnitWorkspace();
                 await openUnitRequest(selectedUnitRequest.header.requestId);
-                Swal.fire({ icon: 'success', title: 'บันทึกการแก้ไขแล้ว' });
+                showSuccessToast('บันทึกการแก้ไขแล้ว');
             } catch (error) {
                 Swal.fire({ icon: 'error', title: 'บันทึกการแก้ไขไม่สำเร็จ', text: error.message || 'เกิดข้อผิดพลาด' });
             }
@@ -5061,10 +5096,11 @@
                     if (!response.ok || result.status !== 'success') throw new Error(result.message || 'ลงรับผ้าไม่สำเร็จ');
                 });
 
+                exchangeRequestDetailCache.delete(selectedUnitRequest.header.requestId);
                 await fetchWardRequests();
                 renderUnitWorkspace();
                 await openUnitRequest(selectedUnitRequest.header.requestId);
-                Swal.fire({ icon: 'success', title: 'ลงรับผ้าแล้ว' });
+                showSuccessToast('ลงรับผ้าแล้ว');
             } catch (error) {
                 Swal.fire({ icon: 'error', title: 'ลงรับผ้าไม่สำเร็จ', text: error.message || 'เกิดข้อผิดพลาด' });
             }
@@ -5207,10 +5243,11 @@
                     if (!response.ok || result.status !== 'success') throw new Error(result.message || 'ลงรับใบไม่สำเร็จ');
                 });
 
+                exchangeRequestDetailCache.delete(selectedLaundryRequest.header.requestId);
                 await fetchAllRequests();
                 renderLaundryWorkspace();
                 await openLaundryRequest(selectedLaundryRequest.header.requestId);
-                Swal.fire({ icon: 'success', title: 'ลงรับใบเบิกแล้ว' });
+                showSuccessToast('ลงรับใบเบิกแล้ว');
             } catch (error) {
                 Swal.fire({ icon: 'error', title: 'ลงรับใบไม่สำเร็จ', text: error.message || 'เกิดข้อผิดพลาด' });
             }
@@ -5259,10 +5296,11 @@
                     if (!response.ok || result.status !== 'success') throw new Error(result.message || 'บันทึกการจ่ายไม่สำเร็จ');
                 });
 
+                exchangeRequestDetailCache.delete(selectedLaundryRequest.header.requestId);
                 await fetchAllRequests();
                 renderLaundryWorkspace();
                 await openLaundryRequest(selectedLaundryRequest.header.requestId);
-                Swal.fire({ icon: 'success', title: 'บันทึกการจ่ายผ้าแล้ว' });
+                showSuccessToast('บันทึกการจ่ายผ้าแล้ว');
             } catch (error) {
                 Swal.fire({ icon: 'error', title: 'บันทึกการจ่ายไม่สำเร็จ', text: error.message || 'เกิดข้อผิดพลาด' });
             }
@@ -5482,11 +5520,12 @@
                     if (!response.ok || result.status !== 'success') throw new Error(result.message || 'ลงรับผ้าไม่สำเร็จ');
                 });
 
+                exchangeRequestDetailCache.delete(selectedUnitRequest.header.requestId);
                 await fetchWardRequests();
                 syncNotifications('unit', unitRequests);
                 renderUnitWorkspace();
                 await openUnitRequest(selectedUnitRequest.header.requestId);
-                Swal.fire({ icon: 'success', title: 'ลงรับผ้าแล้ว' });
+                showSuccessToast('ลงรับผ้าแล้ว');
             } catch (error) {
                 Swal.fire({ icon: 'error', title: 'ลงรับผ้าไม่สำเร็จ', text: error.message || 'เกิดข้อผิดพลาด' });
             }
@@ -5650,11 +5689,12 @@
                     if (!response.ok || result.status !== 'success') throw new Error(result.message || 'ลงรับใบไม่สำเร็จ');
                 });
 
+                exchangeRequestDetailCache.delete(selectedLaundryRequest.header.requestId);
                 await Promise.all([fetchAllRequests(), fetchStockRequests()]);
-                    syncNotifications('laundry', allRequests);
+                syncNotifications('laundry', allRequests);
                 renderLaundryWorkspace();
-                await openLaundryRequest(selectedLaundryRequest.header.requestId);
-                Swal.fire({ icon: 'success', title: 'ลงรับใบเบิกแล้ว' });
+                closeRecordModal();
+                showSuccessToast('ลงรับใบเบิกแล้ว');
             } catch (error) {
                 Swal.fire({ icon: 'error', title: 'ลงรับใบไม่สำเร็จ', text: error.message || 'เกิดข้อผิดพลาด' });
             }
@@ -5703,11 +5743,13 @@
                     if (!response.ok || result.status !== 'success') throw new Error(result.message || 'บันทึกการจ่ายไม่สำเร็จ');
                 });
 
+                exchangeRequestDetailCache.delete(selectedLaundryRequest.header.requestId);
                 await Promise.all([fetchAllRequests(), fetchStockRequests()]);
-                    syncNotifications('laundry', allRequests);
+                syncNotifications('laundry', allRequests);
                 renderLaundryWorkspace();
+                closeRecordModal();
                 await openLaundryRequest(selectedLaundryRequest.header.requestId);
-                Swal.fire({ icon: 'success', title: 'บันทึกการจ่ายผ้าแล้ว' });
+                showSuccessToast('บันทึกการจ่ายผ้าแล้ว');
             } catch (error) {
                 Swal.fire({ icon: 'error', title: 'บันทึกการจ่ายไม่สำเร็จ', text: error.message || 'เกิดข้อผิดพลาด' });
             }
