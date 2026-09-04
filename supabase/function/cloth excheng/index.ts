@@ -1,6 +1,6 @@
 // Supabase Edge Function: cloth-exchange
-// แทนที่ Google Apps Script (EXCHANGE_API) เดิมของโมดูล "แลกเปลี่ยนผ้า" (cloth-exchange.html)
-// รองรับ action เดิมทุกตัว โดย response เป็นรูปแบบ { status: 'success'|'error', message, data }
+// Replaces the legacy Google Apps Script (EXCHANGE_API) backend for the "cloth exchange" module (cloth-exchange.html).
+// Supports every legacy action, with responses shaped as { status: 'success'|'error', message, data }
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -94,39 +94,78 @@ function mapStockRequest(row: any) {
 }
 
 // ---------------------------------------------------------------------------
-// FIX (2026-09-03): getWardExchangeRequests / getLaundryExchangeRequests เดิม
-// ไม่ได้แนบ totalRequested/totalIssued/totalOutstanding มากับหัวใบเบิกแต่ละใบ
-// (ต่างจาก backend GAS เดิมที่แนบมาด้วยเสมอ) ทำให้หน้าเว็บ (enrichRequestsWithTotals
-// ใน cloth-exchange.html) ต้องยิง action=getExchangeRequestDetail แยกทีละใบสำหรับ
-// "ทุกแถว" ที่โหลดมา (N+1) และเพจฝั่งงานซักฟอก/แอดมินมี auto-refresh ทุก 30 วินาที
-// ด้วย -> เกิดการยิง request จำนวนมหาศาลซ้ำๆ (พบ >14,000 ครั้ง/วันจาก log จริง)
-// จนหน้าเว็บโหลดค้าง ("ระบบโหลดค้าง") โดยเฉพาะเมื่อจำนวนใบเบิกสะสมมากขึ้น
+// FIX (2026-09-03): getWardExchangeRequests / getLaundryExchangeRequests used to
+// omit totalRequested/totalIssued/totalOutstanding on each request header
+// (unlike the old GAS backend, which always included them). This forced the
+// frontend (enrichRequestsWithTotals in cloth-exchange.html) to call
+// action=getExchangeRequestDetail separately for EVERY row it loaded (N+1),
+// and the laundry/admin pages auto-refresh every 30s on top of that -> a huge
+// burst of repeated requests (14,000+ calls/day observed in real logs) that
+// made the page hang ("system stuck loading"), especially as request volume grew.
 //
-// วิธีแก้: ดึงผลรวมของแต่ละใบเบิกด้วย query เดียว (group by request_id) แล้วแนบ
-// เข้ากับหัวใบเบิกทุกใบก่อนส่งกลับ ทำให้ front-end ไม่ต้องเรียก detail เพิ่มอีกเลย
+// Fix: compute totals for all requests with a single aggregation query
+// (group by request_id) and attach them to every header before responding,
+// so the frontend never needs to call the detail endpoint per row again.
+//
+// FIX round 2 (2026-09-04 01:53 UTC): the first version used
+// .in("request_id", ids) with all 2,400+ request ids crammed into one query,
+// which made PostgREST build a URL that was too long and returned
+// "Bad Request" (visible in the function logs at the exact times the 500s
+// occurred) -> switched to reading exchange_request_lines in full (or joined
+// and filtered by ward for a single ward) and aggregating in code instead,
+// so no id list is ever sent via the query string.
+//
+// FIX round 3 (2026-09-04 02:05 UTC): round 2 didn't error, but
+// totalRequested/Issued/Outstanding came back as 0 for every request. Cause:
+// exchange_request_lines has ~15,800 rows, but PostgREST/Supabase caps rows
+// returned per request at 1,000 by default, silently, with no error. An
+// unranged select() therefore only ever read the first 1,000 rows, so totals
+// were missing for most requests -> fixed by paginating through all rows in
+// chunks of 1,000 via .range() before aggregating.
 // ---------------------------------------------------------------------------
-async function attachRequestTotals(headers: any[]) {
+const LINES_PAGE_SIZE = 1000;
+
+async function fetchLineTotalsByRequestId(ward?: string) {
+  const totalsByRequestId = new Map<string, { totalRequested: number; totalIssued: number; totalOutstanding: number }>();
+
+  let from = 0;
+  for (;;) {
+    let query = supabase
+      .from("exchange_request_lines")
+      .select(
+        ward
+          ? "request_id, requested_qty, issued_qty, outstanding_qty, exchange_requests!inner(ward)"
+          : "request_id, requested_qty, issued_qty, outstanding_qty",
+      )
+      .range(from, from + LINES_PAGE_SIZE - 1);
+    if (ward) query = query.eq("exchange_requests.ward", ward);
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    for (const line of data || []) {
+      const current = totalsByRequestId.get(line.request_id) || {
+        totalRequested: 0,
+        totalIssued: 0,
+        totalOutstanding: 0,
+      };
+      current.totalRequested += Number(line.requested_qty) || 0;
+      current.totalIssued += Number(line.issued_qty) || 0;
+      current.totalOutstanding += Number(line.outstanding_qty) || 0;
+      totalsByRequestId.set(line.request_id, current);
+    }
+
+    if (!data || data.length < LINES_PAGE_SIZE) break;
+    from += LINES_PAGE_SIZE;
+  }
+
+  return totalsByRequestId;
+}
+
+async function attachRequestTotals(headers: any[], ward?: string) {
   if (headers.length === 0) return headers;
 
-  const ids = headers.map((h) => h.requestId);
-  const { data: lines, error } = await supabase
-    .from("exchange_request_lines")
-    .select("request_id, requested_qty, issued_qty, outstanding_qty")
-    .in("request_id", ids);
-  if (error) throw error;
-
-  const totalsByRequestId = new Map<string, { totalRequested: number; totalIssued: number; totalOutstanding: number }>();
-  for (const line of lines || []) {
-    const current = totalsByRequestId.get(line.request_id) || {
-      totalRequested: 0,
-      totalIssued: 0,
-      totalOutstanding: 0,
-    };
-    current.totalRequested += Number(line.requested_qty) || 0;
-    current.totalIssued += Number(line.issued_qty) || 0;
-    current.totalOutstanding += Number(line.outstanding_qty) || 0;
-    totalsByRequestId.set(line.request_id, current);
-  }
+  const totalsByRequestId = await fetchLineTotalsByRequestId(ward);
 
   return headers.map((h) => ({
     ...h,
@@ -218,7 +257,7 @@ async function getWardExchangeRequests(ward: string) {
     .eq("ward", ward)
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return attachRequestTotals((data || []).map(mapRequestHeader));
+  return attachRequestTotals((data || []).map(mapRequestHeader), ward);
 }
 
 async function getLaundryExchangeRequests() {
