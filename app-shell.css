@@ -181,6 +181,19 @@ body.has-app-shell {
     display: none !important;
 }
 
+/* Legacy utility controls are replaced by the shared controls above. */
+.navbar .hamburger,
+.navbar [onclick*='toggleMenu'],
+.navbar [onclick*='refreshWorkspace'],
+.navbar [onclick*='logoutSystem'] {
+    display: none !important;
+}
+
+.navbar .nav-actions > .nav-btn:not(.notification-btn),
+.navbar .nav-actions > button:not(.notification-btn) {
+    display: none !important;
+}
+
 .navbar button,
 .navbar .nav-btn,
 .navbar .logout-btn {
@@ -217,6 +230,7 @@ body.has-app-shell {
     box-shadow: 0 24px 44px rgba(13, 39, 66, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.08);
     transition: transform 0.24s ease;
+    z-index: 1200;
 }
 
 .app-shell-brand {
@@ -425,13 +439,12 @@ body > footer,
 
     .app-shell-sidebar {
         position: fixed;
-        top: 0;
+        top: var(--shell-header-height);
         left: 0;
         bottom: 0;
-        height: 100vh;
         width: min(300px, 86vw);
         max-height: none;
-        height: 100vh;
+        height: calc(100vh - var(--shell-header-height));
         border-radius: 0 26px 26px 0;
         transform: translateX(-102%);
         transition: transform 0.24s ease;
@@ -473,6 +486,8 @@ body > footer,
 
     .app-shell-sidebar {
         width: min(286px, 88vw);
+        top: var(--shell-header-height);
+        height: calc(100vh - var(--shell-header-height));
     }
 
     .shell-topbar-controls {
