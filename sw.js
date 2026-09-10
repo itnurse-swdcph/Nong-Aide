@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aide-swd-v2026.09.10.6';
+const CACHE_NAME = 'aide-swd-v2026.09.10.10';
 
 self.addEventListener('install', event => {
   self.skipWaiting();
@@ -16,6 +16,12 @@ function repairEquipmentHtml(html) {
   const start = html.indexOf('function showAdminLogin() {');
   const end = html.indexOf('async function openInspectionScheduleModal()', start);
   let repaired = html;
+
+  // Force the equipment module itself to use the Supabase backend instead of the legacy GAS endpoint.
+  repaired = repaired.replace(
+    /const EQUIPMENT_API = (["']).*?\1\s*;/,
+    "const EQUIPMENT_API = 'https://aqhrfwqbroezrrcenyyb.supabase.co/functions/v1/equipment-api';"
+  );
 
   if (start >= 0 && end >= 0) {
     const replacement = [
@@ -78,7 +84,7 @@ function repairEquipmentHtml(html) {
     repaired = repaired.slice(0, start) + replacement + repaired.slice(end);
   }
 
-  const marker = '<!-- SWD_REPORT_FIX_2026_09_10_6 -->';
+  const marker = '<!-- SWD_REPORT_FIX_2026_09_10_10 -->';
   if (!repaired.includes(marker)) {
     const reportFix = [
       marker,
