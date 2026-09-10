@@ -777,7 +777,7 @@
         const isAdminEntry = entryRole === 'admin' && savedRole === 'admin';
         
         // 🔴 เชื่อมต่อ API เรียบร้อย
-        const EQUIPMENT_API = "https://script.google.com/macros/s/AKfycbxwDfAX8Jmu8WRqQGPf_JQWZWWuRITawJ3QSf0abeVdtDGaq4NYKGIEnPEauRAW7RjqoA/exec"; 
+        const EQUIPMENT_API = "https://aqhrfwqbroezrrcenyyb.supabase.co/functions/v1/equipment-api"; 
         const WARD_API = "https://script.google.com/macros/s/AKfycbyxrV1UaAq4dT2v3RKgzFCzfS9bKE3SSp1Fts02Y7v728Mud4da_WWuLfEESFdNcB4h/exec";
 
         let allEquipment = []; 
@@ -1602,61 +1602,61 @@ document.getElementById('displayWard').innerText = isAdminLoggedIn ? 'หน่�
         // ระบบจัดการแอดมิน (Admin Mode)
         // ==========================================
         function showAdminLogin() {
-            Swal.fire({
-                title: 'เข้าสู่ระบบผู้ดูแล',
-                html: `
-                    <input type="text" id="adminUser" class="swal-input" placeholder="ชื่อผู้ใช้" style="margin-bottom: 10px; box-sizing: border-box;">
-                    <input type="password" id="adminPass" class="swal-input" placeholder="รหัสผ่าน" style="box-sizing: border-box;">
-                `,
-                confirmButtonText: 'เข้าสู่ระบบ',
-                confirmButtonColor: '#003366',
-                focusConfirm: false,
-                preConfirm: async () => {
-                    const user = Swal.getPopup().querySelector('#adminUser').value;
-                    const pass = Swal.getPopup().querySelector('#adminPass').value;
-                    if (!user || !pass) { 
-                        Swal.showValidationMessage(`กรุณากรอกข้อมูลให้ครบ`); 
-                        return false; 
-                    }
-                    try {
-                        const AUTH_API = "https://aqhrfwqbroezrrcenyyb.supabase.co/functions/v1/cloth-exchange";
-                        const response = await fetch(AUTH_API, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ action: "adminLogin", username: user, password: pass })
-                        });
-                        const result = await response.json();
-                        if (result.status !== "success") {
-                            Swal.showValidationMessage(result.message || "รหัสผ่านไม่ถูกต้อง");
-                            return false;
-                        }
-                        return true;
-                    } catch (err) {
-                        Swal.showValidationMessage("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
-                        return false;
-                    }
+    Swal.fire({
+        title: '<i class="fas fa-user-shield"></i> เข้าสู่ระบบแอดมิน',
+        html: '<input type="text" id="adminUser" class="swal2-input" placeholder="ชื่อผู้ใช้" autocomplete="username">' +
+              '<input type="password" id="adminPass" class="swal2-input" placeholder="รหัสผ่าน" autocomplete="current-password">',
+        confirmButtonColor: '#003366',
+        confirmButtonText: 'เข้าสู่ระบบ',
+        showCancelButton: true,
+        cancelButtonText: 'ยกเลิก',
+        focusConfirm: false,
+        preConfirm: async () => {
+            const user = document.getElementById('adminUser').value.trim();
+            const pass = document.getElementById('adminPass').value.trim();
+            if (!user || !pass) {
+                Swal.showValidationMessage('กรุณากรอกชื่อผู้ใช้และรหัสผ่าน');
+                return false;
+            }
+            try {
+                const response = await fetch('https://aqhrfwqbroezrrcenyyb.supabase.co/functions/v1/ward-directory', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'adminLogin', username: user, password: pass })
+                });
+                const result = await response.json();
+                if (!response.ok || result.status !== 'success') {
+                    Swal.showValidationMessage(result.message || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+                    return false;
                 }
-            }).then((result) => {
-                if (result.isConfirmed) {
-                        isAdminLoggedIn = true;
-                        sessionStorage.setItem('aide_role', 'admin');
-                        document.getElementById('btnAdminLogin').style.display = 'none';
-                        document.getElementById('tab-admin').classList.remove('hidden-tab');
-                        updateWorkspaceMeta();
-                        updateInspectionWindowNotice();
-                        
-                        Swal.fire({
-                            icon: 'success', title: 'เข้าสู่ระบบสำเร็จ', text: 'กำลังดึงข้อมูลภาพรวมทั้งโรงพยาบาล...',
-                            timer: 1500, showConfirmButton: false
-                        }).then(() => { fetchAllEquipmentForAdmin(); });
-                    } else {
-                        Swal.fire('ข้อผิดพลาด', 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง', 'error');
-                    }
-                }
-            });
+                return true;
+            } catch (error) {
+                console.error('Admin login error:', error);
+                Swal.showValidationMessage('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
+                return false;
+            }
         }
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+        isAdminLoggedIn = true;
+        sessionStorage.setItem('aide_role', 'admin');
+        const loginButton = document.getElementById('btnAdminLogin');
+        const adminTab = document.getElementById('tab-admin');
+        if (loginButton) loginButton.style.display = 'none';
+        if (adminTab) adminTab.classList.remove('hidden-tab');
+        updateWorkspaceMeta();
+        updateInspectionWindowNotice();
+        Swal.fire({
+            icon: 'success',
+            title: 'เข้าสู่ระบบสำเร็จ',
+            text: 'กำลังดึงข้อมูลภาพรวมทั้งโรงพยาบาล...',
+            timer: 1500,
+            showConfirmButton: false
+        }).then(() => { fetchAllEquipmentForAdmin(); });
+    });
+}
 
-        async function openInspectionScheduleModal() {
+async function openInspectionScheduleModal() {
             if (!isAdminLoggedIn) {
                 Swal.fire('แจ้งเตือน', 'เฉพาะแอดมินเท่านั้นที่สามารถตั้งค่ารอบเปิดระบบได้', 'warning');
                 return;
