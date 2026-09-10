@@ -1,5 +1,5 @@
 {
-  "version": "2026.09.11.01",
-  "updatedAt": "2026-09-11T00:45:00+07:00",
-  "changes": "Equipment report pagination, fiscal-year history aggregation, monthly report counts, and MOU completion calculation fix"
+  "version": "2026.09.11.02",
+  "updatedAt": "2026-09-11T01:00:00+07:00",
+  "changes": "Automatic monthly inspection window 1-10 at 00:00-23:59:59 Asia/Bangkok, admin override/reset, and MOU required/completed month calculation"
 }
