@@ -17,11 +17,11 @@ function repairEquipmentHtml(html) {
 
   repaired = repaired.replace(
     /const EQUIPMENT_API = (["']).*?\1\s*;/,
-    "const EQUIPMENT_API = 'https://aqhrfwqbroezrrcenyyb1.supabase.co/functions/v1/equipment-api';"
+    "const EQUIPMENT_API = 'https://aqhrfwqbroezrrcenyyb.supabase.co/functions/v1/equipment-api';"
   );
   repaired = repaired.replace(
     /https:\/\/aqhrfwqbroezrrcenyyb\.supabase\.co\/functions\/v1\/cloth-exchange/g,
-    'https://aqhrfwqbroezrrcenyyb1.supabase.co/functions/v1/ward-directory'
+    'https://aqhrfwqbroezrrcenyyb.supabase.co/functions/v1/ward-directory'
   );
 
   return repaired;
