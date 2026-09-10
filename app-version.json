@@ -1,4 +1,5 @@
 {
-  "version": "2026.09.10.13",
-  "updatedAt": "2026-09-10T23:47:00+07:00"
+  "version": "2026.09.11.01",
+  "updatedAt": "2026-09-11T00:45:00+07:00",
+  "changes": "Equipment report pagination, fiscal-year history aggregation, monthly report counts, and MOU completion calculation fix"
 }
