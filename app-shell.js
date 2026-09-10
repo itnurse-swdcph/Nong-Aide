@@ -87,25 +87,38 @@
 
     // The sidebar is the single source of truth for system navigation.
     // The topbar only keeps utility actions so navigation is not duplicated.
+    function removeDuplicateUtilityControls(navbar) {
+        if (!navbar) return;
+        const utilityLabels = ['รีเฟรช', 'ออกจากระบบ'];
+        navbar.querySelectorAll('a, button').forEach((element) => {
+            if (element.closest('[data-shell-controls]')) return;
+            const text = (element.textContent || '').replace(/\s+/g, ' ').trim();
+            const aria = (element.getAttribute('aria-label') || '').trim();
+            const title = (element.getAttribute('title') || '').trim();
+            const combined = `${text} ${aria} ${title}`;
+            if (utilityLabels.some((label) => combined.includes(label))) {
+                element.classList.add('shell-duplicate-utility');
+            }
+        });
+    }
+
     function injectTopbarControls() {
-        const containers = [document.querySelector('.nav-actions'), document.querySelector('#navMenu'), document.querySelector('.nav-right')].filter(Boolean);
+        const navbar = document.querySelector('.navbar');
+        if (!navbar) return;
+        const containers = [navbar.querySelector('.nav-actions'), navbar.querySelector('#navMenu'), navbar.querySelector('.nav-right')].filter(Boolean);
         if (!containers.length) return;
         const target = containers[0];
 
-        // Remove only controls previously injected by AppShell, then rebuild once.
         target.querySelectorAll('[data-shell-controls]').forEach((node) => node.remove());
 
         const controls = document.createElement('div');
         controls.className = 'shell-topbar-controls';
         controls.setAttribute('data-shell-controls', 'true');
-
         controls.appendChild(makeShellButton('shell-menu-toggle', 'fa-bars', 'เมนู', () => window.AppShell.toggleSidebar(), { ariaLabel: 'เปิดเมนูระบบ' }));
         controls.appendChild(makeShellButton('shell-refresh', 'fa-rotate', 'รีเฟรช', () => window.location.reload(), { ariaLabel: 'รีเฟรชหน้า' }));
         controls.appendChild(makeShellButton('shell-logout', 'fa-right-from-bracket', 'ออกจากระบบ', logoutToHome, { ariaLabel: 'ออกจากระบบ' }));
-
         target.prepend(controls);
 
-        // Hide legacy navigation links/buttons that duplicate the sidebar.
         const duplicateTargets = ['หน้าหลัก', 'ตรวจนับครุภัณฑ์', 'Stock เครื่องผ้า', 'แลกผ้าสะอาด', 'วัสดุปราศจากเชื้อ'];
         target.querySelectorAll('a, button').forEach((element) => {
             if (element.closest('[data-shell-controls]')) return;
@@ -115,6 +128,7 @@
             const duplicateByHref = PAGE_LINKS.some((item) => href.split('?')[0].endsWith(item.href));
             if (duplicateByText || duplicateByHref) element.classList.add('shell-duplicate-nav');
         });
+        removeDuplicateUtilityControls(navbar);
     }
     function markActiveLinks() {
         const currentFile = getCurrentFile();
