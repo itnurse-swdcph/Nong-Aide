@@ -1,5 +1,5 @@
 (function () {
-    const APP_VERSION = '2026.09.11.06';
+    const APP_VERSION = '2026.09.11.07';
     const APP_VERSION_FILE = 'app-version.json';
     const VERSION_NOTICE_KEY = 'swd_app_version_notice';
     const LEGACY_EQUIPMENT_API = 'https://script.google.com/macros/s/AKfycbxwDfAX8Jmu8WRqQGPf_JQWZWWuRITawJ3QSf0abeVdtDGaq4NYKGIEnPEauRAW7RjqoA/exec';
@@ -18,7 +18,6 @@
         } catch (error) { console.warn('Equipment API migration bridge failed', error); }
         return nativeFetch(input, init);
     };
-
     const PAGE_LINKS = [
         { href: 'index.html', label: 'หน้าหลัก', icon: 'fa-house' },
         { href: 'equipment.html', label: 'ตรวจนับครุภัณฑ์', icon: 'fa-stethoscope' },
@@ -82,34 +81,33 @@
         button.addEventListener('click', handler);
         return button;
     }
+    function ensureMobileToggle() {
+        if (document.querySelector('.shell-mobile-toggle')) return;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'shell-mobile-toggle';
+        button.setAttribute('aria-label', 'เปิดเมนูระบบ');
+        button.innerHTML = '<i class="fas fa-bars"></i>';
+        button.addEventListener('click', () => setSidebarState(true));
+        document.body.appendChild(button);
+    }
     function createSidebar() {
         let sidebar = document.querySelector('.app-shell-sidebar');
-        if (sidebar) return sidebar;
-
+        if (sidebar) { ensureMobileToggle(); return sidebar; }
         sidebar = document.createElement('aside');
         sidebar.className = 'app-shell-sidebar';
         sidebar.setAttribute('aria-label', 'เมนูหลักของระบบ');
         sidebar.innerHTML = `
             <div class="app-shell-brand">
                 <img src="icon-192.png" alt="SWD Care Connect">
-                <div class="app-shell-brand-copy">
-                    <strong>SWD Care Connect</strong>
-                    <span>ระบบบริหารจัดการงานหน่วยงานอัจฉริยะ</span>
-                </div>
+                <div class="app-shell-brand-copy"><strong>SWD Care Connect</strong><span>ระบบบริหารจัดการงานหน่วยงานอัจฉริยะ</span></div>
             </div>
             <div class="app-shell-context" id="shellContext"></div>
-            <div class="app-shell-section">
-                <div class="app-shell-section-title">เมนูหลัก</div>
-                <nav class="app-shell-nav" id="shellMainNav"></nav>
-            </div>
-            <div class="app-shell-section app-shell-utility-section">
-                <div class="app-shell-section-title">การใช้งาน</div>
-                <div class="app-shell-actions" id="shellActions"></div>
-            </div>
+            <div class="app-shell-section"><div class="app-shell-section-title">เมนูหลัก</div><nav class="app-shell-nav" id="shellMainNav"></nav></div>
+            <div class="app-shell-section app-shell-utility-section"><div class="app-shell-section-title">การใช้งาน</div><div class="app-shell-actions" id="shellActions"></div></div>
             <div class="app-shell-footer">© 2026 Developed By Natnarinthorn</div>
         `;
         document.body.prepend(sidebar);
-
         const nav = sidebar.querySelector('#shellMainNav');
         PAGE_LINKS.forEach((item) => {
             const link = document.createElement('a');
@@ -119,23 +117,17 @@
             link.innerHTML = `<i class="fas ${item.icon}"></i><span>${item.label}</span>`;
             nav.appendChild(link);
         });
-
         const actions = sidebar.querySelector('#shellActions');
-        actions.appendChild(makeButton('shell-action-menu', 'fa-bars', 'เมนู', () => setSidebarState(false)));
         actions.appendChild(makeButton('shell-action-refresh', 'fa-rotate', 'รีเฟรชหน้า', () => window.location.reload()));
-
         const legacyChange = document.querySelector('#logoutBtn');
         if (legacyChange) {
             legacyChange.classList.remove('hidden');
             legacyChange.classList.add('app-shell-action', 'shell-change-unit');
             legacyChange.innerHTML = '<i class="fas fa-right-left"></i><span>เปลี่ยนหน่วยงาน</span>';
-            const existingActions = legacyChange.parentElement;
             actions.appendChild(legacyChange);
-            if (existingActions && existingActions !== actions && !existingActions.children.length) existingActions.remove();
         } else {
             actions.appendChild(makeButton('shell-action-logout', 'fa-right-from-bracket', 'ออกจากระบบ', clearSessionAndHome));
         }
-
         const legacyWard = document.querySelector('#currentWardDisplay');
         if (legacyWard) {
             const context = sidebar.querySelector('#shellContext');
@@ -143,6 +135,7 @@
             legacyWard.classList.remove('hidden');
             legacyWard.classList.add('app-shell-context-chip');
         }
+        ensureMobileToggle();
         return sidebar;
     }
     function buildLayout() {
@@ -153,7 +146,7 @@
         layout.className = 'app-shell-layout';
         const main = document.createElement('main');
         main.className = 'app-shell-main';
-        const movable = Array.from(document.body.children).filter((node) => node !== sidebar && !['SCRIPT', 'STYLE', 'LINK'].includes(node.tagName) && !node.classList.contains('app-shell-overlay'));
+        const movable = Array.from(document.body.children).filter((node) => node !== sidebar && !['SCRIPT', 'STYLE', 'LINK'].includes(node.tagName) && !node.classList.contains('shell-mobile-toggle') && !node.classList.contains('app-shell-overlay'));
         movable.forEach((node) => {
             if (node.classList.contains('navbar')) node.remove();
             else main.appendChild(node);
@@ -191,9 +184,7 @@
         let pagination = tableWrap.parentElement.querySelector(`[data-app-pagination="${tbody.id}"]`);
         if (rows.length <= TABLE_PAGE_SIZE) { if (pagination) pagination.remove(); return; }
         if (!pagination) {
-            pagination = document.createElement('div');
-            pagination.className = 'app-table-pagination';
-            pagination.dataset.appPagination = tbody.id;
+            pagination = document.createElement('div'); pagination.className = 'app-table-pagination'; pagination.dataset.appPagination = tbody.id;
             tableWrap.insertAdjacentElement('afterend', pagination);
         }
         const start = (page - 1) * TABLE_PAGE_SIZE + 1;
@@ -229,9 +220,7 @@
                 await Promise.all(cacheNames.map(cacheName => caches.delete(cacheName)));
             }
         } finally {
-            const url = new URL(window.location.href);
-            url.searchParams.set('app_updated', Date.now().toString());
-            window.location.replace(url.toString());
+            const url = new URL(window.location.href); url.searchParams.set('app_updated', Date.now().toString()); window.location.replace(url.toString());
         }
     }
     function showVersionNotice(remoteVersion) {
@@ -239,35 +228,25 @@
         if (sessionStorage.getItem(noticeKey)) return;
         sessionStorage.setItem(noticeKey, '1');
         const show = () => {
-            if (typeof window.Swal === 'undefined') {
-                if (window.confirm(`มีระบบเวอร์ชันใหม่ ${remoteVersion} ต้องการอัปเดตระบบหรือไม่`)) updateApplication();
-                return;
-            }
+            if (typeof window.Swal === 'undefined') { if (window.confirm(`มีระบบเวอร์ชันใหม่ ${remoteVersion} ต้องการอัปเดตระบบหรือไม่`)) updateApplication(); return; }
             window.Swal.fire({ icon: 'info', title: 'พบเวอร์ชันใหม่ของระบบ', html: `เวอร์ชันปัจจุบัน <b>${APP_VERSION}</b><br>เวอร์ชันใหม่ <b>${remoteVersion}</b>`, confirmButtonText: 'อัปเดตระบบอัตโนมัติ', cancelButtonText: 'ไว้ภายหลัง', showCancelButton: true, allowOutsideClick: false, confirmButtonColor: '#003366' }).then(result => { if (result.isConfirmed) updateApplication(); });
         };
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show, { once: true }); else show();
     }
     async function checkApplicationVersion() {
-        if (new URLSearchParams(window.location.search).has('app_updated')) {
-            const url = new URL(window.location.href); url.searchParams.delete('app_updated'); window.history.replaceState({}, document.title, url.toString());
-        }
+        if (new URLSearchParams(window.location.search).has('app_updated')) { const url = new URL(window.location.href); url.searchParams.delete('app_updated'); window.history.replaceState({}, document.title, url.toString()); }
         try {
             const response = await window.fetch(`${APP_VERSION_FILE}?_=${Date.now()}`, { cache: 'no-store', silentLoading: true });
             if (!response.ok) return;
             const data = await response.json();
             const remoteVersion = String(data.version || '').trim();
-            if (remoteVersion && compareVersions(remoteVersion, APP_VERSION) > 0) showVersionNotice(remoteVersion);
-            else if (remoteVersion) localStorage.setItem('swd_app_version', remoteVersion);
+            if (remoteVersion && compareVersions(remoteVersion, APP_VERSION) > 0) showVersionNotice(remoteVersion); else if (remoteVersion) localStorage.setItem('swd_app_version', remoteVersion);
         } catch (error) { console.warn('ไม่สามารถตรวจสอบเวอร์ชันระบบได้', error); }
     }
     function init() {
         if (document.body.classList.contains('no-app-shell')) return;
         document.body.classList.add('has-app-shell');
-        buildLayout();
-        markActiveLinks();
-        bindNavigation();
-        bindTablePagination();
-        checkApplicationVersion();
+        buildLayout(); markActiveLinks(); bindNavigation(); bindTablePagination(); checkApplicationVersion();
     }
     window.AppShell = {
         navigate(target) { window.location.href = buildHref(target); },
