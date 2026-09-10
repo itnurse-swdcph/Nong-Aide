@@ -57,7 +57,7 @@ body.has-app-shell {
 
 .navbar {
     min-height: var(--shell-header-height);
-    padding: 14px clamp(18px, 3vw, 42px) !important;
+    padding: 10px clamp(18px, 3vw, 42px) !important;
     align-items: center !important;
     background: linear-gradient(120deg, #0b2744 0%, #16507b 100%) !important;
     box-shadow: 0 8px 24px rgba(11, 39, 68, 0.16) !important;
@@ -121,6 +121,64 @@ body.has-app-shell {
 .navbar .nav-right,
 .navbar .nav-actions {
     align-items: center;
+}
+
+/* Shared Topbar controls: one consistent button design on every page. */
+.shell-topbar-controls {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 7px;
+    flex-wrap: wrap;
+}
+
+.navbar .shell-topbar-btn,
+.navbar .nav-actions > button,
+.navbar .nav-right > button,
+.navbar .logout-btn {
+    min-height: 38px;
+    padding: 7px 13px !important;
+    border: 1px solid rgba(255, 255, 255, 0.18) !important;
+    border-radius: 10px !important;
+    background: rgba(255, 255, 255, 0.10) !important;
+    color: #fff !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    font-size: 0.88rem !important;
+    font-weight: 500 !important;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+    box-shadow: none !important;
+    transition: background-color .18s ease, border-color .18s ease, transform .18s ease;
+}
+
+.navbar .shell-topbar-btn:hover,
+.navbar .nav-actions > button:hover,
+.navbar .nav-right > button:hover,
+.navbar .logout-btn:hover {
+    background: rgba(255, 255, 255, 0.18) !important;
+    border-color: rgba(255, 255, 255, 0.32) !important;
+    transform: translateY(-1px);
+}
+
+.navbar .shell-topbar-btn i,
+.navbar .nav-actions > button i,
+.navbar .nav-right > button i,
+.navbar .logout-btn i {
+    width: 16px;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.navbar .shell-logout {
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.navbar .shell-duplicate-nav {
+    display: none !important;
 }
 
 .navbar button,
@@ -393,6 +451,19 @@ body > footer,
     .app-shell-main {
         padding-top: 0;
     }
+
+    .shell-topbar-controls {
+        gap: 5px;
+    }
+
+    .navbar .shell-topbar-btn,
+    .navbar .nav-actions > button,
+    .navbar .nav-right > button,
+    .navbar .logout-btn {
+        min-height: 36px;
+        padding: 6px 10px !important;
+        font-size: 0.84rem !important;
+    }
 }
 
 @media (max-width: 760px) {
@@ -402,5 +473,19 @@ body > footer,
 
     .app-shell-sidebar {
         width: min(286px, 88vw);
+    }
+
+    .shell-topbar-controls {
+        gap: 4px;
+    }
+
+    .navbar .shell-topbar-btn span {
+        display: none;
+    }
+
+    .navbar .shell-topbar-btn {
+        width: 36px;
+        min-width: 36px;
+        padding: 6px !important;
     }
 }
