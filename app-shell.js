@@ -1,13 +1,10 @@
 (function () {
-    const APP_VERSION = '2026.09.10.1';
+    const APP_VERSION = '2026.09.11.03';
     const APP_VERSION_FILE = 'app-version.json';
     const VERSION_NOTICE_KEY = 'swd_app_version_notice';
 
-    // Equipment migration bridge: keep the existing equipment.html UI/API contract,
-    // but route only the legacy equipment GAS endpoint to Supabase.
     const LEGACY_EQUIPMENT_API = 'https://script.google.com/macros/s/AKfycbxwDfAX8Jmu8WRqQGPf_JQWZWWuRITawJ3QSf0abeVdtDGaq4NYKGIEnPEauRAW7RjqoA/exec';
     const SUPABASE_EQUIPMENT_API = 'https://aqhrfwqbroezrrcenyyb.supabase.co/functions/v1/equipment-api';
-
     const nativeFetch = window.fetch.bind(window);
     window.fetch = function (input, init) {
         try {
@@ -19,9 +16,7 @@
                 if (typeof input === 'string') return nativeFetch(target.toString(), init);
                 return nativeFetch(new Request(target.toString(), input), init);
             }
-        } catch (error) {
-            console.warn('Equipment API migration bridge failed', error);
-        }
+        } catch (error) { console.warn('Equipment API migration bridge failed', error); }
         return nativeFetch(input, init);
     };
 
@@ -33,10 +28,8 @@
         { href: 'sterile-exchange.html', label: 'วัสดุปราศจากเชื้อ', icon: 'fa-syringe' }
     ];
     const PAGINATED_TABLE_IDS = [
-        'userDashAwaitBody', 'userDashProcessingBody', 'userDashCompletedBody',
-        'adminQueueBody', 'adminProcessingBody', 'adminWaitingBody', 'adminHistoryBody',
-        'unitDashboardAwaitBody', 'unitDashboardCompletedBody', 'unitRequestBody',
-        'laundryPendingReceiveBody', 'laundryPendingIssueBody', 'laundryQueueBody',
+        'userDashAwaitBody', 'userDashProcessingBody', 'userDashCompletedBody', 'adminQueueBody', 'adminProcessingBody', 'adminWaitingBody', 'adminHistoryBody',
+        'unitDashboardAwaitBody', 'unitDashboardCompletedBody', 'unitRequestBody', 'laundryPendingReceiveBody', 'laundryPendingIssueBody', 'laundryQueueBody',
         'laundryHistoryBody', 'stockRequestTableBody', 'adminBody'
     ];
     const TABLE_PAGE_SIZE = 10;
@@ -55,7 +48,6 @@
         });
         return context;
     }
-
     function buildHref(target) {
         const context = getCurrentContext();
         const params = new URLSearchParams();
@@ -64,13 +56,11 @@
         const suffix = params.toString();
         return suffix ? `${target}?${suffix}` : target;
     }
-
     function getCurrentFile() {
         const pathname = window.location.pathname || '';
         const match = pathname.match(/([^\\/]+)$/);
         return (match && match[1]) ? match[1].toLowerCase() : 'index.html';
     }
-
     function setSidebarState(open) {
         const sidebar = document.querySelector('.app-shell-sidebar');
         const overlay = document.querySelector('.app-shell-overlay');
@@ -79,7 +69,6 @@
         overlay.classList.toggle('open', open);
         document.body.classList.toggle('shell-sidebar-open', open);
     }
-
     function injectToggleButton() {
         const containers = [document.querySelector('.nav-actions'), document.querySelector('#navMenu'), document.querySelector('.nav-right')].filter(Boolean);
         if (!containers.length || document.querySelector('[data-shell-toggle]')) return;
@@ -88,11 +77,11 @@
         button.type = 'button';
         button.className = 'nav-btn shell-menu-toggle';
         button.setAttribute('data-shell-toggle', 'true');
-        button.innerHTML = '<i class="fas fa-bars"></i> เมนู';
+        button.setAttribute('aria-label', 'เปิดเมนูระบบ');
+        button.innerHTML = '<i class="fas fa-bars"></i><span>เมนู</span>';
         button.addEventListener('click', () => window.AppShell.toggleSidebar());
         target.prepend(button);
     }
-
     function markActiveLinks() {
         const currentFile = getCurrentFile();
         document.querySelectorAll('.app-shell-sidebar [data-shell-href]').forEach((link) => {
@@ -103,7 +92,6 @@
             if (isActive) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
         });
     }
-
     function closeOnExternalClick() {
         const sidebar = document.querySelector('.app-shell-sidebar');
         const overlay = document.querySelector('.app-shell-overlay');
@@ -111,7 +99,6 @@
         overlay.addEventListener('click', () => setSidebarState(false));
         document.addEventListener('keydown', (event) => { if (event.key === 'Escape') setSidebarState(false); });
     }
-
     function paginateTableBody(tbody) {
         const rows = Array.from(tbody.children).filter(row => !row.classList.contains('empty-row'));
         const totalPages = Math.max(1, Math.ceil(rows.length / TABLE_PAGE_SIZE));
@@ -133,7 +120,6 @@
         pagination.innerHTML = `<span>แสดง ${start}-${end} จาก ${rows.length} รายการ | หน้า ${page}/${totalPages}</span><span class="app-table-pagination-actions"><button type="button" data-page="${page - 1}" ${page === 1 ? 'disabled' : ''}>ก่อนหน้า</button><button type="button" data-page="${page + 1}" ${page === totalPages ? 'disabled' : ''}>ถัดไป</button></span>`;
         pagination.querySelectorAll('button[data-page]').forEach(button => button.addEventListener('click', () => { tablePageState[tbody.id] = Number(button.dataset.page); paginateTableBody(tbody); }));
     }
-
     function bindTablePagination() {
         PAGINATED_TABLE_IDS.forEach(id => {
             const tbody = document.getElementById(id);
@@ -143,7 +129,6 @@
             paginateTableBody(tbody);
         });
     }
-
     function compareVersions(left, right) {
         const a = String(left || '').split('.').map(Number), b = String(right || '').split('.').map(Number);
         for (let i = 0; i < Math.max(a.length, b.length); i += 1) {
@@ -152,7 +137,6 @@
         }
         return 0;
     }
-
     async function updateApplication() {
         try {
             if ('serviceWorker' in navigator) {
@@ -169,7 +153,6 @@
             window.location.replace(url.toString());
         }
     }
-
     function showVersionNotice(remoteVersion) {
         const noticeKey = `${VERSION_NOTICE_KEY}:${remoteVersion}`;
         if (sessionStorage.getItem(noticeKey)) return;
@@ -183,7 +166,6 @@
         };
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show, { once: true }); else show();
     }
-
     async function checkApplicationVersion() {
         if (new URLSearchParams(window.location.search).has('app_updated')) {
             const url = new URL(window.location.href); url.searchParams.delete('app_updated'); window.history.replaceState({}, document.title, url.toString());
@@ -197,14 +179,12 @@
             else if (remoteVersion) localStorage.setItem('swd_app_version', remoteVersion);
         } catch (error) { console.warn('ไม่สามารถตรวจสอบเวอร์ชันระบบได้', error); }
     }
-
     function init() {
         const sidebar = document.querySelector('.app-shell-sidebar');
         if (!sidebar) return;
         document.body.classList.add('has-app-shell');
         injectToggleButton(); markActiveLinks(); closeOnExternalClick(); bindTablePagination(); checkApplicationVersion();
     }
-
     window.AppShell = {
         navigate(target) { window.location.href = buildHref(target); },
         openSidebar() { setSidebarState(true); },
@@ -212,6 +192,5 @@
         toggleSidebar() { const sidebar = document.querySelector('.app-shell-sidebar'); if (!sidebar) return; setSidebarState(!sidebar.classList.contains('open')); },
         refreshLinks() { markActiveLinks(); },
     };
-
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
