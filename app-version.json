@@ -1,5 +1,5 @@
 {
-  "version": "2026.09.11.02",
-  "updatedAt": "2026-09-11T01:00:00+07:00",
-  "changes": "Automatic monthly inspection window 1-10 at 00:00-23:59:59 Asia/Bangkok, admin override/reset, and MOU required/completed month calculation"
+  "version": "2026.09.11.03",
+  "updatedAt": "2026-09-11T01:15:00+07:00",
+  "changes": "Compact topbar across all app-shell pages and consistent menu button including equipment inspection system"
 }
