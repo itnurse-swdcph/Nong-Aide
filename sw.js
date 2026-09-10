@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aide-swd-v2026.09.10.5';
+const CACHE_NAME = 'aide-swd-v2026.09.10.6';
 
 self.addEventListener('install', event => {
   self.skipWaiting();
@@ -78,12 +78,24 @@ function repairEquipmentHtml(html) {
     repaired = repaired.slice(0, start) + replacement + repaired.slice(end);
   }
 
-  const marker = '<!-- SWD_REPORT_FIX_2026_09_10_5 -->';
+  const marker = '<!-- SWD_REPORT_FIX_2026_09_10_6 -->';
   if (!repaired.includes(marker)) {
     const reportFix = [
       marker,
       '<script>',
       '(function () {',
+      "  const SUPABASE_EQUIPMENT_REPORT_API = 'https://aqhrfwqbroezrrcenyyb.supabase.co/functions/v1/equipment-api';",
+      '',
+      '  async function fetchSupabaseReport(fiscalYear) {',
+      "    const url = new URL(SUPABASE_EQUIPMENT_REPORT_API);",
+      "    url.searchParams.set('action', 'getDepartmentSummaryReport');",
+      "    url.searchParams.set('fiscalYear', String(fiscalYear));",
+      "    url.searchParams.set('_ts', String(Date.now()));",
+      "    const response = await fetch(url.toString(), { cache: 'no-store' });",
+      "    const data = await response.json();",
+      "    if (!response.ok || data.status !== 'success') throw new Error(data.message || ('HTTP ' + response.status));",
+      '    return data;',
+      '  }',
       '',
       '  loadDepartmentSummaryReport = async function () {',
       "    if (!isAdminLoggedIn) return;",
@@ -94,9 +106,7 @@ function repairEquipmentHtml(html) {
       "    body.innerHTML = '<tr><td colspan=\"14\">กำลังโหลดรายงาน...</td></tr>';",
       '    try {',
       '      const selectedThaiYear = Number(select.value);',
-      '      const backendYear = selectedThaiYear > 2400 ? selectedThaiYear - 1 : selectedThaiYear;',
-      "      const result = await apiGetJson('getDepartmentSummaryReport', { fiscalYear: backendYear });",
-      "      if (result.status !== 'success') throw new Error(result.message || 'โหลดรายงานไม่สำเร็จ');",
+      '      const result = await fetchSupabaseReport(selectedThaiYear);',
       '      result.data.fiscalYear = selectedThaiYear;',
       '      lastDepartmentSummaryReport = result.data;',
       "      body.innerHTML = (result.data.rows || []).map(row => {",
@@ -104,7 +114,7 @@ function repairEquipmentHtml(html) {
       "        return '<tr><td>' + escapeHtml(row.department) + '</td>' + cells + '<td><strong>' + row.inspected + '/' + row.total + '</strong><br><small>' + Number(row.percentage || 0).toFixed(2) + '%</small></td></tr>';",
       "      }).join('') || '<tr><td colspan=\"14\">ไม่พบข้อมูลในปีงบประมาณนี้</td></tr>';",
       "      const meta = document.getElementById('departmentReportMeta');",
-      "      if (meta) meta.textContent = 'ปีงบประมาณ พ.ศ. ' + result.data.fiscalYear + ' | จัดทำเมื่อ ' + new Date(result.data.generatedAt).toLocaleString('th-TH');",
+      "      if (meta) meta.textContent = 'ปีงบประมาณ พ.ศ. ' + result.data.fiscalYear + ' | โหลดจาก Supabase | ' + new Date().toLocaleString('th-TH');",
       '    } catch (error) {',
       "      body.innerHTML = '<tr><td colspan=\"14\">ไม่สามารถโหลดรายงานได้: ' + escapeHtml(error.message || error) + '</td></tr>';",
       '    }',
@@ -119,9 +129,7 @@ function repairEquipmentHtml(html) {
       "    body.innerHTML = '<tr><td colspan=\"5\">กำลังโหลดรายงาน...</td></tr>';",
       '    try {',
       '      const selectedThaiYear = Number(yearSelect.value);',
-      '      const backendYear = selectedThaiYear > 2400 ? selectedThaiYear - 1 : selectedThaiYear;',
-      "      const result = await apiGetJson('getDepartmentSummaryReport', { fiscalYear: backendYear });",
-      "      if (result.status !== 'success') throw new Error(result.message || 'โหลดรายงานไม่สำเร็จ');",
+      '      const result = await fetchSupabaseReport(selectedThaiYear);',
       '      result.data.fiscalYear = selectedThaiYear;',
       '      lastMouSourceReport = result.data;',
       '      renderMouScoreReport();',
