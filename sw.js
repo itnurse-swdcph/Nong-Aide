@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aide-swd-v2026.09.10.11';
+const CACHE_NAME = 'aide-swd-v2026.09.10.12';
 
 self.addEventListener('install', event => {
   self.skipWaiting();
@@ -15,9 +15,8 @@ self.addEventListener('activate', event => {
 function repairEquipmentHtml(html) {
   let repaired = html;
 
-  // Keep the original equipment page structure intact. Only redirect its legacy
-  // backend endpoints to the active Supabase services. This avoids rewriting
-  // JavaScript function bodies at runtime and therefore avoids syntax corruption.
+  // The source file is already repaired. Keep this worker limited to
+  // non-invasive endpoint redirection so it never rewrites JavaScript blocks.
   repaired = repaired.replace(
     /const EQUIPMENT_API = (["']).*?\1\s*;/,
     "const EQUIPMENT_API = 'https://aqhrfwqbroezrrcenyyb.supabase.co/functions/v1/equipment-api';"
