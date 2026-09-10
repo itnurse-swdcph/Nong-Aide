@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aide-swd-v2026.09.10.4';
+const CACHE_NAME = 'aide-swd-v2026.09.10.5';
 
 self.addEventListener('install', event => {
   self.skipWaiting();
@@ -78,17 +78,15 @@ function repairEquipmentHtml(html) {
     repaired = repaired.slice(0, start) + replacement + repaired.slice(end);
   }
 
-  const marker = '<!-- SWD_REPORT_FIX_2026_09_10_4 -->';
+  const marker = '<!-- SWD_REPORT_FIX_2026_09_10_5 -->';
   if (!repaired.includes(marker)) {
     const reportFix = [
       marker,
       '<script>',
       '(function () {',
-      "  const originalLoadDepartmentSummaryReport = window.loadDepartmentSummaryReport;",
-      "  const originalLoadMouScoreReport = window.loadMouScoreReport;",
       '',
-      '  window.loadDepartmentSummaryReport = async function () {',
-      "    if (!window.isAdminLoggedIn) return;",
+      '  loadDepartmentSummaryReport = async function () {',
+      "    if (!isAdminLoggedIn) return;",
       "    if (typeof initializeDepartmentReportYears === 'function') initializeDepartmentReportYears();",
       "    const select = document.getElementById('departmentReportFiscalYear');",
       "    const body = document.getElementById('departmentSummaryTableBody');",
@@ -100,7 +98,7 @@ function repairEquipmentHtml(html) {
       "      const result = await apiGetJson('getDepartmentSummaryReport', { fiscalYear: backendYear });",
       "      if (result.status !== 'success') throw new Error(result.message || 'โหลดรายงานไม่สำเร็จ');",
       '      result.data.fiscalYear = selectedThaiYear;',
-      '      window.lastDepartmentSummaryReport = result.data;',
+      '      lastDepartmentSummaryReport = result.data;',
       "      body.innerHTML = (result.data.rows || []).map(row => {",
       "        const cells = (row.months || []).map(month => '<td>' + escapeHtml(month.display || '-') + '</td>').join('');",
       "        return '<tr><td>' + escapeHtml(row.department) + '</td>' + cells + '<td><strong>' + row.inspected + '/' + row.total + '</strong><br><small>' + Number(row.percentage || 0).toFixed(2) + '%</small></td></tr>';",
@@ -112,8 +110,8 @@ function repairEquipmentHtml(html) {
       '    }',
       '  };',
       '',
-      '  window.loadMouScoreReport = async function () {',
-      "    if (!window.isAdminLoggedIn) return;",
+      '  loadMouScoreReport = async function () {',
+      "    if (!isAdminLoggedIn) return;",
       "    if (typeof initializeMouReportControls === 'function') initializeMouReportControls();",
       "    const yearSelect = document.getElementById('mouReportFiscalYear');",
       "    const body = document.getElementById('mouScoreTableBody');",
@@ -125,14 +123,14 @@ function repairEquipmentHtml(html) {
       "      const result = await apiGetJson('getDepartmentSummaryReport', { fiscalYear: backendYear });",
       "      if (result.status !== 'success') throw new Error(result.message || 'โหลดรายงานไม่สำเร็จ');",
       '      result.data.fiscalYear = selectedThaiYear;',
-      '      window.lastMouSourceReport = result.data;',
-      "      renderMouScoreReport();",
+      '      lastMouSourceReport = result.data;',
+      '      renderMouScoreReport();',
       '    } catch (error) {',
       "      body.innerHTML = '<tr><td colspan=\"5\">ไม่สามารถโหลดรายงานได้: ' + escapeHtml(error.message || error) + '</td></tr>';",
       '    }',
       '  };',
       '',
-      "  window.computeEquipmentMouScores = function (sourceReport, fromMonthKey, toMonthKey) {",
+      '  computeEquipmentMouScores = function (sourceReport, fromMonthKey, toMonthKey) {',
       '    const from = Number(fromMonthKey);',
       '    const to = Number(toMonthKey);',
       '    return (sourceReport.rows || []).map(row => {',
@@ -158,8 +156,6 @@ function repairEquipmentHtml(html) {
       '    });',
       '  };',
       '',
-      '  void originalLoadDepartmentSummaryReport;',
-      '  void originalLoadMouScoreReport;',
       '})();',
       '</script>'
     ].join('\n');
