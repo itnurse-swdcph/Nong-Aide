@@ -105,7 +105,7 @@ async function inspectionWindowStatus() {
 async function departmentReport(fiscalYear: unknown) {
   const fy = Number(fiscalYear) || new Date().getFullYear() + 543
   const startYear = fy - 543
-  const months = Array.from({ length: 12 }, (_, i) => ({ y: i < 3 ? startYear : startYear + 1, m: (9 + i) % 12 }))
+  const months = Array.from({ length: 12 }, (_, i) => ({ y: i < 3 ? startYear - 1 : startYear, m: (9 + i) % 12 }))
   const { data: items, error: ie } = await db.from('equipment_items').select('rmc_no,item_id,owner_ward,usage_ward')
   if (ie) throw ie
   const { data: history, error: he } = await db.from('equipment_history').select('item_id,ts,status,ward')
