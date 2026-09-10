@@ -31,6 +31,21 @@ const isoOrNull = (v: unknown) => {
   const d = new Date(s); return Number.isNaN(d.getTime()) ? null : d.toISOString()
 }
 
+const PAGE_SIZE = 1000
+
+async function fetchAllRows<T = any>(buildQuery: (from: number, to: number) => any): Promise<T[]> {
+  const rows: T[] = []
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const to = from + PAGE_SIZE - 1
+    const { data, error } = await buildQuery(from, to)
+    if (error) throw error
+    const page = (data ?? []) as T[]
+    rows.push(...page)
+    if (page.length < PAGE_SIZE) break
+  }
+  return rows
+}
+
 function toApiItem(r: any) {
   return {
     'RMC No': r.rmc_no,
@@ -72,12 +87,13 @@ async function findItem(itemId?: unknown, rmcNo?: unknown) {
 }
 
 async function listItems(ward = '') {
-  let q = db.from('equipment_items').select('*').order('seq', { ascending: true })
   const w = clean(ward)
-  if (w) q = q.or(`owner_ward.eq.${w},usage_ward.eq.${w}`)
-  const { data, error } = await q
-  if (error) throw error
-  return (data ?? []).map(toApiItem)
+  const rows = await fetchAllRows<any>((from, to) => {
+    let q = db.from('equipment_items').select('*').order('seq', { ascending: true }).range(from, to)
+    if (w) q = q.or(`owner_ward.eq.${w},usage_ward.eq.${w}`)
+    return q
+  })
+  return rows.map(toApiItem)
 }
 
 async function latestHistory(item: any, params: any) {
@@ -105,30 +121,61 @@ async function inspectionWindowStatus() {
 async function departmentReport(fiscalYear: unknown) {
   const fy = Number(fiscalYear) || new Date().getFullYear() + 543
   const startYear = fy - 543
-  const months = Array.from({ length: 12 }, (_, i) => ({ y: i < 3 ? startYear - 1 : startYear, m: (9 + i) % 12 }))
-  const { data: items, error: ie } = await db.from('equipment_items').select('rmc_no,item_id,owner_ward,usage_ward')
-  if (ie) throw ie
-  const { data: history, error: he } = await db.from('equipment_history').select('item_id,ts,status,ward')
-  if (he) throw he
+  const startDate = new Date(Date.UTC(startYear, 9, 1))
+  const endDate = new Date(Date.UTC(startYear + 1, 9, 1))
+  const months = Array.from({ length: 12 }, (_, i) => ({ y: i < 3 ? startYear : startYear + 1, m: (9 + i) % 12 }))
+
+  const items = await fetchAllRows<any>((from, to) => db.from('equipment_items').select('rmc_no,item_id,owner_ward,usage_ward,inspection_frequency').order('seq', { ascending: true }).range(from, to))
+  const history = await fetchAllRows<any>((from, to) => db.from('equipment_history').select('id,item_id,ts,status,ward').gte('ts', startDate.toISOString()).lt('ts', endDate.toISOString()).order('id', { ascending: true }).range(from, to))
+
   const departments = [...new Set((items ?? []).map(x => clean(x.owner_ward || x.usage_ward)).filter(Boolean))].sort()
   const rows = departments.map(department => {
     const deptItems = (items ?? []).filter(x => clean(x.owner_ward || x.usage_ward) === department)
-    const ids = new Set(deptItems.flatMap(x => [clean(x.item_id), clean(x.rmc_no)].filter(Boolean)))
+    const total = deptItems.length
+    const idToCanonical = new Map<string, string>()
+    for (const item of deptItems) {
+      const canonical = clean(item.item_id) || clean(item.rmc_no)
+      if (!canonical) continue
+      for (const key of [clean(item.item_id), clean(item.rmc_no)].filter(Boolean)) idToCanonical.set(key, canonical)
+    }
+
     const monthRows = months.map(({ y, m }) => {
       const seen = new Set<string>()
-      for (const h of history ?? []) { const d = new Date(h.ts); if (d.getFullYear() === y && d.getMonth() === m && ids.has(clean(h.item_id))) seen.add(clean(h.item_id)) }
-      return { display: `${seen.size}/${deptItems.length}`, inspected: seen.size, total: deptItems.length }
+      for (const h of history ?? []) {
+        const d = new Date(h.ts)
+        if (d.getUTCFullYear() !== y || d.getUTCMonth() !== m) continue
+        const canonical = idToCanonical.get(clean(h.item_id))
+        if (canonical) seen.add(canonical)
+      }
+      const inspected = Math.min(seen.size, total)
+      // ปัจจุบันฐานข้อมูลไม่มีตารางกำหนดเดือนเฉพาะรายครุภัณฑ์
+      // จึงถือว่าหน่วยงานที่มีครุภัณฑ์มีรอบตรวจในทุกเดือนของปีงบประมาณ
+      // และ "ทำครบ" หมายถึงตรวจได้ครบจำนวนครุภัณฑ์ของหน่วยงานในเดือนนั้น
+      const due = total
+      return { display: `${inspected}/${total}`, inspected, total, due }
     })
-    const inspectedTotal = monthRows.reduce((s, x) => s + Math.min(x.inspected, x.total), 0)
-    const total = deptItems.length * 12
-    return { department, months: monthRows, total: deptItems.length, inspected: Math.min(deptItems.length, inspectedTotal), percentage: total ? (inspectedTotal / total) * 100 : 0 }
+
+    const completedMonths = monthRows.filter(x => x.due > 0 && x.inspected >= x.due).length
+    const requiredMonths = monthRows.filter(x => x.due > 0).length
+    const totalRequired = monthRows.reduce((s, x) => s + x.due, 0)
+    const totalInspected = monthRows.reduce((s, x) => s + x.inspected, 0)
+    return {
+      department,
+      months: monthRows,
+      total,
+      inspected: Math.min(total, Math.max(...monthRows.map(x => x.inspected), 0)),
+      percentage: totalRequired ? (totalInspected / totalRequired) * 100 : 0,
+      requiredMonths,
+      completedMonths,
+    }
   })
-  return { fiscalYear: fy, rows }
+
+  return { fiscalYear: fy, rows, generatedAt: new Date().toISOString(), dataCounts: { equipmentItems: items.length, equipmentHistory: history.length } }
 }
 
 async function handleGet(req: Request) {
   const url = new URL(req.url), action = clean(url.searchParams.get('action'))
-  if (action === 'getApiInfo') return ok({ status: 'success', data: { version: '2026-09-10-supabase-equipment-api', backend: 'Supabase' } })
+  if (action === 'getApiInfo') return ok({ status: 'success', data: { version: '2026-09-11-report-pagination-mou-fix', backend: 'Supabase' } })
   if (action === 'getAllItems') return ok({ status: 'success', data: await listItems() })
   if (action === 'getItemsByWard') return ok({ status: 'success', data: await listItems(url.searchParams.get('ward') ?? '') })
   if (action === 'getInspectionWindowStatus') return ok({ status: 'success', data: await inspectionWindowStatus() })
@@ -144,7 +191,7 @@ async function handleGet(req: Request) {
 
 async function handlePost(req: Request) {
   const data = await req.json(), action = clean(data.action)
-  if (action === 'getApiInfo') return ok({ status: 'success', data: { version: '2026-09-10-supabase-equipment-api', backend: 'Supabase' } })
+  if (action === 'getApiInfo') return ok({ status: 'success', data: { version: '2026-09-11-report-pagination-mou-fix', backend: 'Supabase' } })
 
   if (action === 'saveInspectionWindow') {
     const y = Number(data.targetYear), m = Number(data.targetMonth)
