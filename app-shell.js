@@ -1,10 +1,10 @@
 (function () {
-    const APP_VERSION = '2026.09.11.03';
+    const APP_VERSION = '2026.09.11.04';
     const APP_VERSION_FILE = 'app-version.json';
     const VERSION_NOTICE_KEY = 'swd_app_version_notice';
 
     const LEGACY_EQUIPMENT_API = 'https://script.google.com/macros/s/AKfycbxwDfAX8Jmu8WRqQGPf_JQWZWWuRITawJ3QSf0abeVdtDGaq4NYKGIEnPEauRAW7RjqoA/exec';
-    const SUPABASE_EQUIPMENT_API = 'https://aqhrfwqbroezrrcenyyb.supabase.co/functions/v1/equipment-api';
+    const SUPABASE_EQUIPMENT_API = 'https://aqhrfwqbroezrrcenyyb1.supabase.co/functions/v1/equipment-api';
     const nativeFetch = window.fetch.bind(window);
     window.fetch = function (input, init) {
         try {
@@ -69,18 +69,34 @@
         overlay.classList.toggle('open', open);
         document.body.classList.toggle('shell-sidebar-open', open);
     }
-    function injectToggleButton() {
-        const containers = [document.querySelector('.nav-actions'), document.querySelector('#navMenu'), document.querySelector('.nav-right')].filter(Boolean);
-        if (!containers.length || document.querySelector('[data-shell-toggle]')) return;
-        const target = containers[0];
+    function makeShellButton(className, icon, label, handler, options = {}) {
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = 'nav-btn shell-menu-toggle';
-        button.setAttribute('data-shell-toggle', 'true');
-        button.setAttribute('aria-label', 'เปิดเมนูระบบ');
-        button.innerHTML = '<i class="fas fa-bars"></i><span>เมนู</span>';
-        button.addEventListener('click', () => window.AppShell.toggleSidebar());
-        target.prepend(button);
+        button.className = `nav-btn shell-topbar-btn ${className}`;
+        button.innerHTML = `<i class="fas ${icon}"></i><span>${label}</span>`;
+        if (options.id) button.id = options.id;
+        if (options.ariaLabel) button.setAttribute('aria-label', options.ariaLabel);
+        button.addEventListener('click', handler);
+        return button;
+    }
+    function logoutToHome() {
+        const clearKeys = ['aide_ward', 'aide_role', 'sterile_ward', 'sterile_role', 'currentUser', 'currentRole', 'currentBuildingIds'];
+        clearKeys.forEach((key) => { try { sessionStorage.removeItem(key); } catch (error) {} });
+        window.location.href = 'index.html';
+    }
+    function injectTopbarControls() {
+        const containers = [document.querySelector('.nav-actions'), document.querySelector('#navMenu'), document.querySelector('.nav-right')].filter(Boolean);
+        if (!containers.length || document.querySelector('[data-shell-controls]')) return;
+        const target = containers[0];
+        const controls = document.createElement('div');
+        controls.className = 'shell-topbar-controls';
+        controls.setAttribute('data-shell-controls', 'true');
+        controls.appendChild(makeShellButton('shell-menu-toggle', 'fa-bars', 'เมนู', () => window.AppShell.toggleSidebar(), { ariaLabel: 'เปิดเมนูระบบ' }));
+        controls.appendChild(makeShellButton('shell-refresh', 'fa-rotate', 'รีเฟรช', () => window.location.reload(), { ariaLabel: 'รีเฟรชหน้า' }));
+        controls.appendChild(makeShellButton('shell-admin', 'fa-user-shield', 'Admin', () => window.AppShell.navigate('equipment.html'), { ariaLabel: 'เข้าสู่ระบบแอดมิน' }));
+        controls.appendChild(makeShellButton('shell-home', 'fa-house', 'หน้าหลัก', () => window.AppShell.navigate('index.html'), { ariaLabel: 'กลับหน้าหลัก' }));
+        controls.appendChild(makeShellButton('shell-logout', 'fa-right-from-bracket', 'ออกจากระบบ', logoutToHome, { ariaLabel: 'ออกจากระบบ' }));
+        target.prepend(controls);
     }
     function markActiveLinks() {
         const currentFile = getCurrentFile();
@@ -183,7 +199,7 @@
         const sidebar = document.querySelector('.app-shell-sidebar');
         if (!sidebar) return;
         document.body.classList.add('has-app-shell');
-        injectToggleButton(); markActiveLinks(); closeOnExternalClick(); bindTablePagination(); checkApplicationVersion();
+        injectTopbarControls(); markActiveLinks(); closeOnExternalClick(); bindTablePagination(); checkApplicationVersion();
     }
     window.AppShell = {
         navigate(target) { window.location.href = buildHref(target); },
