@@ -1,8 +1,7 @@
 (function () {
-    const APP_VERSION = '2026.09.11.05';
+    const APP_VERSION = '2026.09.11.06';
     const APP_VERSION_FILE = 'app-version.json';
     const VERSION_NOTICE_KEY = 'swd_app_version_notice';
-
     const LEGACY_EQUIPMENT_API = 'https://script.google.com/macros/s/AKfycbxwDfAX8Jmu8WRqQGPf_JQWZWWuRITawJ3QSf0abeVdtDGaq4NYKGIEnPEauRAW7RjqoA/exec';
     const SUPABASE_EQUIPMENT_API = 'https://aqhrfwqbroezrrcenyyb.supabase.co/functions/v1/equipment-api';
     const nativeFetch = window.fetch.bind(window);
@@ -69,82 +68,116 @@
         overlay.classList.toggle('open', open);
         document.body.classList.toggle('shell-sidebar-open', open);
     }
-    function makeShellButton(className, icon, label, handler, options = {}) {
+    function clearSessionAndHome() {
+        ['aide_ward', 'aide_role', 'sterile_ward', 'sterile_role', 'currentUser', 'currentRole', 'currentBuildingIds'].forEach((key) => {
+            try { sessionStorage.removeItem(key); } catch (error) {}
+        });
+        window.location.href = 'index.html';
+    }
+    function makeButton(className, icon, label, handler) {
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = `nav-btn shell-topbar-btn ${className}`;
+        button.className = `app-shell-action ${className}`;
         button.innerHTML = `<i class="fas ${icon}"></i><span>${label}</span>`;
-        if (options.id) button.id = options.id;
-        if (options.ariaLabel) button.setAttribute('aria-label', options.ariaLabel);
         button.addEventListener('click', handler);
         return button;
     }
-    function logoutToHome() {
-        const clearKeys = ['aide_ward', 'aide_role', 'sterile_ward', 'sterile_role', 'currentUser', 'currentRole', 'currentBuildingIds'];
-        clearKeys.forEach((key) => { try { sessionStorage.removeItem(key); } catch (error) {} });
-        window.location.href = 'index.html';
-    }
+    function createSidebar() {
+        let sidebar = document.querySelector('.app-shell-sidebar');
+        if (sidebar) return sidebar;
 
-    // The sidebar is the single source of truth for system navigation.
-    // The topbar only keeps utility actions so navigation is not duplicated.
-    function removeDuplicateUtilityControls(navbar) {
-        if (!navbar) return;
-        const utilityLabels = ['รีเฟรช', 'ออกจากระบบ'];
-        navbar.querySelectorAll('a, button').forEach((element) => {
-            if (element.closest('[data-shell-controls]')) return;
-            const text = (element.textContent || '').replace(/\s+/g, ' ').trim();
-            const aria = (element.getAttribute('aria-label') || '').trim();
-            const title = (element.getAttribute('title') || '').trim();
-            const combined = `${text} ${aria} ${title}`;
-            if (utilityLabels.some((label) => combined.includes(label))) {
-                element.classList.add('shell-duplicate-utility');
-            }
+        sidebar = document.createElement('aside');
+        sidebar.className = 'app-shell-sidebar';
+        sidebar.setAttribute('aria-label', 'เมนูหลักของระบบ');
+        sidebar.innerHTML = `
+            <div class="app-shell-brand">
+                <img src="icon-192.png" alt="SWD Care Connect">
+                <div class="app-shell-brand-copy">
+                    <strong>SWD Care Connect</strong>
+                    <span>ระบบบริหารจัดการงานหน่วยงานอัจฉริยะ</span>
+                </div>
+            </div>
+            <div class="app-shell-context" id="shellContext"></div>
+            <div class="app-shell-section">
+                <div class="app-shell-section-title">เมนูหลัก</div>
+                <nav class="app-shell-nav" id="shellMainNav"></nav>
+            </div>
+            <div class="app-shell-section app-shell-utility-section">
+                <div class="app-shell-section-title">การใช้งาน</div>
+                <div class="app-shell-actions" id="shellActions"></div>
+            </div>
+            <div class="app-shell-footer">© 2026 Developed By Natnarinthorn</div>
+        `;
+        document.body.prepend(sidebar);
+
+        const nav = sidebar.querySelector('#shellMainNav');
+        PAGE_LINKS.forEach((item) => {
+            const link = document.createElement('a');
+            link.className = 'app-shell-link';
+            link.dataset.shellHref = item.href;
+            link.href = buildHref(item.href);
+            link.innerHTML = `<i class="fas ${item.icon}"></i><span>${item.label}</span>`;
+            nav.appendChild(link);
         });
+
+        const actions = sidebar.querySelector('#shellActions');
+        actions.appendChild(makeButton('shell-action-menu', 'fa-bars', 'เมนู', () => setSidebarState(false)));
+        actions.appendChild(makeButton('shell-action-refresh', 'fa-rotate', 'รีเฟรชหน้า', () => window.location.reload()));
+
+        const legacyChange = document.querySelector('#logoutBtn');
+        if (legacyChange) {
+            legacyChange.classList.remove('hidden');
+            legacyChange.classList.add('app-shell-action', 'shell-change-unit');
+            legacyChange.innerHTML = '<i class="fas fa-right-left"></i><span>เปลี่ยนหน่วยงาน</span>';
+            const existingActions = legacyChange.parentElement;
+            actions.appendChild(legacyChange);
+            if (existingActions && existingActions !== actions && !existingActions.children.length) existingActions.remove();
+        } else {
+            actions.appendChild(makeButton('shell-action-logout', 'fa-right-from-bracket', 'ออกจากระบบ', clearSessionAndHome));
+        }
+
+        const legacyWard = document.querySelector('#currentWardDisplay');
+        if (legacyWard) {
+            const context = sidebar.querySelector('#shellContext');
+            context.appendChild(legacyWard);
+            legacyWard.classList.remove('hidden');
+            legacyWard.classList.add('app-shell-context-chip');
+        }
+        return sidebar;
     }
-
-    function injectTopbarControls() {
-        const navbar = document.querySelector('.navbar');
-        if (!navbar) return;
-        const containers = [navbar.querySelector('.nav-actions'), navbar.querySelector('#navMenu'), navbar.querySelector('.nav-right')].filter(Boolean);
-        if (!containers.length) return;
-        const target = containers[0];
-
-        target.querySelectorAll('[data-shell-controls]').forEach((node) => node.remove());
-
-        const controls = document.createElement('div');
-        controls.className = 'shell-topbar-controls';
-        controls.setAttribute('data-shell-controls', 'true');
-        controls.appendChild(makeShellButton('shell-menu-toggle', 'fa-bars', 'เมนู', () => window.AppShell.toggleSidebar(), { ariaLabel: 'เปิดเมนูระบบ' }));
-        controls.appendChild(makeShellButton('shell-refresh', 'fa-rotate', 'รีเฟรช', () => window.location.reload(), { ariaLabel: 'รีเฟรชหน้า' }));
-        controls.appendChild(makeShellButton('shell-logout', 'fa-right-from-bracket', 'ออกจากระบบ', logoutToHome, { ariaLabel: 'ออกจากระบบ' }));
-        target.prepend(controls);
-
-        const duplicateTargets = ['หน้าหลัก', 'ตรวจนับครุภัณฑ์', 'Stock เครื่องผ้า', 'แลกผ้าสะอาด', 'วัสดุปราศจากเชื้อ'];
-        target.querySelectorAll('a, button').forEach((element) => {
-            if (element.closest('[data-shell-controls]')) return;
-            const text = (element.textContent || '').replace(/\s+/g, ' ').trim();
-            const href = (element.getAttribute('href') || '').toLowerCase();
-            const duplicateByText = duplicateTargets.some((label) => text.includes(label));
-            const duplicateByHref = PAGE_LINKS.some((item) => href.split('?')[0].endsWith(item.href));
-            if (duplicateByText || duplicateByHref) element.classList.add('shell-duplicate-nav');
+    function buildLayout() {
+        const sidebar = createSidebar();
+        let layout = document.querySelector('.app-shell-layout');
+        if (layout) return layout;
+        layout = document.createElement('div');
+        layout.className = 'app-shell-layout';
+        const main = document.createElement('main');
+        main.className = 'app-shell-main';
+        const movable = Array.from(document.body.children).filter((node) => node !== sidebar && !['SCRIPT', 'STYLE', 'LINK'].includes(node.tagName) && !node.classList.contains('app-shell-overlay'));
+        movable.forEach((node) => {
+            if (node.classList.contains('navbar')) node.remove();
+            else main.appendChild(node);
         });
-        removeDuplicateUtilityControls(navbar);
+        layout.appendChild(main);
+        sidebar.insertAdjacentElement('afterend', layout);
+        const overlay = document.createElement('div');
+        overlay.className = 'app-shell-overlay';
+        document.body.appendChild(overlay);
+        return layout;
     }
     function markActiveLinks() {
         const currentFile = getCurrentFile();
         document.querySelectorAll('.app-shell-sidebar [data-shell-href]').forEach((link) => {
             const target = String(link.getAttribute('data-shell-href') || '').split('?')[0].toLowerCase();
-            link.setAttribute('href', buildHref(target || 'index.html'));
-            const isActive = target === currentFile || (!target && currentFile === 'index.html');
-            link.classList.toggle('active', isActive);
-            if (isActive) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
+            link.href = buildHref(target || 'index.html');
+            const active = target === currentFile || (!target && currentFile === 'index.html');
+            link.classList.toggle('active', active);
+            if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
         });
     }
-    function closeOnExternalClick() {
-        const sidebar = document.querySelector('.app-shell-sidebar');
+    function bindNavigation() {
         const overlay = document.querySelector('.app-shell-overlay');
-        if (!sidebar || !overlay) return;
-        overlay.addEventListener('click', () => setSidebarState(false));
+        if (overlay) overlay.addEventListener('click', () => setSidebarState(false));
         document.addEventListener('keydown', (event) => { if (event.key === 'Escape') setSidebarState(false); });
     }
     function paginateTableBody(tbody) {
@@ -228,17 +261,20 @@
         } catch (error) { console.warn('ไม่สามารถตรวจสอบเวอร์ชันระบบได้', error); }
     }
     function init() {
-        const sidebar = document.querySelector('.app-shell-sidebar');
-        if (!sidebar) return;
+        if (document.body.classList.contains('no-app-shell')) return;
         document.body.classList.add('has-app-shell');
-        injectTopbarControls(); markActiveLinks(); closeOnExternalClick(); bindTablePagination(); checkApplicationVersion();
+        buildLayout();
+        markActiveLinks();
+        bindNavigation();
+        bindTablePagination();
+        checkApplicationVersion();
     }
     window.AppShell = {
         navigate(target) { window.location.href = buildHref(target); },
         openSidebar() { setSidebarState(true); },
         closeSidebar() { setSidebarState(false); },
-        toggleSidebar() { const sidebar = document.querySelector('.app-shell-sidebar'); if (!sidebar) return; setSidebarState(!sidebar.classList.contains('open')); },
-        refreshLinks() { markActiveLinks(); },
+        toggleSidebar() { const sidebar = document.querySelector('.app-shell-sidebar'); if (sidebar) setSidebarState(!sidebar.classList.contains('open')); },
+        refreshLinks() { markActiveLinks(); }
     };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
