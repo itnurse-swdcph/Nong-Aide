@@ -596,35 +596,18 @@
 </head>
 
 <body>
-    <nav class="navbar">
-        <div class="nav-brand-stack">
-            <div class="nav-brand-line"><img src="icon-192.png" alt="SWD Care Connect Logo"> <span>SWD Care
-                    Connect</span></div>
-            <div class="nav-title" id="systemTitle">ระบบตรวจนับ Stock เครื่องผ้า</div>
-            <div class="nav-meta">
-                <span class="nav-chip"><i class="fas fa-hospital-user"></i> <span id="navWardText">หน่วยงาน:
-                        -</span></span>
-                <span class="nav-chip"><i class="fas fa-calendar-alt"></i> <span id="navQuarterText">รอบ:
-                        -</span></span>
-            </div>
-        </div>
-        <div class="nav-actions">
-            <button class="nav-btn" onclick="reloadPage()"><i class="fas fa-rotate-right"></i> รีเฟรช</button>
-            <button id="btnViewReport" class="nav-btn hidden" onclick="enterAdminFromLaundry()"
-                style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border-color:transparent;"><i
-                    class="fas fa-chart-bar"></i> ดูรายงาน</button>
-            <button id="btnAdminLogin" class="nav-btn" onclick="showAdminLogin()"><i class="fas fa-user-shield"></i>
-                Admin</button>
-            <button id="btnExitAdmin" class="nav-btn hidden" onclick="exitAdminMode()"><i
-                    class="fas fa-shield-halved"></i> ออกจาก Admin</button>
-            <button class="nav-btn" onclick="goHome()"><i class="fas fa-house"></i> หน้าหลัก</button>
-            <button class="nav-btn" onclick="logoutSystem()"><i class="fas fa-right-from-bracket"></i>
-                ออกจากระบบ</button>
-        </div>
-    </nav>
+
 
     <div class="app-shell-layout">
         <aside class="app-shell-sidebar" aria-label="เมนูระบบ">
+            <div class="app-shell-brand">
+                <img src="icon-192.png" alt="SWD Care Connect Logo">
+                <div class="app-shell-brand-copy"><strong>SWD Care Connect</strong><span id="systemTitle">ระบบตรวจนับ Stock เครื่องผ้า</span></div>
+            </div>
+            <div class="app-shell-context">
+                <span class="app-shell-context-chip"><i class="fas fa-hospital-user"></i> <span id="navWardText">หน่วยงาน: -</span></span>
+                <span class="app-shell-context-chip"><i class="fas fa-calendar-alt"></i> <span id="navQuarterText">รอบ: -</span></span>
+            </div>
             <div class="app-shell-section">
                 <div class="app-shell-section-title">เมนูระบบ</div>
                 <nav class="app-shell-nav">
@@ -639,6 +622,16 @@
                     <a class="app-shell-link" data-shell-href="sterile-exchange.html" href="sterile-exchange.html"><i
                             class="fas fa-syringe"></i> วัสดุปราศจากเชื้อ</a>
                 </nav>
+            </div>
+            <div class="app-shell-section app-shell-utility-section">
+                <div class="app-shell-section-title">การใช้งาน</div>
+                <div class="app-shell-actions">
+                    <button class="app-shell-action" onclick="reloadPage()"><i class="fas fa-rotate-right"></i><span>รีเฟรช</span></button>
+                    <button id="btnViewReport" class="app-shell-action hidden" onclick="enterAdminFromLaundry()" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)!important;border-color:transparent!important;"><i class="fas fa-chart-bar"></i><span>ดูรายงาน</span></button>
+                    <button id="btnAdminLogin" class="app-shell-action" onclick="showAdminLogin()"><i class="fas fa-user-shield"></i><span>Admin</span></button>
+                    <button id="btnExitAdmin" class="app-shell-action hidden" onclick="exitAdminMode()"><i class="fas fa-shield-halved"></i><span>ออกจาก Admin</span></button>
+                    <button class="app-shell-action" onclick="logoutSystem()"><i class="fas fa-right-from-bracket"></i><span>ออกจากระบบ</span></button>
+                </div>
             </div>
             <div class="app-shell-footer">
                 ใช้เมนูนี้เพื่อสลับระบบย่อยโดยไม่ต้องกลับไปหน้าแรก

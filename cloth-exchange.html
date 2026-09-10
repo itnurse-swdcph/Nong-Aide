@@ -1288,42 +1288,18 @@
     <link rel="stylesheet" href="app-shell.css">
 </head>
 <body>
-    <nav class="navbar">
-        <div class="nav-brand-stack">
-            <div class="nav-brand-line"><img src="icon-192.png" alt="SWD Care Connect Logo"> <span>SWD Care Connect</span></div>
-            <div class="nav-title" id="systemTitle">ระบบส่งแลกผ้าสะอาด</div>
-            <div class="nav-meta">
-                <span class="nav-chip"><i class="fas fa-hospital-user"></i> <span id="navWardText">หน่วยงาน: -</span></span>
-                <span class="nav-chip"><i class="fas fa-file-lines"></i> <span id="navRoleText">บทบาท: หน่วยงาน</span></span>
-            </div>
-        </div>
-        <div class="nav-actions">
-            <div class="notification-wrap">
-                <button id="notificationBell" class="nav-btn notification-btn" type="button" onclick="toggleNotificationPanel()">
-                    <i class="fas fa-bell"></i>
-                    <span id="notificationBadge" class="notification-badge hidden">0</span>
-                </button>
-                <div id="notificationPanel" class="notification-panel hidden">
-                    <div class="notification-head">
-                        <strong>แจ้งเตือนล่าสุด</strong>
-                        <button class="ghost-btn" type="button" onclick="markNotificationsRead()">อ่านแล้ว</button>
-                    </div>
-                    <div id="notificationList" class="notification-list">
-                        <div class="notification-empty">ยังไม่มีรายการแจ้งเตือน</div>
-                    </div>
-                </div>
-            </div>
-            <button class="nav-btn" onclick="openUsageGuide()"><i class="fas fa-book-open"></i> คู่มือการใช้งาน</button>
-            <button class="nav-btn" onclick="reloadPage()"><i class="fas fa-rotate-right"></i> รีเฟรช</button>
-            <button id="btnAdminLogin" class="nav-btn" onclick="showAdminLogin()"><i class="fas fa-user-shield"></i> Admin</button>
-            <button id="btnExitAdmin" class="nav-btn hidden" onclick="exitAdminMode()"><i class="fas fa-shield-halved"></i> ออกจาก Admin</button>
-            <button class="nav-btn" onclick="goHome()"><i class="fas fa-house"></i> หน้าหลัก</button>
-            <button class="nav-btn" onclick="logoutSystem()"><i class="fas fa-right-from-bracket"></i> ออกจากระบบ</button>
-        </div>
-    </nav>
+    
 
     <div class="app-shell-layout">
         <aside class="app-shell-sidebar" aria-label="เมนูระบบ">
+            <div class="app-shell-brand">
+                <img src="icon-192.png" alt="SWD Care Connect Logo">
+                <div class="app-shell-brand-copy"><strong>SWD Care Connect</strong><span id="systemTitle">ระบบส่งแลกผ้าสะอาด</span></div>
+            </div>
+            <div class="app-shell-context">
+                <span class="app-shell-context-chip"><i class="fas fa-hospital-user"></i> <span id="navWardText">หน่วยงาน: -</span></span>
+                <span class="app-shell-context-chip"><i class="fas fa-file-lines"></i> <span id="navRoleText">บทบาท: หน่วยงาน</span></span>
+            </div>
         <div class="app-shell-section">
                 <div class="app-shell-section-title">เมนูระบบ</div>
                 <nav class="app-shell-nav">
@@ -1333,6 +1309,31 @@
                     <a class="app-shell-link" data-shell-href="cloth-exchange.html" href="cloth-exchange.html"><i class="fas fa-sync-alt"></i> แลกผ้าสะอาด</a>
                     <a class="app-shell-link" data-shell-href="sterile-exchange.html" href="sterile-exchange.html"><i class="fas fa-syringe"></i> วัสดุปราศจากเชื้อ</a>
                 </nav>
+            </div>
+            <div class="app-shell-section app-shell-utility-section">
+                <div class="app-shell-section-title">การใช้งาน</div>
+                <div class="app-shell-actions">
+                    <div class="notification-wrap">
+                        <button id="notificationBell" class="app-shell-action notification-btn" type="button" onclick="toggleNotificationPanel()">
+                            <i class="fas fa-bell"></i><span>การแจ้งเตือน</span>
+                            <span id="notificationBadge" class="notification-badge hidden">0</span>
+                        </button>
+                        <div id="notificationPanel" class="notification-panel hidden">
+                            <div class="notification-head">
+                                <strong>แจ้งเตือนล่าสุด</strong>
+                                <button class="ghost-btn" type="button" onclick="markNotificationsRead()">อ่านแล้ว</button>
+                            </div>
+                            <div id="notificationList" class="notification-list">
+                                <div class="notification-empty">ยังไม่มีรายการแจ้งเตือน</div>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="app-shell-action" onclick="openUsageGuide()"><i class="fas fa-book-open"></i><span>คู่มือการใช้งาน</span></button>
+                    <button class="app-shell-action" onclick="reloadPage()"><i class="fas fa-rotate-right"></i><span>รีเฟรช</span></button>
+                    <button id="btnAdminLogin" class="app-shell-action" onclick="showAdminLogin()"><i class="fas fa-user-shield"></i><span>Admin</span></button>
+                    <button id="btnExitAdmin" class="app-shell-action hidden" onclick="exitAdminMode()"><i class="fas fa-shield-halved"></i><span>ออกจาก Admin</span></button>
+                    <button class="app-shell-action" onclick="logoutSystem()"><i class="fas fa-right-from-bracket"></i><span>ออกจากระบบ</span></button>
+                </div>
             </div>
             <div class="app-shell-footer">
                 ใช้เมนูนี้เพื่อสลับระบบย่อยโดยไม่ต้องกลับไปหน้าแรก

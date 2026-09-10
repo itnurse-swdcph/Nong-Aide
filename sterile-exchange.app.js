@@ -289,7 +289,6 @@ async function bootstrap() {
 }
 
 async function enterApp() {
-  document.getElementById('navbar').classList.remove('hidden');
   document.getElementById('page').classList.remove('hidden');
   document.getElementById('appSidebar')?.classList.remove('hidden');
   document.getElementById('appShellOverlay')?.classList.remove('hidden');

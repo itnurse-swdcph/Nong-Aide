@@ -349,21 +349,17 @@
     <link rel="stylesheet" href="app-shell.css">
 </head>
 <body>
-    <nav class="navbar">
-        <div class="nav-brand-stack">
-            <div class="nav-brand-line"><img src="icon-192.png" alt="SWD Care Connect Logo"> <span>SWD Care Connect</span></div>
-            <div class="nav-title"><i class="fas fa-stethoscope"></i> ระบบตรวจนับครุภัณฑ์ทางการแพทย์</div>
-            <div class="nav-meta">
-                <span class="nav-chip"><i class="fas fa-hospital-user"></i> <span id="displayWard">หน่วยงาน: กำลังโหลด...</span></span>
-            </div>
-        </div>
-        <div class="nav-actions">
-            <button class="nav-btn" onclick="window.location.href='index.html'"><i class="fas fa-house"></i> หน้าหลัก</button>
-        </div>
-    </nav>
+    
 
     <div class="app-shell-layout">
         <aside class="app-shell-sidebar" aria-label="เมนูระบบ">
+            <div class="app-shell-brand">
+                <img src="icon-192.png" alt="SWD Care Connect Logo">
+                <div class="app-shell-brand-copy"><strong>SWD Care Connect</strong><span><i class="fas fa-stethoscope"></i> ระบบตรวจนับครุภัณฑ์ทางการแพทย์</span></div>
+            </div>
+            <div class="app-shell-context">
+                <span class="app-shell-context-chip"><i class="fas fa-hospital-user"></i> <span id="displayWard">หน่วยงาน: กำลังโหลด...</span></span>
+            </div>
         <div class="app-shell-section">
                 <div class="app-shell-section-title">เมนูระบบ</div>
                 <nav class="app-shell-nav">
