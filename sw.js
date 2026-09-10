@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aide-swd-v2026.09.11.04';
+const CACHE_NAME = 'aide-swd-v2026.09.11.05';
 
 self.addEventListener('install', event => {
   self.skipWaiting();
@@ -17,11 +17,11 @@ function repairEquipmentHtml(html) {
 
   repaired = repaired.replace(
     /const EQUIPMENT_API = (["']).*?\1\s*;/,
-    "const EQUIPMENT_API = 'https://aqhrfwqbroezrrcenyyb.supabase.co/functions/v1/equipment-api';"
+    "const EQUIPMENT_API = 'https://aqhrfwqbroezrrcenyyb1.supabase.co/functions/v1/equipment-api';"
   );
   repaired = repaired.replace(
     /https:\/\/aqhrfwqbroezrrcenyyb\.supabase\.co\/functions\/v1\/cloth-exchange/g,
-    'https://aqhrfwqbroezrrcenyyb.supabase.co/functions/v1/ward-directory'
+    'https://aqhrfwqbroezrrcenyyb1.supabase.co/functions/v1/ward-directory'
   );
 
   return repaired;
