@@ -35,61 +35,17 @@ if ('serviceWorker' in navigator) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-    await initializeAuth();
     await fetchWards();
+    restoreSelectedDepartment();
     syncShellToggleVisibility();
 });
 
-async function initializeAuth() {
-    if (!swdSupabase) {
-        console.error('Supabase client failed to initialize');
-        return;
+function restoreSelectedDepartment() {
+    const savedWard = sessionStorage.getItem(SESSION_KEYS.ward);
+    const wardSelect = document.getElementById('wardInput');
+    if (wardSelect && savedWard && wardList.includes(savedWard)) {
+        wardSelect.value = savedWard;
     }
-
-    try {
-        const { data: { user } } = await swdSupabase.auth.getUser();
-        if (user) {
-            await restoreAuthenticatedUser(user);
-        }
-    } catch (error) {
-        console.warn('Unable to restore Supabase session:', error);
-        await clearLocalAuthState();
-    }
-
-    swdSupabase.auth.onAuthStateChange(async (_event, session) => {
-        if (session?.user) {
-            await restoreAuthenticatedUser(session.user);
-        } else {
-            currentProfile = null;
-            await clearLocalAuthState(false);
-            showLogin();
-        }
-    });
-}
-
-async function restoreAuthenticatedUser(user) {
-    const { data: profile, error } = await swdSupabase
-        .from('profiles')
-        .select('id, auth_user_id, username, email, full_name, role, level, department_id, active, departments:department_id(id,name,active)')
-        .eq('auth_user_id', user.id)
-        .maybeSingle();
-
-    if (error || !profile || !profile.active) {
-        console.warn('AIDE profile not available for authenticated user', error || 'inactive/missing profile');
-        await swdSupabase.auth.signOut();
-        return;
-    }
-
-    currentProfile = profile;
-    const department = Array.isArray(profile.departments) ? profile.departments[0] : profile.departments;
-    const ward = department?.name || '';
-
-    sessionStorage.setItem(SESSION_KEYS.profileId, profile.id);
-    sessionStorage.setItem(SESSION_KEYS.role, profile.role || 'NURSE');
-    if (ward) sessionStorage.setItem(SESSION_KEYS.ward, ward);
-    else sessionStorage.removeItem(SESSION_KEYS.ward);
-
-    showDashboard(ward, profile.role || 'NURSE');
 }
 
 function syncShellToggleVisibility() {
@@ -121,19 +77,16 @@ async function fetchWards() {
             option.textContent = ward;
             wardSelect.appendChild(option);
         });
-
-        const savedWard = sessionStorage.getItem(SESSION_KEYS.ward);
-        if (savedWard && wardList.includes(savedWard)) wardSelect.value = savedWard;
     } catch (error) {
         console.error("Error fetching wards:", error);
         wardSelect.innerHTML = '<option value="" selected disabled>ไม่สามารถโหลดรายชื่อหน่วยงานได้</option>';
     }
 }
 
-function checkLoginSession() {
-    return initializeAuth();
-}
-
+/**
+ * User flow: choose a department and enter immediately.
+ * No username/password popup is shown for ordinary users.
+ */
 async function enterSystem() {
     const wardInput = document.getElementById("wardInput")?.value.trim();
 
@@ -148,9 +101,37 @@ async function enterSystem() {
         return;
     }
 
-    await showSupabaseLogin({ department: wardInput, title: `เข้าสู่ระบบ ${wardInput}` });
+    if (!wardList.includes(wardInput)) {
+        Swal.fire({
+            icon: 'error',
+            title: 'ไม่พบหน่วยงาน',
+            text: 'กรุณาเลือกหน่วยงานจากรายการที่ระบบกำหนด',
+            confirmButtonColor: '#003366',
+            confirmButtonText: 'ตกลง'
+        });
+        return;
+    }
+
+    currentProfile = {
+        id: null,
+        auth_user_id: null,
+        role: 'NURSE',
+        department_id: null,
+        department_name: wardInput,
+        active: true,
+        is_department_session: true
+    };
+
+    sessionStorage.setItem(SESSION_KEYS.ward, wardInput);
+    sessionStorage.setItem(SESSION_KEYS.role, 'NURSE');
+    sessionStorage.removeItem(SESSION_KEYS.profileId);
+
+    showDashboard(wardInput, 'NURSE');
 }
 
+/**
+ * Admin authentication remains separate from the ordinary user flow.
+ */
 async function showSupabaseLogin({ department = '', title = 'เข้าสู่ระบบ' } = {}) {
     if (!swdSupabase) {
         Swal.fire({ icon: 'error', title: 'ระบบยืนยันตัวตนไม่พร้อมใช้งาน', text: 'ไม่สามารถเริ่ม Supabase Auth ได้' });
@@ -196,7 +177,7 @@ async function showSupabaseLogin({ department = '', title = 'เข้าสู�
 
                 return payload.data;
             } catch (error) {
-                console.error('AIDE login error:', error);
+                console.error('AIDE admin login error:', error);
                 Swal.showValidationMessage('ไม่สามารถเชื่อมต่อระบบยืนยันตัวตนได้');
                 return false;
             }
@@ -217,7 +198,17 @@ async function showSupabaseLogin({ department = '', title = 'เข้าสู�
         return;
     }
 
-    await restoreAuthenticatedUser(result.value.user);
+    const profile = result.value.profile || {};
+    currentProfile = {
+        ...profile,
+        role: profile.role || 'ADMIN',
+        department_name: profile.department_name || '',
+        active: true
+    };
+    sessionStorage.setItem(SESSION_KEYS.role, 'ADMIN');
+    sessionStorage.removeItem(SESSION_KEYS.ward);
+    sessionStorage.removeItem(SESSION_KEYS.profileId);
+    showDashboard('', 'ADMIN');
 }
 
 function showDashboard(wardName, role = "NURSE") {
@@ -227,7 +218,7 @@ function showDashboard(wardName, role = "NURSE") {
     document.getElementById("currentWardDisplay").classList.remove("hidden");
     document.getElementById("logoutBtn").classList.remove("hidden");
     document.getElementById("wardNameText").innerText = role === "ADMIN" ? "ADMIN MODE" : (wardName || 'ยังไม่ได้กำหนดหน่วยงาน');
-    document.getElementById("logoutBtn").innerHTML = '<i class="fas fa-sign-out-alt"></i> ออกจากระบบ';
+    document.getElementById("logoutBtn").innerHTML = '<i class="fas fa-sign-out-alt"></i> เปลี่ยนหน่วยงาน';
     document.getElementById("dashboardSubtitle").innerText = role === "ADMIN"
         ? "กรุณาเลือกระบบที่ต้องการจัดการในโหมดผู้ดูแลระบบ"
         : "กรุณาเลือกระบบที่ต้องการใช้งาน";
@@ -241,6 +232,7 @@ async function clearLocalAuthState(redirect = true) {
     Object.values(SESSION_KEYS).forEach((key) => {
         try { sessionStorage.removeItem(key); } catch (error) {}
     });
+    currentProfile = null;
     if (redirect) showLogin();
 }
 
@@ -251,28 +243,30 @@ function showLogin() {
     if (login) login.classList.remove("hidden");
     document.getElementById("currentWardDisplay")?.classList.add("hidden");
     document.getElementById("logoutBtn")?.classList.add("hidden");
-    document.getElementById("wardInput") && (document.getElementById("wardInput").value = "");
+    const wardInput = document.getElementById("wardInput");
+    if (wardInput) wardInput.value = "";
     window.AppShell?.closeSidebar?.();
     syncShellToggleVisibility();
 }
 
 async function logout() {
+    const isAdmin = currentProfile?.role === 'ADMIN' || sessionStorage.getItem(SESSION_KEYS.role) === 'ADMIN';
     const result = await Swal.fire({
-        title: 'ออกจากระบบ?',
-        text: 'คุณต้องการออกจากระบบ SWD Care Connect ใช่หรือไม่',
+        title: isAdmin ? 'ออกจากระบบแอดมิน?' : 'เปลี่ยนหน่วยงาน?',
+        text: isAdmin ? 'คุณต้องการออกจากระบบแอดมินใช่หรือไม่' : 'คุณต้องการกลับไปเลือกหน่วยงานใหม่ใช่หรือไม่',
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#003366',
         cancelButtonColor: '#d33',
-        confirmButtonText: 'ใช่, ออกจากระบบ',
+        confirmButtonText: isAdmin ? 'ใช่, ออกจากระบบ' : 'เลือกหน่วยงานใหม่',
         cancelButtonText: 'ยกเลิก'
     });
 
     if (!result.isConfirmed) return;
+
     try {
-        await swdSupabase?.auth.signOut();
+        if (isAdmin) await swdSupabase?.auth.signOut();
     } finally {
-        currentProfile = null;
         await clearLocalAuthState();
     }
 }
@@ -290,19 +284,29 @@ function openSystem(url) {
     }
 
     if (!currentProfile) {
-        Swal.fire({ icon: 'warning', title: 'กรุณาเข้าสู่ระบบ', text: 'ต้องยืนยันตัวตนก่อนใช้งานระบบย่อย' });
+        const savedWard = sessionStorage.getItem(SESSION_KEYS.ward);
+        const savedRole = sessionStorage.getItem(SESSION_KEYS.role);
+        if (savedWard) {
+            currentProfile = { role: savedRole || 'NURSE', department_name: savedWard, active: true, is_department_session: true };
+        } else if (savedRole === 'ADMIN') {
+            currentProfile = { role: 'ADMIN', department_name: '', active: true };
+        }
+    }
+
+    if (!currentProfile) {
+        Swal.fire({ icon: 'warning', title: 'กรุณาเลือกหน่วยงาน', text: 'กรุณาเลือกหน่วยงานก่อนใช้งานระบบย่อย' });
         return;
     }
 
     const currentWard = currentProfile.role === 'ADMIN'
         ? ''
-        : (Array.isArray(currentProfile.departments) ? currentProfile.departments[0]?.name : currentProfile.departments?.name) || '';
+        : (currentProfile.department_name || '');
     const currentRole = currentProfile.role || 'NURSE';
     const params = new URLSearchParams();
 
     if (currentWard) params.set("ward", currentWard);
     if (currentRole) params.set("role", currentRole);
-    params.set("auth", "supabase");
+    params.set("auth", currentProfile.role === 'ADMIN' ? "supabase" : "department");
 
     const queryString = params.toString();
     window.location.href = queryString ? `${url}?${queryString}` : url;
