@@ -1,5 +1,5 @@
-// 🔴 API ของ Supabase Edge Function
-const API_URL = "https://aqhrfwqbroezrrcenyyb.supabase.co/functions/v1/cloth-exchange"; 
+// 🔴 Central Ward/Admin API ของ Supabase Edge Function
+const API_URL = "https://aqhrfwqbroezrrcenyyb.supabase.co/functions/v1/ward-directory";
 
 let wardList = [];
 const SESSION_KEYS = {
@@ -13,7 +13,7 @@ const AVAILABLE_SYSTEMS = new Set([
     "sterile-exchange.html"
 ]);
 
-// --- PWA Service Worker Registration (4. บันทึกหน้าจอเป็นแอพ) ---
+// --- PWA Service Worker Registration ---
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js')
@@ -23,7 +23,6 @@ if ('serviceWorker' in navigator) {
 }
 // ----------------------------------------------------------------
 
-// เมื่อโหลดหน้าเว็บ
 document.addEventListener("DOMContentLoaded", () => {
     checkLoginSession();
     fetchWards();
@@ -37,34 +36,38 @@ function syncShellToggleVisibility() {
     toggleBtn.classList.toggle("hidden", !dashboardVisible);
 }
 
-// ดึงข้อมูลหน่วยงานจาก Backend
+// ดึงข้อมูลหน่วยงานจากฐานกลาง Supabase
 async function fetchWards() {
+    const wardSelect = document.getElementById('wardInput');
+    if (!wardSelect) return;
+
     try {
-        const response = await fetch(`${API_URL}?action=getAppMeta`);
+        wardSelect.innerHTML = '<option value="" selected disabled>กำลังโหลดรายชื่อหน่วยงาน...</option>';
+        const response = await fetch(`${API_URL}?action=getWards`, { cache: 'no-store' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
         const result = await response.json();
-        
-        if (result.status === 'success') {
-            wardList = result.data.wards.map(w => w.ward);
-            const wardSelect = document.getElementById('wardInput');
-            wardSelect.innerHTML = '<option value="" selected disabled>-- กรุณาเลือกหน่วยงาน --</option>';
-            
-            wardList.forEach(ward => {
-                let option = document.createElement('option');
-                option.value = ward;
-                option.textContent = ward;
-                wardSelect.appendChild(option);
-            });
+        if (result.status !== 'success' || !Array.isArray(result.data)) {
+            throw new Error(result.message || 'รูปแบบข้อมูลหน่วยงานไม่ถูกต้อง');
         }
+
+        wardList = result.data.filter(Boolean);
+        wardSelect.innerHTML = '<option value="" selected disabled>-- กรุณาเลือกหน่วยงาน --</option>';
+        wardList.forEach(ward => {
+            const option = document.createElement('option');
+            option.value = ward;
+            option.textContent = ward;
+            wardSelect.appendChild(option);
+        });
+
+        const savedWard = sessionStorage.getItem(SESSION_KEYS.ward);
+        if (savedWard && wardList.includes(savedWard)) wardSelect.value = savedWard;
     } catch (error) {
         console.error("Error fetching wards:", error);
-        const wardSelect = document.getElementById('wardInput');
-        if (wardSelect) {
-            wardSelect.innerHTML = '<option value="" selected disabled>ไม่สามารถโหลดรายชื่อหน่วยงานได้</option>';
-        }
+        wardSelect.innerHTML = '<option value="" selected disabled>ไม่สามารถโหลดรายชื่อหน่วยงานได้</option>';
     }
 }
 
-// ตรวจสอบว่าเคยเลือกตึกไว้หรือยังใน Session ปัจจุบัน
 function checkLoginSession() {
     const savedRole = sessionStorage.getItem(SESSION_KEYS.role);
     const savedWard = sessionStorage.getItem(SESSION_KEYS.ward);
@@ -76,10 +79,9 @@ function checkLoginSession() {
     }
 }
 
-// ฟังก์ชันปุ่มเข้าสู่ระบบ
 function enterSystem() {
     const wardInput = document.getElementById("wardInput").value.trim();
-    
+
     if (!wardInput) {
         Swal.fire({
             icon: 'warning',
@@ -91,31 +93,25 @@ function enterSystem() {
         return;
     }
 
-    // Custom Loader สวยๆ
     Swal.fire({
         title: 'กำลังเข้าสู่ระบบ...',
         text: 'กรุณารอสักครู่',
         allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
+        didOpen: () => Swal.showLoading()
     });
 
-    // จำลองการดีเลย์เล็กน้อยให้ดู Smooth
     setTimeout(() => {
         sessionStorage.setItem(SESSION_KEYS.ward, wardInput);
         sessionStorage.setItem(SESSION_KEYS.role, "user");
         Swal.close();
         showDashboard(wardInput, "user");
-    }, 800);
+    }, 300);
 }
 
-// ฟังก์ชันสลับไปหน้า Dashboard
 function showDashboard(wardName, role = "user") {
     document.getElementById("loginSection").classList.add("hidden");
     document.getElementById("dashboardSection").classList.remove("hidden");
-    
-    // แสดง Navbar Item
+
     document.getElementById("currentWardDisplay").classList.remove("hidden");
     document.getElementById("logoutBtn").classList.remove("hidden");
     document.getElementById("wardNameText").innerText = role === "admin" ? "ADMIN MODE" : wardName;
@@ -125,18 +121,15 @@ function showDashboard(wardName, role = "user") {
     document.getElementById("dashboardSubtitle").innerText = role === "admin"
         ? "กรุณาเลือกระบบที่ต้องการจัดการในโหมดผู้ดูแลระบบ"
         : "กรุณาเลือกระบบที่ต้องการใช้งาน";
-    
-    // ปิดเมนูมือถือถ้าเปิดอยู่
+
     document.getElementById("navMenu").classList.remove("active");
     window.AppShell?.closeSidebar?.();
     syncShellToggleVisibility();
 }
 
-// ฟังก์ชันออกจากระบบ (เปลี่ยนตึก)
 function logout() {
     const currentRole = sessionStorage.getItem(SESSION_KEYS.role) || "user";
 
-    // ปิดเมนูมือถือถ้าเปิดอยู่
     document.getElementById("navMenu").classList.remove("active");
 
     Swal.fire({
@@ -148,28 +141,23 @@ function logout() {
         showCancelButton: true,
         confirmButtonColor: '#003366',
         cancelButtonColor: '#d33',
-        confirmButtonText: currentRole === "admin" ? 'ใช่, ออกจากระบบ' : 'ใช่, ออกจากระบบ',
+        confirmButtonText: 'ใช่, ออกจากระบบ',
         cancelButtonText: 'ยกเลิก'
     }).then((result) => {
-        if (result.isConfirmed) {
-            sessionStorage.removeItem(SESSION_KEYS.ward);
-            sessionStorage.removeItem(SESSION_KEYS.role);
-            document.getElementById("wardInput").value = "";
-            
-            // ซ่อน Dashboard กลับไปหน้า Login
-            document.getElementById("dashboardSection").classList.add("hidden");
-            document.getElementById("loginSection").classList.remove("hidden");
-            
-            // ซ่อนเมนูด้านบน
-            document.getElementById("currentWardDisplay").classList.add("hidden");
-            document.getElementById("logoutBtn").classList.add("hidden");
-            window.AppShell?.closeSidebar?.();
-            syncShellToggleVisibility();
-        }
+        if (!result.isConfirmed) return;
+
+        sessionStorage.removeItem(SESSION_KEYS.ward);
+        sessionStorage.removeItem(SESSION_KEYS.role);
+        document.getElementById("wardInput").value = "";
+        document.getElementById("dashboardSection").classList.add("hidden");
+        document.getElementById("loginSection").classList.remove("hidden");
+        document.getElementById("currentWardDisplay").classList.add("hidden");
+        document.getElementById("logoutBtn").classList.add("hidden");
+        window.AppShell?.closeSidebar?.();
+        syncShellToggleVisibility();
     });
 }
 
-// ฟังก์ชันเปิดระบบย่อย (เปิด Tab ใหม่ พร้อมส่งชื่อตึกไปใน URL)
 function openSystem(url) {
     const currentWard = sessionStorage.getItem(SESSION_KEYS.ward);
     const currentRole = sessionStorage.getItem(SESSION_KEYS.role) || "user";
@@ -194,16 +182,15 @@ function openSystem(url) {
     }
 
     const queryString = params.toString();
-    const fullUrl = queryString ? `${url}?${queryString}` : url;
-    window.location.href = fullUrl;
+    window.location.href = queryString ? `${url}?${queryString}` : url;
 }
 
 function showAdminLogin() {
     Swal.fire({
         title: '<i class="fas fa-user-shield"></i> เข้าสู่ระบบแอดมิน',
         html: `
-            <input type="text" id="adminUser" class="swal2-input" placeholder="ชื่อผู้ใช้">
-            <input type="password" id="adminPass" class="swal2-input" placeholder="รหัสผ่าน">
+            <input type="text" id="adminUser" class="swal2-input" placeholder="ชื่อผู้ใช้" autocomplete="username">
+            <input type="password" id="adminPass" class="swal2-input" placeholder="รหัสผ่าน" autocomplete="current-password">
         `,
         confirmButtonColor: '#003366',
         confirmButtonText: 'เข้าสู่ระบบ',
@@ -223,21 +210,19 @@ function showAdminLogin() {
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: 'adminLogin',
-                        username: username,
-                        password: password
-                    })
+                    body: JSON.stringify({ action: 'adminLogin', username, password })
                 });
-                const result = await response.json();
-                
-                if (result.status !== 'success') {
-                    Swal.showValidationMessage(result.message || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+
+                let result = null;
+                try { result = await response.json(); } catch (_) { result = null; }
+                if (!response.ok || !result || result.status !== 'success') {
+                    Swal.showValidationMessage((result && result.message) || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
                     return false;
                 }
-                
+
                 return true;
             } catch (error) {
+                console.error('Admin login error:', error);
                 Swal.showValidationMessage('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
                 return false;
             }
@@ -251,7 +236,6 @@ function showAdminLogin() {
     });
 }
 
-// เปิด-ปิด เมนูมือถือ (Hamburger)
 function toggleMenu() {
     const navMenu = document.getElementById("navMenu");
     navMenu.classList.toggle("active");
