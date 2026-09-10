@@ -1,10 +1,23 @@
-// 🔴 Central Ward/Admin API ของ Supabase Edge Function
-const API_URL = "https://aqhrfwqbroezrrcenyyb.supabase.co/functions/v1/ward-directory";
+const SUPABASE_URL = "https://aqhrfwqbroezrrcenyyb.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_1Q-EwiA-0-uUtMI37_Z04Q_QfCVhRw3";
+const AUTH_API_URL = `${SUPABASE_URL}/functions/v1/auth-api`;
+const DIRECTORY_API_URL = `${SUPABASE_URL}/functions/v1/ward-directory`;
+
+const swdSupabase = window.supabase?.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true
+    }
+});
+window.swdSupabase = swdSupabase;
 
 let wardList = [];
+let currentProfile = null;
 const SESSION_KEYS = {
     ward: "aide_ward",
-    role: "aide_role"
+    role: "aide_role",
+    profileId: "aide_profile_id"
 };
 const AVAILABLE_SYSTEMS = new Set([
     "equipment.html",
@@ -13,7 +26,6 @@ const AVAILABLE_SYSTEMS = new Set([
     "sterile-exchange.html"
 ]);
 
-// --- PWA Service Worker Registration ---
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js')
@@ -21,13 +33,64 @@ if ('serviceWorker' in navigator) {
             .catch(err => console.log('Service Worker not registered', err));
     });
 }
-// ----------------------------------------------------------------
 
-document.addEventListener("DOMContentLoaded", () => {
-    checkLoginSession();
-    fetchWards();
+document.addEventListener("DOMContentLoaded", async () => {
+    await initializeAuth();
+    await fetchWards();
     syncShellToggleVisibility();
 });
+
+async function initializeAuth() {
+    if (!swdSupabase) {
+        console.error('Supabase client failed to initialize');
+        return;
+    }
+
+    try {
+        const { data: { user } } = await swdSupabase.auth.getUser();
+        if (user) {
+            await restoreAuthenticatedUser(user);
+        }
+    } catch (error) {
+        console.warn('Unable to restore Supabase session:', error);
+        await clearLocalAuthState();
+    }
+
+    swdSupabase.auth.onAuthStateChange(async (_event, session) => {
+        if (session?.user) {
+            await restoreAuthenticatedUser(session.user);
+        } else {
+            currentProfile = null;
+            await clearLocalAuthState(false);
+            showLogin();
+        }
+    });
+}
+
+async function restoreAuthenticatedUser(user) {
+    const { data: profile, error } = await swdSupabase
+        .from('profiles')
+        .select('id, auth_user_id, username, email, full_name, role, level, department_id, active, departments:department_id(id,name,active)')
+        .eq('auth_user_id', user.id)
+        .maybeSingle();
+
+    if (error || !profile || !profile.active) {
+        console.warn('AIDE profile not available for authenticated user', error || 'inactive/missing profile');
+        await swdSupabase.auth.signOut();
+        return;
+    }
+
+    currentProfile = profile;
+    const department = Array.isArray(profile.departments) ? profile.departments[0] : profile.departments;
+    const ward = department?.name || '';
+
+    sessionStorage.setItem(SESSION_KEYS.profileId, profile.id);
+    sessionStorage.setItem(SESSION_KEYS.role, profile.role || 'NURSE');
+    if (ward) sessionStorage.setItem(SESSION_KEYS.ward, ward);
+    else sessionStorage.removeItem(SESSION_KEYS.ward);
+
+    showDashboard(ward, profile.role || 'NURSE');
+}
 
 function syncShellToggleVisibility() {
     const toggleBtn = document.querySelector('[data-shell-toggle]');
@@ -36,14 +99,13 @@ function syncShellToggleVisibility() {
     toggleBtn.classList.toggle("hidden", !dashboardVisible);
 }
 
-// ดึงข้อมูลหน่วยงานจากฐานกลาง Supabase
 async function fetchWards() {
     const wardSelect = document.getElementById('wardInput');
     if (!wardSelect) return;
 
     try {
         wardSelect.innerHTML = '<option value="" selected disabled>กำลังโหลดรายชื่อหน่วยงาน...</option>';
-        const response = await fetch(`${API_URL}?action=getWards`, { cache: 'no-store' });
+        const response = await fetch(`${DIRECTORY_API_URL}?action=getWards&_=${Date.now()}`, { cache: 'no-store' });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const result = await response.json();
@@ -69,56 +131,104 @@ async function fetchWards() {
 }
 
 function checkLoginSession() {
-    const savedRole = sessionStorage.getItem(SESSION_KEYS.role);
-    const savedWard = sessionStorage.getItem(SESSION_KEYS.ward);
-
-    if (savedRole === "admin") {
-        showDashboard("", "admin");
-    } else if (savedWard) {
-        showDashboard(savedWard, "user");
-    }
+    return initializeAuth();
 }
 
-function enterSystem() {
-    const wardInput = document.getElementById("wardInput").value.trim();
+async function enterSystem() {
+    const wardInput = document.getElementById("wardInput")?.value.trim();
 
     if (!wardInput) {
         Swal.fire({
             icon: 'warning',
             title: 'แจ้งเตือน',
-            text: 'กรุณาเลือกหรือพิมพ์ชื่อหน่วยงานครับ',
+            text: 'กรุณาเลือกหน่วยงานก่อนเข้าสู่ระบบ',
             confirmButtonColor: '#003366',
             confirmButtonText: 'ตกลง'
         });
         return;
     }
 
-    Swal.fire({
-        title: 'กำลังเข้าสู่ระบบ...',
-        text: 'กรุณารอสักครู่',
-        allowOutsideClick: false,
-        didOpen: () => Swal.showLoading()
-    });
-
-    setTimeout(() => {
-        sessionStorage.setItem(SESSION_KEYS.ward, wardInput);
-        sessionStorage.setItem(SESSION_KEYS.role, "user");
-        Swal.close();
-        showDashboard(wardInput, "user");
-    }, 300);
+    await showSupabaseLogin({ department: wardInput, title: `เข้าสู่ระบบ ${wardInput}` });
 }
 
-function showDashboard(wardName, role = "user") {
+async function showSupabaseLogin({ department = '', title = 'เข้าสู่ระบบ' } = {}) {
+    if (!swdSupabase) {
+        Swal.fire({ icon: 'error', title: 'ระบบยืนยันตัวตนไม่พร้อมใช้งาน', text: 'ไม่สามารถเริ่ม Supabase Auth ได้' });
+        return;
+    }
+
+    const result = await Swal.fire({
+        title: `<i class="fas fa-user-lock"></i> ${title}`,
+        html: `
+            <input type="text" id="aideUsername" class="swal2-input" placeholder="ชื่อผู้ใช้" autocomplete="username">
+            <input type="password" id="aidePassword" class="swal2-input" placeholder="รหัสผ่าน" autocomplete="current-password">
+        `,
+        confirmButtonColor: '#003366',
+        confirmButtonText: 'เข้าสู่ระบบ',
+        showCancelButton: true,
+        cancelButtonText: 'ยกเลิก',
+        focusConfirm: false,
+        allowOutsideClick: false,
+        preConfirm: async () => {
+            const username = document.getElementById('aideUsername')?.value.trim();
+            const password = document.getElementById('aidePassword')?.value || '';
+
+            if (!username || !password) {
+                Swal.showValidationMessage('กรุณากรอกชื่อผู้ใช้และรหัสผ่าน');
+                return false;
+            }
+
+            try {
+                const response = await fetch(AUTH_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_PUBLISHABLE_KEY
+                    },
+                    body: JSON.stringify({ action: 'login', username, password, department })
+                });
+
+                const payload = await response.json().catch(() => null);
+                if (!response.ok || !payload || payload.status !== 'success' || !payload.data?.session) {
+                    Swal.showValidationMessage(payload?.message || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+                    return false;
+                }
+
+                return payload.data;
+            } catch (error) {
+                console.error('AIDE login error:', error);
+                Swal.showValidationMessage('ไม่สามารถเชื่อมต่อระบบยืนยันตัวตนได้');
+                return false;
+            }
+        }
+    });
+
+    if (!result.isConfirmed || !result.value?.session) return;
+
+    const { session } = result.value;
+    const { error } = await swdSupabase.auth.setSession({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token
+    });
+
+    if (error) {
+        await swdSupabase.auth.signOut();
+        Swal.fire({ icon: 'error', title: 'เข้าสู่ระบบไม่สำเร็จ', text: error.message });
+        return;
+    }
+
+    await restoreAuthenticatedUser(result.value.user);
+}
+
+function showDashboard(wardName, role = "NURSE") {
     document.getElementById("loginSection").classList.add("hidden");
     document.getElementById("dashboardSection").classList.remove("hidden");
 
     document.getElementById("currentWardDisplay").classList.remove("hidden");
     document.getElementById("logoutBtn").classList.remove("hidden");
-    document.getElementById("wardNameText").innerText = role === "admin" ? "ADMIN MODE" : wardName;
-    document.getElementById("logoutBtn").innerHTML = role === "admin"
-        ? '<i class="fas fa-sign-out-alt"></i> ออกจากระบบแอดมิน'
-        : '<i class="fas fa-sign-out-alt"></i> เปลี่ยนหน่วยงาน';
-    document.getElementById("dashboardSubtitle").innerText = role === "admin"
+    document.getElementById("wardNameText").innerText = role === "ADMIN" ? "ADMIN MODE" : (wardName || 'ยังไม่ได้กำหนดหน่วยงาน');
+    document.getElementById("logoutBtn").innerHTML = '<i class="fas fa-sign-out-alt"></i> ออกจากระบบ';
+    document.getElementById("dashboardSubtitle").innerText = role === "ADMIN"
         ? "กรุณาเลือกระบบที่ต้องการจัดการในโหมดผู้ดูแลระบบ"
         : "กรุณาเลือกระบบที่ต้องการใช้งาน";
 
@@ -127,42 +237,47 @@ function showDashboard(wardName, role = "user") {
     syncShellToggleVisibility();
 }
 
-function logout() {
-    const currentRole = sessionStorage.getItem(SESSION_KEYS.role) || "user";
+async function clearLocalAuthState(redirect = true) {
+    Object.values(SESSION_KEYS).forEach((key) => {
+        try { sessionStorage.removeItem(key); } catch (error) {}
+    });
+    if (redirect) showLogin();
+}
 
-    document.getElementById("navMenu").classList.remove("active");
+function showLogin() {
+    const login = document.getElementById("loginSection");
+    const dashboard = document.getElementById("dashboardSection");
+    if (dashboard) dashboard.classList.add("hidden");
+    if (login) login.classList.remove("hidden");
+    document.getElementById("currentWardDisplay")?.classList.add("hidden");
+    document.getElementById("logoutBtn")?.classList.add("hidden");
+    document.getElementById("wardInput") && (document.getElementById("wardInput").value = "");
+    window.AppShell?.closeSidebar?.();
+    syncShellToggleVisibility();
+}
 
-    Swal.fire({
-        title: currentRole === "admin" ? 'ออกจากระบบแอดมิน?' : 'เปลี่ยนหน่วยงาน?',
-        text: currentRole === "admin"
-            ? "คุณต้องการออกจากโหมดผู้ดูแลระบบใช่หรือไม่"
-            : "คุณต้องการออกจากหน่วยงานปัจจุบันใช่หรือไม่",
+async function logout() {
+    const result = await Swal.fire({
+        title: 'ออกจากระบบ?',
+        text: 'คุณต้องการออกจากระบบ SWD Care Connect ใช่หรือไม่',
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#003366',
         cancelButtonColor: '#d33',
         confirmButtonText: 'ใช่, ออกจากระบบ',
         cancelButtonText: 'ยกเลิก'
-    }).then((result) => {
-        if (!result.isConfirmed) return;
-
-        sessionStorage.removeItem(SESSION_KEYS.ward);
-        sessionStorage.removeItem(SESSION_KEYS.role);
-        document.getElementById("wardInput").value = "";
-        document.getElementById("dashboardSection").classList.add("hidden");
-        document.getElementById("loginSection").classList.remove("hidden");
-        document.getElementById("currentWardDisplay").classList.add("hidden");
-        document.getElementById("logoutBtn").classList.add("hidden");
-        window.AppShell?.closeSidebar?.();
-        syncShellToggleVisibility();
     });
+
+    if (!result.isConfirmed) return;
+    try {
+        await swdSupabase?.auth.signOut();
+    } finally {
+        currentProfile = null;
+        await clearLocalAuthState();
+    }
 }
 
 function openSystem(url) {
-    const currentWard = sessionStorage.getItem(SESSION_KEYS.ward);
-    const currentRole = sessionStorage.getItem(SESSION_KEYS.role) || "user";
-    const params = new URLSearchParams();
-
     if (!AVAILABLE_SYSTEMS.has(url)) {
         Swal.fire({
             icon: 'info',
@@ -174,66 +289,27 @@ function openSystem(url) {
         return;
     }
 
-    const isSterileAdminWard = url === "sterile-exchange.html" && currentWard && /จ่ายกลาง/.test(currentWard);
-    if (currentRole === "admin" || isSterileAdminWard) {
-        params.set("role", "admin");
-    } else if (currentWard) {
-        params.set("ward", currentWard);
+    if (!currentProfile) {
+        Swal.fire({ icon: 'warning', title: 'กรุณาเข้าสู่ระบบ', text: 'ต้องยืนยันตัวตนก่อนใช้งานระบบย่อย' });
+        return;
     }
+
+    const currentWard = currentProfile.role === 'ADMIN'
+        ? ''
+        : (Array.isArray(currentProfile.departments) ? currentProfile.departments[0]?.name : currentProfile.departments?.name) || '';
+    const currentRole = currentProfile.role || 'NURSE';
+    const params = new URLSearchParams();
+
+    if (currentWard) params.set("ward", currentWard);
+    if (currentRole) params.set("role", currentRole);
+    params.set("auth", "supabase");
 
     const queryString = params.toString();
     window.location.href = queryString ? `${url}?${queryString}` : url;
 }
 
-function showAdminLogin() {
-    Swal.fire({
-        title: '<i class="fas fa-user-shield"></i> เข้าสู่ระบบแอดมิน',
-        html: `
-            <input type="text" id="adminUser" class="swal2-input" placeholder="ชื่อผู้ใช้" autocomplete="username">
-            <input type="password" id="adminPass" class="swal2-input" placeholder="รหัสผ่าน" autocomplete="current-password">
-        `,
-        confirmButtonColor: '#003366',
-        confirmButtonText: 'เข้าสู่ระบบ',
-        showCancelButton: true,
-        cancelButtonText: 'ยกเลิก',
-        focusConfirm: false,
-        preConfirm: async () => {
-            const username = document.getElementById('adminUser').value.trim();
-            const password = document.getElementById('adminPass').value.trim();
-
-            if (!username || !password) {
-                Swal.showValidationMessage('กรุณากรอกชื่อผู้ใช้และรหัสผ่าน');
-                return false;
-            }
-
-            try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'adminLogin', username, password })
-                });
-
-                let result = null;
-                try { result = await response.json(); } catch (_) { result = null; }
-                if (!response.ok || !result || result.status !== 'success') {
-                    Swal.showValidationMessage((result && result.message) || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
-                    return false;
-                }
-
-                return true;
-            } catch (error) {
-                console.error('Admin login error:', error);
-                Swal.showValidationMessage('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
-                return false;
-            }
-        }
-    }).then((result) => {
-        if (result.isConfirmed) {
-            sessionStorage.removeItem(SESSION_KEYS.ward);
-            sessionStorage.setItem(SESSION_KEYS.role, "admin");
-            showDashboard("", "admin");
-        }
-    });
+async function showAdminLogin() {
+    await showSupabaseLogin({ title: 'เข้าสู่ระบบแอดมิน' });
 }
 
 function toggleMenu() {
