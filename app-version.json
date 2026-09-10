@@ -1,5 +1,5 @@
 {
-  "version": "2026.09.11.04",
-  "updatedAt": "2026-09-11T01:35:00+07:00",
-  "changes": "Ultra-compact topbar with menu, refresh, Admin, home and logout controls across app-shell pages"
+  "version": "2026.09.11.05",
+  "updatedAt": "2026-09-11T01:45:00+07:00",
+  "changes": "Move system title, department, role and period context onto the same topbar line as SWD Care Connect"
 }
