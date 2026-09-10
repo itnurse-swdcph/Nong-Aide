@@ -121,9 +121,9 @@ async function inspectionWindowStatus() {
 async function departmentReport(fiscalYear: unknown) {
   const fy = Number(fiscalYear) || new Date().getFullYear() + 543
   const startYear = fy - 543
-  const startDate = new Date(Date.UTC(startYear, 9, 1))
-  const endDate = new Date(Date.UTC(startYear + 1, 9, 1))
-  const months = Array.from({ length: 12 }, (_, i) => ({ y: i < 3 ? startYear : startYear + 1, m: (9 + i) % 12 }))
+  const startDate = new Date(Date.UTC(startYear - 1, 9, 1))
+  const endDate = new Date(Date.UTC(startYear, 9, 1))
+  const months = Array.from({ length: 12 }, (_, i) => ({ y: i < 3 ? startYear - 1 : startYear, m: (9 + i) % 12 }))
 
   const items = await fetchAllRows<any>((from, to) => db.from('equipment_items').select('rmc_no,item_id,owner_ward,usage_ward,inspection_frequency').order('seq', { ascending: true }).range(from, to))
   const history = await fetchAllRows<any>((from, to) => db.from('equipment_history').select('id,item_id,ts,status,ward').gte('ts', startDate.toISOString()).lt('ts', endDate.toISOString()).order('id', { ascending: true }).range(from, to))
