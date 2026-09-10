@@ -1,5 +1,5 @@
 {
-  "version": "2026.09.11.03",
-  "updatedAt": "2026-09-11T01:15:00+07:00",
-  "changes": "Compact topbar across all app-shell pages and consistent menu button including equipment inspection system"
+  "version": "2026.09.11.04",
+  "updatedAt": "2026-09-11T01:35:00+07:00",
+  "changes": "Ultra-compact topbar with menu, refresh, Admin, home and logout controls across app-shell pages"
 }
