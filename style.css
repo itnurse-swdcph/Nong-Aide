@@ -273,6 +273,59 @@ body {
     align-items: stretch;
 }
 
+.workspace-bar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.ward-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 16px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(13, 51, 92, 0.12);
+    color: var(--primary-dark);
+    font-size: 0.88rem;
+    font-weight: 500;
+    box-shadow: var(--shadow);
+}
+
+.ward-chip i {
+    color: var(--accent);
+}
+
+.ward-logout-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 16px;
+    border-radius: 999px;
+    background: #fff;
+    border: 1px solid var(--accent);
+    color: #8b5d00;
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-weight: 500;
+    transition: 0.2s ease;
+}
+
+.ward-logout-btn:hover {
+    background: var(--accent);
+    color: var(--primary-dark);
+}
+
+@media (max-width: 640px) {
+    .workspace-bar {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+}
+
 .dashboard-hero,
 .menu-panel {
     background: rgba(255, 255, 255, 0.92);
