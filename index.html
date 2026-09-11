@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SWD Care Connect - รพ.สมเด็จพระยุพราชสว่างแดนดิน</title>
-
     <link rel="icon" type="image/png" href="icon-192.png">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#003366">
@@ -13,7 +12,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="SWD Care Connect">
     <link rel="apple-touch-icon" href="icon-192.png">
-
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -22,28 +20,16 @@
     <link rel="stylesheet" href="app-shell.css">
 </head>
 <body class="home-page no-app-shell">
-
     <section id="loginSection" class="section-container">
         <div class="login-card">
-            <div class="login-badge">
-                <img src="icon-192.png" alt="SWD Care Connect Icon">
-                <span>SMART WORKFLOW</span>
-            </div>
+            <div class="login-badge"><img src="icon-192.png" alt="SWD Care Connect Icon"><span>SMART WORKFLOW</span></div>
             <h1 class="main-header">SWD Care Connect</h1>
             <h2 class="sub-header">ระบบบริหารจัดการงานหน่วยงานอัจฉริยะ</h2>
             <p class="hosp-name-header">โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน</p>
-
             <hr class="divider">
-
             <h3><i class="fas fa-map-marker-alt" style="color: var(--accent);"></i> เลือกหน่วยงานของคุณ</h3>
-
-            <div class="input-group">
-                <select id="wardInput">
-                    <option value="" selected disabled>กำลังโหลดรายชื่อหน่วยงาน...</option>
-                </select>
-            </div>
-
-            <button class="btn-primary" onclick="enterSystem()">เข้าสู่ระบบ</button>
+            <div class="input-group"><select id="wardInput"><option value="" selected disabled>กำลังโหลดรายชื่อหน่วยงาน...</option></select></div>
+            <button class="btn-primary" onclick="enterSystem()">เข้าใช้งาน</button>
             <button class="btn-admin-entry" onclick="showAdminLogin()"><i class="fas fa-user-shield"></i> เข้าสู่ระบบแอดมิน</button>
             <p class="login-hint">ผู้ใช้งานทั่วไปเลือกหน่วยงานแล้วเข้าใช้งานได้ทันที ส่วน Admin ใช้บัญชีสำหรับผู้ดูแลระบบ</p>
         </div>
@@ -58,69 +44,24 @@
             <div class="dashboard-hero">
                 <div class="hero-copy">
                     <span class="hero-kicker">Connected Smart Workflow</span>
-                    <h1 class="welcome-text">
-                        <span class="fade-in-text">ยินดีต้อนรับสู่ SWD Care Connect</span>
-                    </h1>
+                    <h1 class="welcome-text"><span class="fade-in-text">ยินดีต้อนรับสู่ SWD Care Connect</span></h1>
                     <p class="hero-description" id="dashboardSubtitle">กรุณาเลือกระบบที่ต้องการใช้งาน</p>
-                    <div class="hero-note">
-                        <i class="fas fa-sparkles"></i>
-                        <span>ศูนย์รวมการทำงานระบบสนับสนุนของหน่วยงาน เพื่อตอบสนองนโยบาย SMART Hospital</span>
-                    </div>
+                    <div class="hero-note"><i class="fas fa-sparkles"></i><span>ศูนย์รวมการทำงานระบบสนับสนุนของหน่วยงาน เพื่อตอบสนองนโยบาย SMART Hospital</span></div>
                 </div>
-                <div class="hero-visual">
-                    <img src="Digital Care Assistant Charecter.png" alt="Digital Care Assistant Character" class="mascot floating-anim">
-                </div>
+                <div class="hero-visual"><img src="Digital Care Assistant Charecter.png" alt="Digital Care Assistant Character" class="mascot floating-anim"></div>
             </div>
-
             <div class="menu-panel">
-                <div class="menu-panel-header">
-                    <h2>เมนูระบบย่อย</h2>
-                    <p>เลือกพื้นที่ทำงานที่ต้องการได้ทันที</p>
-                </div>
-
+                <div class="menu-panel-header"><h2>เมนูระบบย่อย</h2><p>เลือกพื้นที่ทำงานที่ต้องการได้ทันที</p></div>
                 <div class="menu-grid">
-                    <a href="#" class="menu-card" onclick="openSystem('equipment.html'); return false;">
-                        <div class="icon-circle"><i class="fas fa-stethoscope"></i></div>
-                        <div class="menu-copy">
-                            <h3>ตรวจนับครุภัณฑ์</h3>
-                            <p>ติดตามข้อมูลครุภัณฑ์ทางการแพทย์ ตรวจสอบสถานะ และอัปเดตการใช้งานได้อย่างเป็นระบบ</p>
-                        </div>
-                        <span class="menu-arrow"><i class="fas fa-arrow-right"></i></span>
-                    </a>
-
-                    <a href="#" class="menu-card" onclick="openSystem('cloth-stock.html'); return false;">
-                        <div class="icon-circle"><i class="fas fa-tshirt"></i></div>
-                        <div class="menu-copy">
-                            <h3>Stock เครื่องผ้า</h3>
-                            <p>ตรวจนับสต็อก เปรียบเทียบปริมาณกับ Par Level และดูภาพรวมของหน่วยงานได้สะดวก</p>
-                        </div>
-                        <span class="menu-arrow"><i class="fas fa-arrow-right"></i></span>
-                    </a>
-
-                    <a href="#" class="menu-card" onclick="openSystem('cloth-exchange.html'); return false;">
-                        <div class="icon-circle"><i class="fas fa-sync-alt"></i></div>
-                        <div class="menu-copy">
-                            <h3>แลกผ้าสะอาด</h3>
-                            <p>จัดการงานส่งแลกผ้าสะอาดประจำวัน พร้อมติดตามความเคลื่อนไหวของแต่ละหน่วยงาน</p>
-                        </div>
-                        <span class="menu-arrow"><i class="fas fa-arrow-right"></i></span>
-                    </a>
-
-                    <a href="#" class="menu-card" onclick="openSystem('sterile-exchange.html'); return false;">
-                        <div class="icon-circle"><i class="fas fa-syringe"></i></div>
-                        <div class="menu-copy">
-                            <h3>ส่งแลกวัสดุปราศจากเชื้อ</h3>
-                            <p>จัดการเบิกส่งแลกวัสดุปราศจากเชื้อ บันทึกข้อมูลและติดตามสถานะจากศูนย์จ่ายกลาง</p>
-                        </div>
-                        <span class="menu-arrow"><i class="fas fa-arrow-right"></i></span>
-                    </a>
+                    <a href="#" class="menu-card" onclick="openSystem('equipment.html'); return false;"><div class="icon-circle"><i class="fas fa-stethoscope"></i></div><div class="menu-copy"><h3>ตรวจนับครุภัณฑ์</h3><p>ติดตามข้อมูลครุภัณฑ์ทางการแพทย์ ตรวจสอบสถานะ และอัปเดตการใช้งานได้อย่างเป็นระบบ</p></div><span class="menu-arrow"><i class="fas fa-arrow-right"></i></span></a>
+                    <a href="#" class="menu-card" onclick="openSystem('cloth-stock.html'); return false;"><div class="icon-circle"><i class="fas fa-tshirt"></i></div><div class="menu-copy"><h3>Stock เครื่องผ้า</h3><p>ตรวจนับสต็อก เปรียบเทียบปริมาณกับ Par Level และดูภาพรวมของหน่วยงานได้สะดวก</p></div><span class="menu-arrow"><i class="fas fa-arrow-right"></i></span></a>
+                    <a href="#" class="menu-card" onclick="openSystem('cloth-exchange.html'); return false;"><div class="icon-circle"><i class="fas fa-sync-alt"></i></div><div class="menu-copy"><h3>แลกผ้าสะอาด</h3><p>จัดการงานส่งแลกผ้าสะอาดประจำวัน พร้อมติดตามความเคลื่อนไหวของแต่ละหน่วยงาน</p></div><span class="menu-arrow"><i class="fas fa-arrow-right"></i></span></a>
+                    <a href="#" class="menu-card" onclick="openSystem('sterile-exchange.html'); return false;"><div class="icon-circle"><i class="fas fa-syringe"></i></div><div class="menu-copy"><h3>ส่งแลกวัสดุปราศจากเชื้อ</h3><p>จัดการเบิกส่งแลกวัสดุปราศจากเชื้อ บันทึกข้อมูลและติดตามสถานะจากศูนย์จ่ายกลาง</p></div><span class="menu-arrow"><i class="fas fa-arrow-right"></i></span></a>
                 </div>
             </div>
         </div>
     </section>
-
     <footer class="site-footer">© 2026 Developed By Natnarinthorn | Nursing Informatics System</footer>
-
     <script src="app-shell.js"></script>
     <script src="script.js"></script>
 </body>
