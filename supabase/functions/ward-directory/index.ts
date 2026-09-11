@@ -13,6 +13,53 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
+const DEPARTMENTS = [
+  "กลุ่มการพยาบาล",
+  "การพยาบาลชุมชน (COC)",
+  "กุมารเวชกรรม",
+  "คลินิกฝากครรภ์",
+  "คลินิกโรคเรื้อรัง",
+  "เคมีบำบัด",
+  "จ่ายกลาง",
+  "ซักฟอก",
+  "ไตเทียม (CAPD)",
+  "ไตเทียม (HD)",
+  "ทันตกรรม",
+  "เทคนิคการแพทย์และพยาธิวิทยาคลินิก",
+  "พัสดุ",
+  "พิเศษปาริฉัตร",
+  "พิเศษพวงชมพู",
+  "แพทย์แผนไทย",
+  "รังสีวิทยา",
+  "รักษ์ใจปันสุข",
+  "วิสัญญี",
+  "เวชกรรมฟื้นฟู",
+  "เวชกรรมฟื้นฟูปฐมภูมิ",
+  "เวชกรรมสังคม",
+  "ศสม.หนองทุ่ม",
+  "ออร์โธปิดิกส์",
+  "ศัลยกรรมทั่วไป",
+  "ศูนย์เครื่องมือแพทย์",
+  "ศูนย์รักษ์สุขภาพ",
+  "ศูนย์สำรองเครื่องมือแพทย์",
+  "สงฆ์อาพาธ",
+  "ส่องกล้อง",
+  "สูติ-นรีเวช",
+  "หลอดเลือดสมอง",
+  "ห้องคลอด",
+  "ห้องผ่าตัด",
+  "อาชีวเวชกรรม",
+  "อายุรกรรมชาย",
+  "อายุรกรรมหญิง",
+  "อุบัติเหตุและฉุกเฉิน",
+  "ศูนย์เปล",
+  "ICU",
+  "NICU-SNB",
+  "OPD",
+  "OPD ตา",
+  "OPD จิตเวช"
+];
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -25,14 +72,17 @@ function clean(value: unknown) {
 }
 
 async function getWards() {
+  // Keep the selectable departments exactly as the approved AIDE master list.
+  // Validate that Supabase still has the corresponding department records, but do not
+  // let ordering, naming, or legacy rows change the user-facing selection list.
   const { data, error } = await supabase
     .from("departments")
     .select("name")
-    .eq("active", true)
-    .order("name");
-
+    .eq("active", true);
   if (error) throw error;
-  return [...new Set((data || []).map((row: any) => clean(row.name)).filter(Boolean))];
+
+  const activeNames = new Set((data || []).map((row: any) => clean(row.name)).filter(Boolean));
+  return DEPARTMENTS.filter((name) => activeNames.has(name));
 }
 
 Deno.serve(async (req: Request) => {
