@@ -2,6 +2,7 @@
     const APP_VERSION = '2026.09.11.07';
     const APP_VERSION_FILE = 'app-version.json';
     const VERSION_NOTICE_KEY = 'swd_app_version_notice';
+    const SIDEBAR_STATE_KEY = 'swd_sidebar_collapsed';
     const PAGE_LINKS = [
         { href: 'index.html', label: 'หน้าหลัก', icon: 'fa-house' },
         { href: 'equipment.html', label: 'ตรวจนับครุภัณฑ์', icon: 'fa-stethoscope' },
@@ -43,6 +44,7 @@
         const match = pathname.match(/([^\\/]+)$/);
         return (match && match[1]) ? match[1].toLowerCase() : 'index.html';
     }
+    function isMobileLayout() { return window.matchMedia('(max-width: 1100px)').matches; }
     function setSidebarState(open) {
         const sidebar = document.querySelector('.app-shell-sidebar');
         const overlay = document.querySelector('.app-shell-overlay');
@@ -50,6 +52,25 @@
         sidebar.classList.toggle('open', open);
         overlay.classList.toggle('open', open);
         document.body.classList.toggle('shell-sidebar-open', open);
+    }
+    function setSidebarCollapsed(collapsed, persist = true) {
+        if (isMobileLayout()) return;
+        document.body.classList.toggle('shell-sidebar-collapsed', collapsed);
+        const button = document.querySelector('.shell-sidebar-collapse-toggle');
+        if (button) {
+            button.setAttribute('aria-label', collapsed ? 'แสดง Sidebar' : 'ซ่อน Sidebar');
+            button.setAttribute('title', collapsed ? 'แสดง Sidebar' : 'ซ่อน Sidebar');
+            button.innerHTML = `<i class="fas ${collapsed ? 'fa-chevron-right' : 'fa-chevron-left'}"></i>`;
+        }
+        if (persist) {
+            try { localStorage.setItem(SIDEBAR_STATE_KEY, collapsed ? '1' : '0'); } catch (error) {}
+        }
+    }
+    function restoreSidebarState() {
+        if (isMobileLayout()) return;
+        let collapsed = false;
+        try { collapsed = localStorage.getItem(SIDEBAR_STATE_KEY) === '1'; } catch (error) {}
+        setSidebarCollapsed(collapsed, false);
     }
     function clearSessionAndHome() {
         ['aide_ward', 'aide_role', 'sterile_ward', 'sterile_role', 'currentUser', 'currentRole', 'currentBuildingIds'].forEach((key) => {
@@ -71,13 +92,25 @@
         button.type = 'button';
         button.className = 'shell-mobile-toggle';
         button.setAttribute('aria-label', 'เปิดเมนูระบบ');
+        button.setAttribute('title', 'เปิดเมนูระบบ');
         button.innerHTML = '<i class="fas fa-bars"></i>';
         button.addEventListener('click', () => setSidebarState(true));
         document.body.appendChild(button);
     }
+    function ensureSidebarCollapseToggle(sidebar) {
+        if (sidebar.querySelector('.shell-sidebar-collapse-toggle')) return;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'shell-sidebar-collapse-toggle';
+        button.setAttribute('aria-label', 'ซ่อน Sidebar');
+        button.setAttribute('title', 'ซ่อน Sidebar');
+        button.innerHTML = '<i class="fas fa-chevron-left"></i>';
+        button.addEventListener('click', () => setSidebarCollapsed(!document.body.classList.contains('shell-sidebar-collapsed')));
+        sidebar.appendChild(button);
+    }
     function createSidebar() {
         let sidebar = document.querySelector('.app-shell-sidebar');
-        if (sidebar) { ensureMobileToggle(); return sidebar; }
+        if (sidebar) { ensureMobileToggle(); ensureSidebarCollapseToggle(sidebar); return sidebar; }
         sidebar = document.createElement('aside');
         sidebar.className = 'app-shell-sidebar';
         sidebar.setAttribute('aria-label', 'เมนูหลักของระบบ');
@@ -119,6 +152,7 @@
             legacyWard.classList.remove('hidden');
             legacyWard.classList.add('app-shell-context-chip');
         }
+        ensureSidebarCollapseToggle(sidebar);
         ensureMobileToggle();
         return sidebar;
     }
@@ -156,6 +190,13 @@
         const overlay = document.querySelector('.app-shell-overlay');
         if (overlay) overlay.addEventListener('click', () => setSidebarState(false));
         document.addEventListener('keydown', (event) => { if (event.key === 'Escape') setSidebarState(false); });
+        window.addEventListener('resize', () => {
+            if (isMobileLayout()) {
+                document.body.classList.remove('shell-sidebar-collapsed');
+            } else {
+                restoreSidebarState();
+            }
+        });
     }
     function paginateTableBody(tbody) {
         const rows = Array.from(tbody.children).filter(row => !row.classList.contains('empty-row'));
@@ -230,14 +271,16 @@
     function init() {
         if (document.body.classList.contains('no-app-shell')) return;
         document.body.classList.add('has-app-shell');
-        buildLayout(); markActiveLinks(); bindNavigation(); bindTablePagination(); checkApplicationVersion();
+        buildLayout(); markActiveLinks(); bindNavigation(); bindTablePagination(); restoreSidebarState(); checkApplicationVersion();
     }
     window.AppShell = {
         navigate(target) { window.location.href = buildHref(target); },
         openSidebar() { setSidebarState(true); },
         closeSidebar() { setSidebarState(false); },
-        toggleSidebar() { const sidebar = document.querySelector('.app-shell-sidebar'); if (sidebar) setSidebarState(!sidebar.classList.contains('open')); },
-        refreshLinks() { markActiveLinks(); }
+        toggleSidebar() { const sidebar = document.querySelector('.app-shell-sidebar'); if (isMobileLayout()) { setSidebarState(!sidebar?.classList.contains('open')); } else { setSidebarCollapsed(!document.body.classList.contains('shell-sidebar-collapsed')); } },
+        refreshLinks() { markActiveLinks(); },
+        collapseSidebar() { setSidebarCollapsed(true); },
+        expandSidebar() { setSidebarCollapsed(false); }
     };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
