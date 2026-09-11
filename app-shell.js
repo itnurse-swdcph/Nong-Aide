@@ -2,22 +2,6 @@
     const APP_VERSION = '2026.09.11.07';
     const APP_VERSION_FILE = 'app-version.json';
     const VERSION_NOTICE_KEY = 'swd_app_version_notice';
-    const LEGACY_EQUIPMENT_API = 'https://script.google.com/macros/s/AKfycbxwDfAX8Jmu8WRqQGPf_JQWZWWuRITawJ3QSf0abeVdtDGaq4NYKGIEnPEauRAW7RjqoA/exec';
-    const SUPABASE_EQUIPMENT_API = 'https://aqhrfwqbroezrrcenyyb.supabase.co/functions/v1/equipment-api';
-    const nativeFetch = window.fetch.bind(window);
-    window.fetch = function (input, init) {
-        try {
-            const originalUrl = typeof input === 'string' ? input : (input && input.url) || '';
-            if (originalUrl.startsWith(LEGACY_EQUIPMENT_API)) {
-                const url = new URL(originalUrl);
-                const target = new URL(SUPABASE_EQUIPMENT_API);
-                url.searchParams.forEach((value, key) => target.searchParams.set(key, value));
-                if (typeof input === 'string') return nativeFetch(target.toString(), init);
-                return nativeFetch(new Request(target.toString(), input), init);
-            }
-        } catch (error) { console.warn('Equipment API migration bridge failed', error); }
-        return nativeFetch(input, init);
-    };
     const PAGE_LINKS = [
         { href: 'index.html', label: 'หน้าหลัก', icon: 'fa-house' },
         { href: 'equipment.html', label: 'ตรวจนับครุภัณฑ์', icon: 'fa-stethoscope' },
