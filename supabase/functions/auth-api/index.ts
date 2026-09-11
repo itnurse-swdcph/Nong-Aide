@@ -83,16 +83,52 @@ async function login(body: Record<string, unknown>) {
   });
 }
 
+async function adminLogin(body: Record<string, unknown>) {
+  const username = clean(body.username);
+  const password = String(body.password ?? "");
+
+  if (!username || !password) {
+    return jsonResponse({ status: "error", message: "กรุณากรอกชื่อผู้ใช้และรหัสผ่าน" }, 400);
+  }
+
+  // The existing administrator account is stored in Supabase's admin_users table.
+  // Keep the ordinary department flow password-free; this branch is only for Admin.
+  const { data: admin, error } = await adminClient
+    .from("admin_users")
+    .select("id, username")
+    .eq("username", username)
+    .eq("password", password)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!admin) return jsonResponse({ status: "error", message: "ชื่อผู้ใช้หรือรหัสผ่านแอดมินไม่ถูกต้อง" }, 401);
+
+  return jsonResponse({
+    status: "success",
+    data: {
+      admin: {
+        id: admin.id,
+        username: admin.username,
+        role: "ADMIN",
+      },
+    },
+  });
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return jsonResponse({ status: "error", message: "Method not allowed" }, 405);
 
   try {
     const body = await req.json();
-    if (clean(body?.action) !== "login") {
-      return jsonResponse({ status: "error", message: "ไม่รู้จัก action" }, 404);
+    switch (clean(body?.action)) {
+      case "login":
+        return await login(body);
+      case "admin_login":
+        return await adminLogin(body);
+      default:
+        return jsonResponse({ status: "error", message: "ไม่รู้จัก action" }, 404);
     }
-    return await login(body);
   } catch (error) {
     console.error(error);
     return jsonResponse({
