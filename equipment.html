@@ -797,7 +797,7 @@
         const THAI_MONTH_NAMES = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
         const LOCAL_INSPECTION_WINDOW_KEY = 'aide_inspection_windows_v1';
         const API_TIMEOUT_MS = 30000;
-        const EXPECTED_EQUIPMENT_API_VERSION = '2026-08-13-historylog-layout-repair';
+        const EXPECTED_EQUIPMENT_API_VERSION = '2026-09-11-inspection-window-auto-1-10';
         let verifiedApiVersion = '';
         let allEquipmentUniverse = [];
         let lastDepartmentSummaryReport = null;
@@ -3540,7 +3540,8 @@ async function openInspectionScheduleModal() {
 
         async function openUpdateModal(item, options = {}) {
             if (!ensureInspectionWindowOpenForStaff()) return;
-            await ensureWardOptionsLoaded();
+            // เปิดฟอร์มทันที ไม่รอ Ward API; โหลดตัวเลือกหน่วยงานแบบ background
+            const wardOptionsPromise = ensureWardOptionsLoaded();
             const { inspectionRecord = null, isEditMode = false } = options;
             const ownerCanTransfer = normalizeWard(currentWard) && normalizeWard(item._ownerWard) === normalizeWard(currentWard);
             const updateDetailLinkButtonId = 'update-detail-link-btn';
