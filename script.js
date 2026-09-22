@@ -186,7 +186,7 @@ function openSystem(url) {
         Swal.fire({ icon: 'warning', title: 'กรุณาเลือกหน่วยงาน', text: 'กรุณาเลือกหน่วยงานก่อนใช้งานระบบย่อย' }); return;
     }
     const currentWard = currentProfile.role === 'ADMIN' ? '' : (currentProfile.department_name || '');
-    const currentRole = currentProfile.role || 'NURSE';
+    const currentRole = (currentProfile.role || 'NURSE').toLowerCase();
     const params = new URLSearchParams();
     if (currentWard) params.set('ward', currentWard);
     if (currentRole) params.set('role', currentRole);
@@ -224,7 +224,7 @@ async function showAdminLogin() {
     });
     if (!result.isConfirmed || !result.value) return;
     currentProfile = { id: result.value.id, username: result.value.username, role: 'ADMIN', department_name: '', active: true, is_admin_session: true };
-    sessionStorage.setItem(SESSION_KEYS.role, 'ADMIN');
+    sessionStorage.setItem(SESSION_KEYS.role, 'admin');
     sessionStorage.removeItem(SESSION_KEYS.ward);
     sessionStorage.removeItem(SESSION_KEYS.profileId);
     showDashboard('', 'ADMIN');
