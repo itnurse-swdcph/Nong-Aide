@@ -264,6 +264,8 @@ function logoutSystem() {
 }
 
 /* --------------------------------- BOOTSTRAP --------------------------------- */
+const CENTRAL_SUPPLY_WARD = 'จ่ายกลาง';
+
 async function bootstrap() {
   const urlParams = new URLSearchParams(window.location.search);
   if (!urlParams.get('ward') && urlParams.get('role') !== 'admin') {
@@ -271,7 +273,11 @@ async function bootstrap() {
     return;
   }
 
-  if (urlParams.get('role') === 'admin') {
+  // หน่วยงาน "จ่ายกลาง" ได้สิทธิ์แอดมินของระบบแลกวัสดุปราศจากเชื้อโดยอัตโนมัติ
+  const wardParam = (urlParams.get('ward') || sessionStorage.getItem('aide_ward') || '').trim();
+  const isCentralSupply = wardParam === CENTRAL_SUPPLY_WARD;
+
+  if (urlParams.get('role') === 'admin' || isCentralSupply) {
     currentRole = 'admin';
     currentWard = '';
     sessionStorage.setItem('sterile_role', 'admin');

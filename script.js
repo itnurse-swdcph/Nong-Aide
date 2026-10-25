@@ -11,6 +11,7 @@ window.swdSupabase = swdSupabase;
 let wardList = [];
 let currentProfile = null;
 const SESSION_KEYS = { ward: "aide_ward", role: "aide_role", profileId: "aide_profile_id" };
+const CENTRAL_SUPPLY_DEPARTMENT = 'จ่ายกลาง';
 const AVAILABLE_SYSTEMS = new Set(["equipment.html", "cloth-stock.html", "cloth-exchange.html", "sterile-exchange.html"]);
 
 if ('serviceWorker' in navigator) {
@@ -186,7 +187,9 @@ function openSystem(url) {
         Swal.fire({ icon: 'warning', title: 'กรุณาเลือกหน่วยงาน', text: 'กรุณาเลือกหน่วยงานก่อนใช้งานระบบย่อย' }); return;
     }
     const currentWard = currentProfile.role === 'ADMIN' ? '' : (currentProfile.department_name || '');
-    const currentRole = (currentProfile.role || 'NURSE').toLowerCase();
+    let currentRole = (currentProfile.role || 'NURSE').toLowerCase();
+    // หน่วยงาน "จ่ายกลาง" เป็นแอดมินเฉพาะระบบส่งแลกวัสดุปราศจากเชื้อ
+    if (url === 'sterile-exchange.html' && currentWard === CENTRAL_SUPPLY_DEPARTMENT) currentRole = 'admin';
     const params = new URLSearchParams();
     if (currentWard) params.set('ward', currentWard);
     if (currentRole) params.set('role', currentRole);

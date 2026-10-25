@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aide-swd-v2026.09.11.05';
+const CACHE_NAME = 'aide-swd-v2026.09.11.06';
 
 self.addEventListener('install', event => {
   self.skipWaiting();
