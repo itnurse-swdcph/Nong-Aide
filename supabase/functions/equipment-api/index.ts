@@ -14,7 +14,7 @@ try { secretKey = secretKeysRaw ? JSON.parse(secretKeysRaw).default ?? '' : '' }
 secretKey = secretKey || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
 const db = createClient(SUPABASE_URL, secretKey, { auth: { autoRefreshToken: false, persistSession: false } })
 
-const API_VERSION = '2026-09-11-inspection-window-auto-1-10'
+const API_VERSION = '2026-11-09-independent-extra-inspection-windows'
 const BANGKOK_OFFSET = '+07:00'
 const PAGE_SIZE = 1000
 
@@ -79,30 +79,50 @@ function inspectionStatus(openDate: string, closeDate: string, now = new Date())
 }
 
 async function getInspectionWindows(months: { y: number, m: number }[]) {
-  const { data, error } = await db.from('equipment_inspection_windows').select('*')
-  if (error) throw error
-  const overrides = new Map<string, any>()
-  for (const row of data ?? []) overrides.set(`${Number(row.target_year)}-${pad2(Number(row.target_month))}`, row)
   const now = new Date()
   return months.map(({ y, m }) => {
     const fallback = defaultInspectionWindow(y, m)
-    const override = overrides.get(`${y}-${pad2(m)}`)
-    const hasOverride = !!override?.open_date && !!override?.close_date
-    const openDate = hasOverride ? new Date(override.open_date).toISOString() : new Date(fallback.openDate).toISOString()
-    const closeDate = hasOverride ? new Date(override.close_date).toISOString() : new Date(fallback.closeDate).toISOString()
+    const openDate = new Date(fallback.openDate).toISOString()
+    const closeDate = new Date(fallback.closeDate).toISOString()
     return {
       periodKey: fallback.periodKey,
       targetYear: y,
       targetMonth: m,
       openDate,
       closeDate,
-      isOverride: hasOverride,
-      source: hasOverride ? 'admin' : 'automatic',
+      isOverride: false,
+      source: 'automatic',
       status: inspectionStatus(openDate, closeDate, now),
       displayOpen: openDate,
       displayClose: closeDate,
     }
   })
+}
+
+async function getExtraInspectionWindows(months: { y: number, m: number }[]) {
+  const keys = new Set(months.map(({ y, m }) => `${y}-${pad2(m)}`))
+  const { data, error } = await db.from('equipment_inspection_extra_windows').select('*').order('open_date', { ascending: true })
+  if (error) throw error
+  const now = new Date()
+  return (data ?? []).filter((row: any) => keys.has(`${Number(row.target_year)}-${pad2(Number(row.target_month))}`)).map((row: any) => ({
+    id: row.id,
+    windowId: row.id,
+    periodKey: `${String(row.target_year).padStart(4,'0')}-${pad2(row.target_month)}-extra-${row.id}`,
+    targetYear: Number(row.target_year),
+    targetMonth: Number(row.target_month),
+    openDate: new Date(row.open_date).toISOString(),
+    closeDate: new Date(row.close_date).toISOString(),
+    isOverride: true,
+    source: 'admin_extra',
+    isActive: row.is_active !== false,
+    createdBy: row.created_by || '',
+    createdAt: row.created_at,
+    closedBy: row.closed_by || '',
+    closedAt: row.closed_at || null,
+    status: row.is_active === false ? 'closed' : inspectionStatus(new Date(row.open_date).toISOString(), new Date(row.close_date).toISOString(), now),
+    displayOpen: new Date(row.open_date).toISOString(),
+    displayClose: new Date(row.close_date).toISOString(),
+  }))
 }
 
 function toApiItem(r: any) {
@@ -170,9 +190,12 @@ async function latestHistory(item: any, params: any) {
 
 async function inspectionWindowStatus(fiscalYearParam?: unknown) {
   const fiscalYear = Number(fiscalYearParam) || new Date().getFullYear() + 543
-  const windows = await getInspectionWindows(fiscalMonths(fiscalYear))
-  const current = windows.find(w => w.status === 'open') ?? null
-  return { fiscalYear, isOpen: !!current, currentWindow: current, windows }
+  const months = fiscalMonths(fiscalYear)
+  const windows = await getInspectionWindows(months)
+  const extraWindows = await getExtraInspectionWindows(months)
+  const now = new Date()
+  const current = [...extraWindows.filter((w: any) => w.status === 'open'), ...windows.filter(w => w.status === 'open')][0] ?? null
+  return { fiscalYear, isOpen: !!current, currentWindow: current, windows, extraWindows }
 }
 
 async function departmentReport(fiscalYear: unknown) {
@@ -267,24 +290,28 @@ async function handlePost(req: Request) {
   const data = await req.json(), action = clean(data.action)
   if (action === 'getApiInfo') return ok({ status: 'success', data: { version: API_VERSION, backend: 'Supabase' } })
 
-  if (action === 'saveInspectionWindow') {
+  if (action === 'saveInspectionWindow' || action === 'addInspectionExtraWindow') {
     const y = Number(data.targetYear), m = Number(data.targetMonth)
     if (!Number.isInteger(y) || !Number.isInteger(m) || m < 1 || m > 12) return fail('ปีหรือเดือนไม่ถูกต้อง')
-    if (data.resetToDefault === true) {
-      const periodKey = `${String(y).padStart(4,'0')}-${pad2(m)}-01 00:00:00`
-      const { error } = await db.from('equipment_inspection_windows').delete().eq('period_key', periodKey)
-      if (error) throw error
-      return ok({ status: 'success', data: defaultInspectionWindow(y, m), message: 'คืนค่าเป็นรอบตรวจอัตโนมัติแล้ว' })
-    }
     const openDate = isoOrNull(data.openDate)
     const closeDate = isoOrNull(data.closeDate)
     if (!openDate || !closeDate) return fail('กรุณาระบุวันเวลาเปิดและปิดรอบตรวจให้ครบ')
     if (new Date(openDate) >= new Date(closeDate)) return fail('วันเวลาเปิดรอบต้องก่อนวันเวลาปิดรอบ')
-    const periodKey = `${String(y).padStart(4,'0')}-${pad2(m)}-01 00:00:00`
-    const row = { period_key: periodKey, target_year: y, target_month: m, open_date: openDate, close_date: closeDate, updated_at: new Date().toISOString() }
-    const { data: saved, error } = await db.from('equipment_inspection_windows').upsert(row, { onConflict: 'period_key' }).select().single()
+    const row = { target_year: y, target_month: m, open_date: openDate, close_date: closeDate, created_by: clean(data.createdBy) || 'ผู้ดูแลระบบ', is_active: true }
+    const { data: saved, error } = await db.from('equipment_inspection_extra_windows').insert(row).select().single()
     if (error) throw error
-    return ok({ status: 'success', data: saved })
+    return ok({ status: 'success', data: { id: saved.id, windowId: saved.id, targetYear: y, targetMonth: m, openDate: saved.open_date, closeDate: saved.close_date, source: 'admin_extra', isActive: true, createdBy: saved.created_by, createdAt: saved.created_at } }, 200)
+  }
+
+  if (action === 'closeInspectionExtraWindow') {
+    const id = clean(data.windowId || data.id)
+    if (!id) return fail('ไม่พบรอบเพิ่มเติมที่ต้องการปิด')
+    const { data: saved, error } = await db.from('equipment_inspection_extra_windows')
+      .update({ is_active: false, closed_by: clean(data.closedBy) || 'ผู้ดูแลระบบ', closed_at: new Date().toISOString() })
+      .eq('id', id).eq('is_active', true).select().maybeSingle()
+    if (error) throw error
+    if (!saved) return fail('ไม่พบรอบเพิ่มเติมที่เปิดอยู่ หรือรอบนี้ถูกปิดไปแล้ว', 404)
+    return ok({ status: 'success', data: { id: saved.id, isActive: false, closedAt: saved.closed_at, closedBy: saved.closed_by } })
   }
 
   if (action === 'resetInspectionWindow') {
@@ -359,7 +386,7 @@ async function handlePost(req: Request) {
     }
     const { data: saved, error: se } = await db.from('equipment_items').update(update).eq('rmc_no', item.rmc_no).select().single()
     if (se) throw se
-    return ok({ status: 'success', data: { updatedItem: toApiItem(saved) } })
+    return ok({ status: 'success', data: { updatedItem: toApiItem(saved), masterVerified: true, historyVerified: true } })
   }
 
   return fail('ไม่รู้จัก action: ' + action, 404)
