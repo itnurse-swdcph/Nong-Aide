@@ -1839,7 +1839,8 @@ async function openInspectionScheduleModal() {
         function initializeDepartmentReportYears() {
             const select = document.getElementById('departmentReportFiscalYear');
             if (!select || select.options.length) return;
-            const currentThaiYear = new Date().getFullYear() + 543;
+            const currentDate = new Date();
+            const currentThaiYear = currentDate.getFullYear() + (currentDate.getMonth() >= 9 ? 544 : 543);
             for (let year = currentThaiYear; year >= currentThaiYear - 5; year--) {
                 const option = document.createElement('option');
                 option.value = year;
