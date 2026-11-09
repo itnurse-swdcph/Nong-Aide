@@ -646,7 +646,10 @@
                             <i class="fas fa-print"></i> พิมพ์ป้าย QR
                         </button>
                         <button class="btn btn-accent" style="width: auto;" onclick="openInspectionScheduleModal()">
-                            <i class="fas fa-calendar-alt"></i> ตั้งค่ารอบเปิดระบบ
+                            <i class="fas fa-calendar-plus"></i> เปิดรอบตรวจเพิ่มเติม
+                        </button>
+                        <button class="btn btn-outline" style="background: white; width: auto;" onclick="openInspectionExtraWindowManager()">
+                            <i class="fas fa-calendar-check"></i> จัดการรอบเพิ่มเติม
                         </button>
                         <button class="btn btn-primary" style="width: auto;" onclick="openAddEquipmentModal()">
                             <i class="fas fa-plus"></i> เพิ่มครุภัณฑ์ใหม่
@@ -1184,6 +1187,11 @@
 
             return {
                 periodKey: raw.periodKey || getInspectionPeriodKey(targetYear, targetMonth),
+                windowId: raw.windowId || raw.id || '',
+                source: raw.source || (raw.windowId || raw.id ? 'admin_extra' : 'automatic'),
+                isActive: raw.isActive !== false,
+                createdBy: raw.createdBy || '',
+                createdAt: raw.createdAt || '',
                 targetYear,
                 targetMonth,
                 openDate,
@@ -1210,9 +1218,10 @@
                 .map(normalizeInspectionWindowRecord)
                 .filter(Boolean)
                 .forEach(record => {
-                    const current = latestByPeriod.get(record.periodKey);
+                    const identity = record.windowId ? `extra:${record.windowId}` : record.periodKey;
+                    const current = latestByPeriod.get(identity);
                     if (!current || compareInspectionWindowRecency(current, record) <= 0) {
-                        latestByPeriod.set(record.periodKey, record);
+                        latestByPeriod.set(identity, record);
                     }
                 });
 
@@ -1674,7 +1683,7 @@ async function openInspectionScheduleModal() {
             }).join('');
 
             const result = await Swal.fire({
-                title: 'ตั้งค่ารอบเปิดระบบตรวจนับ',
+                title: 'เปิดรอบตรวจเพิ่มเติม',
                 width: 640,
                 html: `
                     <div style="text-align:left;">
@@ -1701,7 +1710,7 @@ async function openInspectionScheduleModal() {
                     </div>
                 `,
                 showCancelButton: true,
-                confirmButtonText: '<i class="fas fa-save"></i> บันทึกรอบเปิดระบบ',
+                confirmButtonText: '<i class="fas fa-calendar-plus"></i> เปิดรอบเพิ่มเติม',
                 cancelButtonText: 'ยกเลิก',
                 confirmButtonColor: '#003366',
                 showLoaderOnConfirm: true,
@@ -1742,7 +1751,7 @@ async function openInspectionScheduleModal() {
                             redirect: 'follow',
                             headers: { "Content-Type": "text/plain;charset=utf-8" },
                             body: JSON.stringify({
-                                action: 'saveInspectionWindow',
+                                action: 'addInspectionExtraWindow',
                                 targetYear: record.targetYear,
                                 targetMonth: record.targetMonth,
                                 openDate: record.openDate,
@@ -1754,10 +1763,11 @@ async function openInspectionScheduleModal() {
                             throw new Error(apiResult.message || 'saveInspectionWindow failed');
                         }
 
-                        saveLocalInspectionWindowRecord(record);
+                        const savedWindow = apiResult.data || {};
+                        saveLocalInspectionWindowRecord({ ...record, windowId: savedWindow.windowId || savedWindow.id, source: 'admin_extra', isActive: true, createdBy: savedWindow.createdBy || 'ผู้ดูแลระบบ' });
                         return {
                             savedTo: 'api',
-                            message: `บันทึกรอบ ${formatInspectionPeriodLabel(record)} เรียบร้อย`
+                            message: `เปิดรอบเพิ่มเติม ${formatInspectionPeriodLabel(record)} เรียบร้อย โดยไม่เปลี่ยนรอบอัตโนมัติ`
                         };
                     } catch (error) {
                         console.warn('Falling back to local inspection window storage:', error);
@@ -1787,6 +1797,51 @@ async function openInspectionScheduleModal() {
                 text: result.value.message,
                 confirmButtonColor: '#003366'
             });
+        }
+
+        async function openInspectionExtraWindowManager() {
+            if (!isAdminLoggedIn) {
+                Swal.fire('แจ้งเตือน', 'เฉพาะแอดมินเท่านั้น', 'warning');
+                return;
+            }
+            await loadInspectionWindowStatus();
+            const extras = (inspectionWindowStatus.windows || []).filter(w => w.windowId && w.isActive !== false);
+            if (!extras.length) {
+                Swal.fire('ไม่มีรอบเพิ่มเติมที่เปิดอยู่', 'รอบอัตโนมัติวันที่ 1–10 ยังคงทำงานตามปกติ', 'info');
+                return;
+            }
+            const options = extras.map(w => {
+                const label = `${formatInspectionPeriodLabel(w)} | ${formatThaiDate(w.openDate)} – ${formatThaiDate(w.closeDate)}`;
+                return `<option value="${escapeHtml(w.windowId)}">${escapeHtml(label)}</option>`;
+            }).join('');
+            const result = await Swal.fire({
+                title: 'จัดการรอบตรวจเพิ่มเติม',
+                html: `<div style="text-align:left"><p>เลือกเฉพาะรอบเพิ่มเติมที่ต้องการปิด การปิดรอบนี้จะไม่กระทบรอบอัตโนมัติวันที่ 1–10</p><select id="closeExtraWindowId" class="swal-input">${options}</select></div>`,
+                showCancelButton: true,
+                confirmButtonText: 'ปิดรอบที่เลือก',
+                cancelButtonText: 'ยกเลิก',
+                confirmButtonColor: '#b42318',
+                preConfirm: async () => {
+                    const windowId = document.getElementById('closeExtraWindowId').value;
+                    try {
+                        const response = await fetch(EQUIPMENT_API, {
+                            method: 'POST',
+                            redirect: 'follow',
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                            body: JSON.stringify({ action: 'closeInspectionExtraWindow', windowId, closedBy: 'ผู้ดูแลระบบ' })
+                        });
+                        const result = await response.json();
+                        if (result.status !== 'success') throw new Error(result.message || 'ปิดรอบไม่สำเร็จ');
+                        return true;
+                    } catch (error) {
+                        Swal.showValidationMessage(error.message || 'ปิดรอบไม่สำเร็จ');
+                        return false;
+                    }
+                }
+            });
+            if (!result.isConfirmed) return;
+            await loadInspectionWindowStatus();
+            Swal.fire('ปิดรอบเพิ่มเติมแล้ว', 'รอบอัตโนมัติวันที่ 1–10 ยังคงทำงานตามเดิม', 'success');
         }
 
         function initializeDepartmentReportYears() {
@@ -2762,11 +2817,11 @@ async function openInspectionScheduleModal() {
             const activeWindow = normalizedRecords.find(record => {
                 const openDate = parseInspectionWindowDateTime(record.openDate, 'start');
                 const closeDate = parseInspectionWindowDateTime(record.closeDate, 'end');
-                return openDate && closeDate && now >= openDate && now <= closeDate;
+                return record.isActive !== false && openDate && closeDate && now >= openDate && now <= closeDate;
             }) || null;
             const upcomingWindow = normalizedRecords.find(record => {
                 const openDate = parseInspectionWindowDateTime(record.openDate, 'start');
-                return openDate && openDate > now;
+                return record.isActive !== false && openDate && openDate > now;
             }) || null;
             const latestWindow = normalizedRecords.length ? normalizedRecords[normalizedRecords.length - 1] : null;
             return { hasConfiguredWindow: normalizedRecords.length > 0, isActive: Boolean(activeWindow), activeWindow, upcomingWindow, latestWindow, source };
@@ -2774,10 +2829,12 @@ async function openInspectionScheduleModal() {
 
         function normalizeInspectionWindowStatusPayload(payload, source = 'api') {
             if (!payload || typeof payload !== 'object') return createDefaultInspectionWindowStatus();
-            const normalizedWindows = dedupeInspectionWindowRecords(payload.windows || [
-                payload.activeWindow,
-                payload.upcomingWindow,
-                payload.latestWindow
+            const normalizedWindows = dedupeInspectionWindowRecords([
+                ...(Array.isArray(payload.windows) ? payload.windows : []),
+                ...(Array.isArray(payload.extraWindows) ? payload.extraWindows : []),
+                ...(payload.activeWindow ? [payload.activeWindow] : []),
+                ...(payload.upcomingWindow ? [payload.upcomingWindow] : []),
+                ...(payload.latestWindow ? [payload.latestWindow] : [])
             ]);
             const normalizedStatus = evaluateInspectionWindowRecords(normalizedWindows, source);
             return {
@@ -2817,7 +2874,8 @@ async function openInspectionScheduleModal() {
                 return;
             }
             if (inspectionWindowStatus.activeWindow) {
-                noteBox.innerHTML = `<strong>รอบที่เปิดใช้งาน:</strong> ${formatInspectionPeriodLabel(displayWindow)} <strong>ช่วงเวลา:</strong> ${formatThaiDate(displayWindow.openDate)} - ${formatThaiDate(displayWindow.closeDate)}`;
+                const isExtra = displayWindow.source === 'admin_extra' || Boolean(displayWindow.windowId);
+                noteBox.innerHTML = `<strong>${isExtra ? 'รอบเพิ่มเติมที่แอดมินเปิด:' : 'รอบอัตโนมัติที่เปิดใช้งาน:'}</strong> ${formatInspectionPeriodLabel(displayWindow)} <strong>ช่วงเวลา:</strong> ${formatThaiDate(displayWindow.openDate)} - ${formatThaiDate(displayWindow.closeDate)}`;
                 return;
             }
             noteBox.innerHTML = displayWindow
