@@ -14,7 +14,7 @@ try { secretKey = secretKeysRaw ? JSON.parse(secretKeysRaw).default ?? '' : '' }
 secretKey = secretKey || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
 const db = createClient(SUPABASE_URL, secretKey, { auth: { autoRefreshToken: false, persistSession: false } })
 
-const API_VERSION = '2026-11-09-independent-extra-inspection-windows'
+const API_VERSION = '2026-11-09-independent-extra-inspection-windows-fy-fix'
 const BANGKOK_OFFSET = '+07:00'
 const PAGE_SIZE = 1000
 
@@ -189,7 +189,9 @@ async function latestHistory(item: any, params: any) {
 }
 
 async function inspectionWindowStatus(fiscalYearParam?: unknown) {
-  const fiscalYear = Number(fiscalYearParam) || new Date().getFullYear() + 543
+  const nowForFiscalYear = new Date()
+  const defaultFiscalYear = nowForFiscalYear.getFullYear() + (nowForFiscalYear.getMonth() >= 9 ? 544 : 543)
+  const fiscalYear = Number(fiscalYearParam) || defaultFiscalYear
   const months = fiscalMonths(fiscalYear)
   const windows = await getInspectionWindows(months)
   const extraWindows = await getExtraInspectionWindows(months)
@@ -199,7 +201,9 @@ async function inspectionWindowStatus(fiscalYearParam?: unknown) {
 }
 
 async function departmentReport(fiscalYear: unknown) {
-  const fy = Number(fiscalYear) || new Date().getFullYear() + 543
+  const nowForFiscalYear = new Date()
+  const defaultFiscalYear = nowForFiscalYear.getFullYear() + (nowForFiscalYear.getMonth() >= 9 ? 544 : 543)
+  const fy = Number(fiscalYear) || defaultFiscalYear
   const startYear = fy - 543
   const startDate = new Date(Date.UTC(startYear - 1, 9, 1))
   const endDate = new Date(Date.UTC(startYear, 9, 1))
