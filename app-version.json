@@ -1,5 +1,5 @@
 {
-  "version": "2026.09.11.06",
-  "updatedAt": "2026-10-25T12:00:00+07:00",
-  "changes": "Grant sterile exchange admin role to users entering as the central supply (จ่ายกลาง) department"
+  "version": "2026.11.09.01",
+  "updatedAt": "2026-11-09T15:30:00+07:00",
+  "changes": "Separate admin-created equipment inspection rounds from the automatic monthly 1–10 schedule"
 }
