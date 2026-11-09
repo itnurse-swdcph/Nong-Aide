@@ -1770,17 +1770,9 @@ async function openInspectionScheduleModal() {
                             message: `เปิดรอบเพิ่มเติม ${formatInspectionPeriodLabel(record)} เรียบร้อย โดยไม่เปลี่ยนรอบอัตโนมัติ`
                         };
                     } catch (error) {
-                        console.warn('Falling back to local inspection window storage:', error);
-                        const savedLocal = saveLocalInspectionWindowRecord(record);
-                        if (!savedLocal) {
-                            Swal.showValidationMessage('ไม่สามารถบันทึกรอบเปิดระบบได้');
-                            return false;
-                        }
-
-                        return {
-                            savedTo: 'local',
-                            message: `บันทึกรอบ ${formatInspectionPeriodLabel(record)} ไว้ในเครื่องนี้ชั่วคราวแล้ว`
-                        };
+                        console.error('Unable to create admin extra inspection window:', error);
+                        Swal.showValidationMessage(error.message || 'ไม่สามารถเปิดรอบเพิ่มเติมบนเซิร์ฟเวอร์ได้ กรุณาลองใหม่');
+                        return false;
                     }
                 },
                 allowOutsideClick: () => !Swal.isLoading()
