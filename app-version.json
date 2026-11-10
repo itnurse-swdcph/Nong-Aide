@@ -1,5 +1,5 @@
 {
-  "version": "2026.11.09.01",
-  "updatedAt": "2026-11-09T15:30:00+07:00",
-  "changes": "Separate admin-created equipment inspection rounds from the automatic monthly 1–10 schedule"
+  "version": "2026.11.10.01",
+  "updatedAt": "2026-11-10T14:20:00+07:00",
+  "changes": "Fix equipment inspection save by aligning frontend API version with Supabase equipment-api v12"
 }
