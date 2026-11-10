@@ -1,5 +1,5 @@
 {
-  "version": "2026.11.10.01",
-  "updatedAt": "2026-11-10T14:20:00+07:00",
-  "changes": "Fix equipment inspection save by aligning frontend API version with Supabase equipment-api v12"
+  "version": "2026.11.10.02",
+  "updatedAt": "2026-11-10T15:00:00+07:00",
+  "changes": "Fix equipment inspection save version and prioritize admin extra inspection rounds in the active-window notice"
 }
