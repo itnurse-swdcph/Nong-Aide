@@ -2830,8 +2830,34 @@ async function openInspectionScheduleModal() {
                 ...(payload.latestWindow ? [payload.latestWindow] : [])
             ]);
             const normalizedStatus = evaluateInspectionWindowRecords(normalizedWindows, source);
+            // Admin-created extra rounds take display priority over the automatic 1–10 window.
+            // This ensures the notice reflects the extended period (for example, through Nov 15).
+            const activeExtraWindows = normalizedWindows
+                .filter(record => record.source === 'admin_extra' && record.isActive !== false)
+                .filter(record => {
+                    const openDate = parseInspectionWindowDateTime(record.openDate, 'start');
+                    const closeDate = parseInspectionWindowDateTime(record.closeDate, 'end');
+                    const now = new Date();
+                    return openDate && closeDate && now >= openDate && now <= closeDate;
+                })
+                .sort((a, b) => {
+                    const closeDiff = (parseInspectionWindowDateTime(b.closeDate, 'end') || new Date(0)).getTime()
+                        - (parseInspectionWindowDateTime(a.closeDate, 'end') || new Date(0)).getTime();
+                    if (closeDiff) return closeDiff;
+                    return String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
+                });
+            const apiCurrentWindow = payload.currentWindow
+                ? normalizeInspectionWindowRecord(payload.currentWindow)
+                : null;
+            const activeWindow = activeExtraWindows[0] || (
+                apiCurrentWindow && apiCurrentWindow.isActive !== false
+                    ? apiCurrentWindow
+                    : normalizedStatus.activeWindow
+            );
             return {
                 ...normalizedStatus,
+                activeWindow,
+                isActive: Boolean(activeWindow),
                 source,
                 windows: normalizedWindows
             };
