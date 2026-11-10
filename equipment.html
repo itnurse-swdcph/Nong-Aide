@@ -800,7 +800,7 @@
         const THAI_MONTH_NAMES = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
         const LOCAL_INSPECTION_WINDOW_KEY = 'aide_inspection_windows_v1';
         const API_TIMEOUT_MS = 30000;
-        const EXPECTED_EQUIPMENT_API_VERSION = '2026-09-11-inspection-window-auto-1-10';
+        const EXPECTED_EQUIPMENT_API_VERSION = '2026-11-09-independent-extra-inspection-windows-fy-fix';
         let verifiedApiVersion = '';
         let allEquipmentUniverse = [];
         let lastDepartmentSummaryReport = null;
@@ -843,7 +843,7 @@
             const result = await apiGetJson('getApiInfo');
             const apiVersion = result && result.data && result.data.version;
             if (result.status !== 'success' || apiVersion !== EXPECTED_EQUIPMENT_API_VERSION) {
-                throw new Error(`Apps Script ยังไม่ใช่เวอร์ชันที่แก้ไขล่าสุด (${apiVersion || 'ไม่พบเวอร์ชัน'}) กรุณา Deploy Web App ใหม่ก่อนบันทึก`);
+                throw new Error(`API ระบบตรวจนับครุภัณฑ์ยังไม่ใช่เวอร์ชันล่าสุด (${apiVersion || 'ไม่พบเวอร์ชัน'}) กรุณารีเฟรชหน้าเว็บหรือติดต่อผู้ดูแลระบบ`);
             }
             verifiedApiVersion = apiVersion;
             return true;
@@ -963,7 +963,7 @@
         function assertSaveCommittedByApi(result) {
             const data = result && result.data;
             if (!data || data.masterVerified !== true || data.historyVerified !== true) {
-                throw new Error('API ยังไม่ได้ยืนยันการเขียนลง MasterData และ HistoryLog กรุณาอัปเดต/Deploy Apps Script เวอร์ชันล่าสุดก่อนใช้งาน');
+                throw new Error('API ยังไม่ได้ยืนยันการบันทึกข้อมูลหลักและประวัติการตรวจนับ กรุณาลองใหม่อีกครั้ง');
             }
         }
 
