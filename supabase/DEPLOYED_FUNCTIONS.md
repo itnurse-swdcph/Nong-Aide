@@ -29,3 +29,9 @@ The current legacy-compatible Edge Functions use `verify_jwt=false` so the exist
 - Admin-created extra windows are stored separately in `equipment_inspection_extra_windows` and never replace the automatic schedule.
 - Extra windows can be independently closed; existing monthly overrides were copied into the extra-window table.
 - The equipment API defaults to the current Thai fiscal year (October–September).
+
+## Sterile inventory master management (2026-11-23)
+
+- `sterile-exchange` v2 supports central sterile supply inventory master listing, create, update, and soft-delete actions.
+- `sterile_master.is_active=false` is used for removal from the request picker; request-line snapshots remain unchanged.
+- Source is tracked at `supabase/functions/sterile-exchange/index.ts`.
