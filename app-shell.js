@@ -1,14 +1,18 @@
 (function () {
-    const APP_VERSION = '2026.09.11.07';
+    const APP_VERSION = '2026.11.23.03';
     const APP_VERSION_FILE = 'app-version.json';
     const VERSION_NOTICE_KEY = 'swd_app_version_notice';
     const SIDEBAR_STATE_KEY = 'swd_sidebar_collapsed';
-    const PAGE_LINKS = [
-        { href: 'index.html', label: 'หน้าหลัก', icon: 'fa-house' },
-        { href: 'equipment.html', label: 'ตรวจนับครุภัณฑ์', icon: 'fa-stethoscope' },
-        { href: 'cloth-stock.html', label: 'Stock เครื่องผ้า', icon: 'fa-shirt' },
-        { href: 'cloth-exchange.html', label: 'แลกผ้าสะอาด', icon: 'fa-sync-alt' },
-        { href: 'sterile-exchange.html', label: 'วัสดุปราศจากเชื้อ', icon: 'fa-syringe' }
+    const PAGE_GROUPS = [
+        { title: 'ภาพรวม', links: [
+            { href: 'index.html', label: 'หน้าหลัก', icon: 'fa-house' }
+        ] },
+        { title: 'ระบบสนับสนุนงานบริการ', links: [
+            { href: 'equipment.html', label: 'ตรวจนับครุภัณฑ์', icon: 'fa-stethoscope' },
+            { href: 'cloth-stock.html', label: 'Stock เครื่องผ้า', icon: 'fa-shirt' },
+            { href: 'cloth-exchange.html', label: 'แลกผ้าสะอาด', icon: 'fa-arrow-right-arrow-left' },
+            { href: 'sterile-exchange.html', label: 'ส่งแลกวัสดุปราศจากเชื้อ', icon: 'fa-syringe' }
+        ] }
     ];
     const PAGINATED_TABLE_IDS = [
         'userDashAwaitBody', 'userDashProcessingBody', 'userDashCompletedBody', 'adminQueueBody', 'adminProcessingBody', 'adminWaitingBody', 'adminHistoryBody',
@@ -17,6 +21,7 @@
     ];
     const TABLE_PAGE_SIZE = 10;
     const tablePageState = {};
+    let shellInitialized = false;
 
     function getCurrentContext() {
         const query = new URLSearchParams(window.location.search);
@@ -49,6 +54,7 @@
         const sidebar = document.querySelector('.app-shell-sidebar');
         const overlay = document.querySelector('.app-shell-overlay');
         if (!sidebar || !overlay) return;
+        overlay.classList.remove('hidden');
         sidebar.classList.toggle('open', open);
         overlay.classList.toggle('open', open);
         document.body.classList.toggle('shell-sidebar-open', open);
@@ -110,48 +116,64 @@
     }
     function createSidebar() {
         let sidebar = document.querySelector('.app-shell-sidebar');
-        if (sidebar) { ensureMobileToggle(); ensureSidebarCollapseToggle(sidebar); return sidebar; }
-        sidebar = document.createElement('aside');
-        sidebar.className = 'app-shell-sidebar';
+        const isNewSidebar = !sidebar;
+        if (!sidebar) {
+            sidebar = document.createElement('aside');
+            sidebar.className = 'app-shell-sidebar';
+            document.body.prepend(sidebar);
+        }
+        if (sidebar.dataset.shellNormalized === 'true') return sidebar;
+
+        const contextNodes = Array.from(sidebar.querySelectorAll('.app-shell-context > *'));
+        const legacyWard = document.querySelector('#currentWardDisplay');
+        if (legacyWard && !contextNodes.includes(legacyWard)) contextNodes.push(legacyWard);
+        const actionNodes = Array.from(sidebar.querySelectorAll('.app-shell-actions > *'));
+        const legacyChange = document.querySelector('#logoutBtn');
+        if (legacyChange && !actionNodes.includes(legacyChange)) actionNodes.push(legacyChange);
+
         sidebar.setAttribute('aria-label', 'เมนูหลักของระบบ');
         sidebar.innerHTML = `
             <div class="app-shell-brand">
                 <img src="icon-192.png" alt="SWD Care Connect">
-                <div class="app-shell-brand-copy"><strong>SWD Care Connect</strong><span>ระบบบริหารจัดการงานหน่วยงานอัจฉริยะ</span></div>
+                <div class="app-shell-brand-copy"><strong>SWD Care Connect</strong><span>ระบบสนับสนุนงานบริการ</span></div>
             </div>
             <div class="app-shell-context" id="shellContext"></div>
-            <div class="app-shell-section"><div class="app-shell-section-title">เมนูหลัก</div><nav class="app-shell-nav" id="shellMainNav"></nav></div>
+            <div id="shellNavGroups"></div>
             <div class="app-shell-section app-shell-utility-section"><div class="app-shell-section-title">การใช้งาน</div><div class="app-shell-actions" id="shellActions"></div></div>
-            <div class="app-shell-footer">© 2026 Developed By Natnarinthorn</div>
+            <div class="app-shell-footer">โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน</div>
         `;
-        document.body.prepend(sidebar);
-        const nav = sidebar.querySelector('#shellMainNav');
-        PAGE_LINKS.forEach((item) => {
-            const link = document.createElement('a');
-            link.className = 'app-shell-link';
-            link.dataset.shellHref = item.href;
-            link.href = buildHref(item.href);
-            link.innerHTML = `<i class="fas ${item.icon}"></i><span>${item.label}</span>`;
-            nav.appendChild(link);
+        const context = sidebar.querySelector('#shellContext');
+        contextNodes.forEach((node) => {
+            node.classList.remove('hidden');
+            node.classList.add('app-shell-context-chip');
+            context.appendChild(node);
+        });
+        const groups = sidebar.querySelector('#shellNavGroups');
+        PAGE_GROUPS.forEach((group) => {
+            const section = document.createElement('section');
+            section.className = 'app-shell-section';
+            section.innerHTML = `<div class="app-shell-section-title">${group.title}</div><nav class="app-shell-nav" aria-label="${group.title}"></nav>`;
+            const nav = section.querySelector('nav');
+            group.links.forEach((item) => {
+                const link = document.createElement('a');
+                link.className = 'app-shell-link';
+                link.dataset.shellHref = item.href;
+                link.href = buildHref(item.href);
+                link.innerHTML = `<i class="fas ${item.icon}" aria-hidden="true"></i><span>${item.label}</span>`;
+                nav.appendChild(link);
+            });
+            groups.appendChild(section);
         });
         const actions = sidebar.querySelector('#shellActions');
-        actions.appendChild(makeButton('shell-action-refresh', 'fa-rotate', 'รีเฟรชหน้า', () => window.location.reload()));
-        const legacyChange = document.querySelector('#logoutBtn');
-        if (legacyChange) {
-            legacyChange.classList.remove('hidden');
-            legacyChange.classList.add('app-shell-action', 'shell-change-unit');
-            legacyChange.innerHTML = '<i class="fas fa-right-left"></i><span>เปลี่ยนหน่วยงาน</span>';
-            actions.appendChild(legacyChange);
-        } else {
+        actionNodes.forEach((node) => actions.appendChild(node));
+        if (!actions.querySelector('.shell-action-refresh')) {
+            actions.appendChild(makeButton('shell-action-refresh', 'fa-rotate', 'รีเฟรชหน้า', () => window.location.reload()));
+        }
+        if (isNewSidebar && !actions.querySelector('#logoutBtn')) {
             actions.appendChild(makeButton('shell-action-logout', 'fa-right-from-bracket', 'ออกจากระบบ', clearSessionAndHome));
         }
-        const legacyWard = document.querySelector('#currentWardDisplay');
-        if (legacyWard) {
-            const context = sidebar.querySelector('#shellContext');
-            context.appendChild(legacyWard);
-            legacyWard.classList.remove('hidden');
-            legacyWard.classList.add('app-shell-context-chip');
-        }
+        legacyChange?.classList.add('shell-change-unit');
+        sidebar.dataset.shellNormalized = 'true';
         ensureSidebarCollapseToggle(sidebar);
         ensureMobileToggle();
         return sidebar;
@@ -159,7 +181,14 @@
     function buildLayout() {
         const sidebar = createSidebar();
         let layout = document.querySelector('.app-shell-layout');
-        if (layout) return layout;
+        if (layout) {
+            if (!document.querySelector('.app-shell-overlay')) {
+                const overlay = document.createElement('div');
+                overlay.className = 'app-shell-overlay';
+                document.body.appendChild(overlay);
+            }
+            return layout;
+        }
         layout = document.createElement('div');
         layout.className = 'app-shell-layout';
         const main = document.createElement('main');
@@ -268,12 +297,20 @@
             if (remoteVersion && compareVersions(remoteVersion, APP_VERSION) > 0) showVersionNotice(remoteVersion); else if (remoteVersion) localStorage.setItem('swd_app_version', remoteVersion);
         } catch (error) { console.warn('ไม่สามารถตรวจสอบเวอร์ชันระบบได้', error); }
     }
-    function init() {
-        if (document.body.classList.contains('no-app-shell')) return;
+    function init(force = false) {
+        if (document.body.classList.contains('no-app-shell') && !force) return;
         document.body.classList.add('has-app-shell');
+        if (shellInitialized) { markActiveLinks(); restoreSidebarState(); return; }
         buildLayout(); markActiveLinks(); bindNavigation(); bindTablePagination(); restoreSidebarState(); checkApplicationVersion();
+        shellInitialized = true;
     }
     window.AppShell = {
+        activate() {
+            document.body.classList.add('home-authenticated');
+            document.body.classList.remove('no-app-shell');
+            init(true);
+        },
+        deactivate() { document.body.classList.remove('home-authenticated'); setSidebarState(false); },
         navigate(target) { window.location.href = buildHref(target); },
         openSidebar() { setSidebarState(true); },
         closeSidebar() { setSidebarState(false); },
