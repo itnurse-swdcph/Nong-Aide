@@ -4,8 +4,8 @@
   "description": "ระบบบริหารจัดการงานหน่วยงานอัจฉริยะ โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#f0f4f8",
-  "theme_color": "#003366",
+  "background_color": "#f5f7fa",
+  "theme_color": "#2459a6",
   "orientation": "portrait-primary",
   "icons": [
     {
@@ -22,3 +22,4 @@
     }
   ]
 }
+
