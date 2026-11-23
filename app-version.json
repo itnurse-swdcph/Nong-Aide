@@ -1,5 +1,5 @@
 {
-  "version": "2026.11.23.01",
-  "updatedAt": "2026-11-23T08:30:00+07:00",
-  "changes": "Add central sterile supply inventory master management with add, edit and soft-delete controls"
+  "version": "2026.11.23.02",
+  "updatedAt": "2026-11-23T09:00:00+07:00",
+  "changes": "Fix sterile inventory settings panel visibility and refresh app cache"
 }
