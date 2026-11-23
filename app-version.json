@@ -1,6 +1,6 @@
 {
-  "version": "2026.11.23.03",
-  "updatedAt": "2026-11-23T09:07:30+07:00",
-  "changes": "Unify the system sidebar and refresh the Material-inspired interface"
+  "version": "2026.11.23.04",
+  "updatedAt": "2026-11-23T09:13:00+07:00",
+  "changes": "Fix the shared system title and sidebar context"
 }
 
