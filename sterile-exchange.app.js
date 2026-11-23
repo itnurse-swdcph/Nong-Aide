@@ -701,9 +701,42 @@ async function confirmReceipt(requestId) {
 /* ==================================================================
    ADMIN WORKSPACE
    ================================================================== */
+
+let sterileMasterAdminItems = [];
+async function loadSterileMasterAdmin() {
+  sterileMasterAdminItems = await callApi("getSterileMasterAdmin", { actorWard: "จ่ายกลาง" }) || [];
+  renderSterileMasterAdmin();
+}
+function renderSterileMasterAdmin() {
+  const body = document.getElementById("sterileMasterAdminBody");
+  if (!body) return;
+  const q = (document.getElementById("sterileMasterAdminSearch")?.value || "").trim().toLocaleLowerCase("th-TH");
+  const rows = sterileMasterAdminItems.filter(x => (x.itemName + " " + x.mainCategory + " " + x.unit).toLocaleLowerCase("th-TH").includes(q));
+  body.innerHTML = rows.length ? rows.map(x => "<tr><td>" + escapeHtml(x.itemName) + "</td><td>" + escapeHtml(x.mainCategory) + "</td><td>" + escapeHtml(x.unit) + "</td><td><span class=\"tag " + (x.isActive ? "tag-completed" : "tag-cancelled") + "\">" + (x.isActive ? "ใช้งาน" : "ปิดใช้งาน") + "</span></td><td><button class=\"table-btn primary\" onclick='openSterileMasterEditor(\"" + x.itemId + "\")'><i class=\"fas fa-pen\"></i> แก้ไข</button> " + (x.isActive ? "<button class=\"table-btn secondary\" onclick='deactivateSterileMaster(\"" + x.itemId + "\")'><i class=\"fas fa-trash\"></i> ลบ</button>" : "") + "</td></tr>").join("") : "<tr class=\"empty-row\"><td colspan=\"5\">ไม่พบรายการคลัง</td></tr>";
+}
+async function openSterileMasterEditor(itemId) {
+  const item = itemId ? sterileMasterAdminItems.find(x => x.itemId === itemId) : null;
+  const result = await Swal.fire({
+    title: item ? "แก้ไขรายการคลัง" : "เพิ่มรายการคลัง",
+    html: "<div style=\"text-align:left;display:grid;gap:10px\"><label class=\"field\">ชื่อรายการ<input id=\"smName\" class=\"swal2-input\" style=\"width:100%;margin:4px 0\" placeholder=\"ชื่อรายการวัสดุ\"></label><label class=\"field\">ประเภท<input id=\"smCategory\" class=\"swal2-input\" style=\"width:100%;margin:4px 0\" placeholder=\"เช่น Set, วัสดุทั่วไป\"></label><label class=\"field\">หน่วยนับ<input id=\"smUnit\" class=\"swal2-input\" style=\"width:100%;margin:4px 0\" placeholder=\"เช่น ชุด, ชิ้น, ห่อ\"></label></div>",
+    didOpen: () => { document.getElementById("smName").value = item?.itemName || ""; document.getElementById("smCategory").value = item?.mainCategory || ""; document.getElementById("smUnit").value = item?.unit || ""; },
+    showCancelButton: true, confirmButtonText: "บันทึก", cancelButtonText: "ยกเลิก", focusConfirm: false,
+    preConfirm: () => { const v = { itemName: document.getElementById("smName").value.trim(), mainCategory: document.getElementById("smCategory").value.trim(), unit: document.getElementById("smUnit").value.trim() }; if (!v.itemName || !v.mainCategory || !v.unit) { Swal.showValidationMessage("กรุณากรอกข้อมูลให้ครบทุกช่อง"); return false; } return v; }
+  });
+  if (!result.isConfirmed) return;
+  try { await callApi("saveSterileMaster", Object.assign({}, result.value, { itemId: item?.itemId, actorWard: "จ่ายกลาง" })); await loadSterileMasterAdmin(); toast("success", "บันทึกรายการคลังเรียบร้อยแล้ว"); } catch (e) { Swal.fire("บันทึกไม่สำเร็จ", e.message, "error"); }
+}
+async function deactivateSterileMaster(itemId) {
+  const item = sterileMasterAdminItems.find(x => x.itemId === itemId); if (!item) return;
+  const result = await Swal.fire({ title: "ปิดใช้งานรายการนี้?", text: item.itemName + " จะไม่แสดงให้หน่วยงานเลือกเบิก แต่ข้อมูลใบเบิกเดิมจะไม่ถูกลบ", icon: "warning", showCancelButton: true, confirmButtonText: "ยืนยันปิดใช้งาน", cancelButtonText: "ยกเลิก" });
+  if (!result.isConfirmed) return;
+  try { await callApi("deactivateSterileMaster", { itemId, actorWard: "จ่ายกลาง" }); await loadSterileMasterAdmin(); toast("success", "ปิดใช้งานรายการแล้ว"); } catch (e) { Swal.fire("ดำเนินการไม่สำเร็จ", e.message, "error"); }
+}
+
 async function loadAdminWorkspace() {
   adminRequests = await callApi('getAdminRequests', {});
   renderAdminAll();
+  await loadSterileMasterAdmin();
 }
 
 function renderAdminAll() {
