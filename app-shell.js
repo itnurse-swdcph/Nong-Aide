@@ -128,6 +128,7 @@
         const legacyWard = document.querySelector('#currentWardDisplay');
         if (legacyWard && !contextNodes.includes(legacyWard)) contextNodes.push(legacyWard);
         const actionNodes = Array.from(sidebar.querySelectorAll('.app-shell-actions > *'));
+        const originalSystemTitle = document.querySelector('#systemTitle');
         const legacyChange = document.querySelector('#logoutBtn');
         if (legacyChange && !actionNodes.includes(legacyChange)) actionNodes.push(legacyChange);
 
@@ -135,13 +136,15 @@
         sidebar.innerHTML = `
             <div class="app-shell-brand">
                 <img src="icon-192.png" alt="SWD Care Connect">
-                <div class="app-shell-brand-copy"><strong>SWD Care Connect</strong><span>ระบบสนับสนุนงานบริการ</span></div>
+                <div class="app-shell-brand-copy"><strong>SWD Care Connect</strong><span id="systemTitle">ระบบสนับสนุนงานบริการ</span></div>
             </div>
             <div class="app-shell-context" id="shellContext"></div>
             <div id="shellNavGroups"></div>
             <div class="app-shell-section app-shell-utility-section"><div class="app-shell-section-title">การใช้งาน</div><div class="app-shell-actions" id="shellActions"></div></div>
             <div class="app-shell-footer">โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน</div>
         `;
+        const systemTitleSlot = sidebar.querySelector('#systemTitle');
+        if (originalSystemTitle && systemTitleSlot && originalSystemTitle !== systemTitleSlot) systemTitleSlot.replaceWith(originalSystemTitle);
         const context = sidebar.querySelector('#shellContext');
         contextNodes.forEach((node) => {
             node.classList.remove('hidden');
