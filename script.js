@@ -25,6 +25,7 @@ if ('serviceWorker' in navigator) {
 document.addEventListener("DOMContentLoaded", async () => {
     await fetchWards();
     restoreSelectedDepartment();
+    restoreDashboardSession();
     syncShellToggleVisibility();
 });
 
@@ -32,6 +33,18 @@ function restoreSelectedDepartment() {
     const savedWard = sessionStorage.getItem(SESSION_KEYS.ward);
     const wardSelect = document.getElementById('wardInput');
     if (wardSelect && savedWard && wardList.includes(savedWard)) wardSelect.value = savedWard;
+}
+
+function restoreDashboardSession() {
+    const savedWard = sessionStorage.getItem(SESSION_KEYS.ward);
+    const savedRole = String(sessionStorage.getItem(SESSION_KEYS.role) || '').toUpperCase();
+    if (savedWard && wardList.includes(savedWard)) {
+        currentProfile = { role: 'NURSE', department_name: savedWard, active: true, is_department_session: true };
+        showDashboard(savedWard, 'NURSE');
+    } else if (savedRole === 'ADMIN') {
+        currentProfile = { role: 'ADMIN', department_name: '', active: true, is_admin_session: true };
+        showDashboard('', 'ADMIN');
+    }
 }
 
 function syncShellToggleVisibility() {
@@ -137,6 +150,7 @@ function showDashboard(wardName, role = "NURSE") {
     document.getElementById("logoutBtn").innerHTML = role === 'ADMIN' ? '<i class="fas fa-sign-out-alt"></i> ออกจากระบบ' : '<i class="fas fa-sign-out-alt"></i> เปลี่ยนหน่วยงาน';
     document.getElementById("dashboardSubtitle").innerText = role === "ADMIN" ? "กรุณาเลือกระบบที่ต้องการจัดการในโหมดผู้ดูแลระบบ" : "กรุณาเลือกระบบที่ต้องการใช้งาน";
     document.getElementById("navMenu").classList.remove("active");
+    window.AppShell?.activate?.();
     window.AppShell?.closeSidebar?.();
     syncShellToggleVisibility();
 }
@@ -156,6 +170,7 @@ function showLogin() {
     document.getElementById("logoutBtn")?.classList.add("hidden");
     const wardInput = document.getElementById("wardInput");
     if (wardInput) wardInput.value = "";
+    window.AppShell?.deactivate?.();
     window.AppShell?.closeSidebar?.();
     syncShellToggleVisibility();
 }
@@ -181,7 +196,7 @@ function openSystem(url) {
         const savedWard = sessionStorage.getItem(SESSION_KEYS.ward);
         const savedRole = sessionStorage.getItem(SESSION_KEYS.role);
         if (savedWard) currentProfile = { role: 'NURSE', department_name: savedWard, active: true, is_department_session: true };
-        else if (savedRole === 'ADMIN') currentProfile = { role: 'ADMIN', department_name: '', active: true };
+        else if (String(savedRole || '').toUpperCase() === 'ADMIN') currentProfile = { role: 'ADMIN', department_name: '', active: true };
     }
     if (!currentProfile) {
         Swal.fire({ icon: 'warning', title: 'กรุณาเลือกหน่วยงาน', text: 'กรุณาเลือกหน่วยงานก่อนใช้งานระบบย่อย' }); return;
@@ -238,3 +253,4 @@ function toggleMenu() {
     navMenu.classList.toggle("active");
     if (!document.getElementById("dashboardSection").classList.contains("hidden")) window.AppShell?.toggleSidebar?.();
 }
+
