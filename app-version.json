@@ -1,5 +1,5 @@
 {
-  "version": "2026.11.26.02",
-  "updatedAt": "2026-11-26T16:00:00+07:00",
-  "changes": "Simplify ward-specific custom items to name, exchanged quantity, requested quantity, and note"
+  "version": "2026.11.26.03",
+  "updatedAt": "2026-11-26T15:41:00+07:00",
+  "changes": "Add separate afternoon-pending status for partially issued sterile requests"
 }
