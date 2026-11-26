@@ -526,6 +526,8 @@ function selectMasterItem(idx) {
   if (!item) return;
   selectedMasterItemIndex = idx;
   document.getElementById('customMasterFields')?.classList.add('hidden');
+  document.getElementById('selectedMasterItem')?.closest('.field')?.classList.remove('hidden');
+  document.getElementById('selectedMasterUnit')?.closest('.field')?.classList.remove('hidden');
   document.getElementById('selectedMasterItem').value = item.itemName;
   document.getElementById('selectedMasterUnit').value = item.unit || '-';
   document.getElementById('masterSearchResults').innerHTML = '';
@@ -539,7 +541,9 @@ function selectOtherMasterItem() {
   document.getElementById('masterSearchResults').innerHTML = '';
   document.getElementById('masterItemSearch').value = '';
   document.getElementById('selectedMasterItem').value = 'รายการอื่นๆ (เฉพาะหน่วยงาน)';
-  document.getElementById('selectedMasterUnit').value = 'ระบุเอง';
+  document.getElementById('selectedMasterUnit').value = '-';
+  document.getElementById('selectedMasterItem')?.closest('.field')?.classList.add('hidden');
+  document.getElementById('selectedMasterUnit')?.closest('.field')?.classList.add('hidden');
   document.getElementById('customMasterFields')?.classList.remove('hidden');
   document.getElementById('customMasterItemName').focus();
 }
@@ -549,15 +553,13 @@ function saveDraftLine() {
   const item = isCustom ? null : masterItems[selectedMasterItemIndex];
   if (!isCustom && !item) return toast('warning', 'กรุณาค้นหาและเลือกรายการวัสดุก่อน');
   const customName = isCustom ? document.getElementById('customMasterItemName').value.trim() : '';
-  const customDetail = isCustom ? document.getElementById('customMasterItemDetail').value.trim() : '';
-  const customUnit = isCustom ? document.getElementById('customMasterItemUnit').value.trim() : '';
-  if (isCustom && (!customName || !customUnit)) return toast('warning', 'กรุณาระบุชื่อรายการและหน่วยนับ');
+  if (isCustom && !customName) return toast('warning', 'กรุณาระบุชื่อรายการ');
   const exchangedQty = num(document.getElementById('builderExchangedQty').value);
   const requestedQty = num(document.getElementById('builderRequestedQty').value);
   const wardNote = document.getElementById('builderWardNote').value.trim();
   if (exchangedQty <= 0 && requestedQty <= 0) return toast('warning', 'กรุณากรอกจำนวนส่งแลกหรือขอเบิก');
   const line = isCustom
-    ? { itemName: customName, mainCategory: 'รายการเฉพาะหน่วยงาน', unit: customUnit, carriedQty: 0, exchangedQty, requestedQty, wardNote: [customDetail, wardNote].filter(Boolean).join(' | ') }
+    ? { itemName: customName, mainCategory: 'รายการเฉพาะหน่วยงาน', unit: '-', carriedQty: 0, exchangedQty, requestedQty, wardNote }
     : { itemName: item.itemName, mainCategory: item.mainCategory, unit: item.unit, carriedQty: item.carriedQty || 0, exchangedQty, requestedQty, wardNote };
   const existing = draftLines.findIndex(row => row.itemName === line.itemName && row.mainCategory === line.mainCategory && row.unit === line.unit);
   if (existing >= 0) draftLines[existing] = line; else draftLines.push(line);
@@ -566,7 +568,10 @@ function saveDraftLine() {
   document.getElementById('selectedMasterUnit').value = '';
   document.getElementById('masterItemSearch').value = '';
   document.getElementById('customMasterFields')?.classList.add('hidden');
-  ['customMasterItemName','customMasterItemDetail','customMasterItemUnit'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('selectedMasterItem')?.closest('.field')?.classList.remove('hidden');
+  document.getElementById('selectedMasterUnit')?.closest('.field')?.classList.remove('hidden');
+  const customNameInput = document.getElementById('customMasterItemName');
+  if (customNameInput) customNameInput.value = '';
   document.getElementById('builderExchangedQty').value = 0;
   document.getElementById('builderRequestedQty').value = 0;
   document.getElementById('builderWardNote').value = '';
