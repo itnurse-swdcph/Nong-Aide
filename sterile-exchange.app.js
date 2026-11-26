@@ -244,7 +244,8 @@ const STATUS_LABELS = {
   submitted: 'รอแอดมินรับใบเบิก',
   received: 'แอดมินรับแล้ว รอบันทึกตอบรับ',
   processing: 'กำลังดำเนินการ (นับ/เตรียมจ่าย)',
-  issued_waiting_receipt: 'จ่ายแล้ว รอหน่วยงานรับของ',
+  awaiting_afternoon: 'รอจ่ายรอบบ่าย',
+  issued_waiting_receipt: 'จ่ายครบแล้ว รอหน่วยงานรับของ',
   completed: 'เสร็จสิ้น',
   cancelled: 'ยกเลิก'
 };
@@ -691,7 +692,8 @@ function openReceiveModal(requestId) {
       <tr><td>${escapeHtml(l.itemName)}</td><td>${l.requestedQty}</td><td>${l.countedQty || 0}</td>
       <td>${l.issuedQty || 0}</td><td>${l.outstandingQty || 0}</td><td>${escapeHtml(l.adminNote || '')}</td></tr>`).join('');
     openModal(`ตรวจสอบและรับของ — ${detail.header.requestNo}`, 'ตรวจสอบรายการให้ครบก่อนลงชื่อผู้รับ', `
-      <div class="table-wrap"><table>
+      ${detail.header.status === 'awaiting_afternoon' ? '<p style="color:#b45309;margin:0 0 10px;">รายการที่ยังจ่ายไม่ครบจะแสดงให้จ่ายต่อในรอบบ่าย โดยจำนวนจ่ายสะสมเดิมจะยังคงอยู่</p>' : ''}
+     <div class="table-wrap"><table>
         <thead><tr><th>รายการ</th><th>ขอเบิก</th><th>นับได้</th><th>จ่าย</th><th>คงค้าง</th><th>หมายเหตุ</th></tr></thead>
         <tbody>${rowsHtml}</tbody>
       </table></div>
@@ -766,7 +768,7 @@ async function loadAdminWorkspace() {
 
 function renderAdminAll() {
   const queue = adminRequests.filter(r => r.status === 'submitted');
-  const processing = adminRequests.filter(r => ['received', 'processing'].includes(r.status));
+  const processing = adminRequests.filter(r => ['received', 'processing', 'awaiting_afternoon'].includes(r.status));
   const waiting = adminRequests.filter(r => r.status === 'issued_waiting_receipt');
 
   document.getElementById('adminQueueMetric').textContent = queue.length;
@@ -829,13 +831,13 @@ async function openAdminWorkModal(requestId) {
       <td>${l.exchangedQty}</td>
       <td>${l.requestedQty}</td>
       <td><input type="number" min="0" class="qty-input" id="cnt_${l.lineNo}" value="${l.countedQty !== '' && l.countedQty !== undefined ? l.countedQty : l.requestedQty}" ${isCounting ? '' : 'disabled'}></td>
-      <td><input type="number" min="0" class="qty-input" id="iss_${l.lineNo}" value="${l.issuedQty || (isCounting ? '' : l.countedQty || 0)}" ${isCounting ? 'disabled' : ''}></td>
+      <td><input type="number" min="0" class="qty-input" id="iss_${l.lineNo}" value="${l.issuedQty !== null && l.issuedQty !== undefined && l.issuedQty !== '' ? l.issuedQty : (isCounting ? '' : l.countedQty || 0)}" ${isCounting || (detail.header.status === 'awaiting_afternoon' && num(l.outstandingQty) <= 0) ? 'disabled' : ''}></td>
       <td><input type="text" class="note-input" id="anote_${l.lineNo}" value="${escapeHtml(l.adminNote || '')}" placeholder="หมายเหตุ"></td>
     </tr>`).join('');
 
   const buttons = isCounting
     ? [{ label: 'บันทึกรายการตอบรับ', cls: 'primary-btn', onClick: () => adminSaveCount(requestId) }]
-    : [{ label: 'กดจ่ายของ / ลงชื่อผู้จ่าย', cls: 'primary-btn', onClick: () => adminSaveIssue(requestId) }];
+    : [{ label: detail.header.status === 'awaiting_afternoon' ? 'บันทึกการจ่ายรอบบ่าย' : 'กดจ่ายของ / ลงชื่อผู้จ่าย', cls: 'primary-btn', onClick: () => adminSaveIssue(requestId) }];
 
   openModal(`จัดการใบเบิก — ${detail.header.requestNo}`,
 `${detail.header.ward} • วันที่ใบเบิก ${fmtDate(detail.header.requestDate)} • ทำรายการ ${fmtDateTime(detail.header.submittedAt)} • เวร${detail.header.shift} • ผู้เบิก: ${escapeHtml(detail.header.requesterName)}`,
@@ -892,8 +894,8 @@ async function adminSaveIssue(requestId) {
       const src = detail.lines.find(x => x.lineNo === l.lineNo);
       l.requestedQty = src ? src.requestedQty : 0;
     });
-    await callApi('adminIssueRequest', { requestId, issuerName, lines });
-    toast('success', 'บันทึกการจ่ายของแล้ว');
+    const result = await callApi('adminIssueRequest', { requestId, issuerName, lines });
+    toast('success', result.status === 'awaiting_afternoon' ? 'บันทึกแล้ว มีรายการรอจ่ายรอบบ่าย' : 'จ่ายครบแล้ว รอหน่วยงานรับของ');
     closeModal();
     await loadAdminWorkspace();
     await printRequest(requestId, 'issue-slip', printWindow);
