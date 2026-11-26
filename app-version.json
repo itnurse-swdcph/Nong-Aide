@@ -1,6 +1,5 @@
 {
-  "version": "2026.11.23.04",
-  "updatedAt": "2026-11-23T09:13:00+07:00",
-  "changes": "Fix the shared system title and sidebar context"
+  "version": "2026.11.26.01",
+  "updatedAt": "2026-11-26T15:30:00+07:00",
+  "changes": "Allow ward-specific custom sterile request items with item details and unit"
 }
-
