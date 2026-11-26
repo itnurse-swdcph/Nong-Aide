@@ -429,7 +429,7 @@ function renderUserDashboard() {
     ? awaitReceipt.map(rowHtmlUser).join('')
     : `<tr class="empty-row"><td colspan="8">ไม่มีรายการรอลงรับของ</td></tr>`;
 
-  const processing = orderedRequests.filter(r => ['submitted', 'received', 'processing'].includes(r.status));
+  const processing = orderedRequests.filter(r => ['submitted', 'received', 'processing', 'awaiting_afternoon'].includes(r.status));
   const processingBody = document.getElementById('userDashProcessingBody');
   if (processingBody) {
     processingBody.innerHTML = processing.length
@@ -692,8 +692,7 @@ function openReceiveModal(requestId) {
       <tr><td>${escapeHtml(l.itemName)}</td><td>${l.requestedQty}</td><td>${l.countedQty || 0}</td>
       <td>${l.issuedQty || 0}</td><td>${l.outstandingQty || 0}</td><td>${escapeHtml(l.adminNote || '')}</td></tr>`).join('');
     openModal(`ตรวจสอบและรับของ — ${detail.header.requestNo}`, 'ตรวจสอบรายการให้ครบก่อนลงชื่อผู้รับ', `
-      ${detail.header.status === 'awaiting_afternoon' ? '<p style="color:#b45309;margin:0 0 10px;">รายการที่ยังจ่ายไม่ครบจะแสดงให้จ่ายต่อในรอบบ่าย โดยจำนวนจ่ายสะสมเดิมจะยังคงอยู่</p>' : ''}
-     <div class="table-wrap"><table>
+      <div class="table-wrap"><table>
         <thead><tr><th>รายการ</th><th>ขอเบิก</th><th>นับได้</th><th>จ่าย</th><th>คงค้าง</th><th>หมายเหตุ</th></tr></thead>
         <tbody>${rowsHtml}</tbody>
       </table></div>
@@ -842,6 +841,7 @@ async function openAdminWorkModal(requestId) {
   openModal(`จัดการใบเบิก — ${detail.header.requestNo}`,
 `${detail.header.ward} • วันที่ใบเบิก ${fmtDate(detail.header.requestDate)} • ทำรายการ ${fmtDateTime(detail.header.submittedAt)} • เวร${detail.header.shift} • ผู้เบิก: ${escapeHtml(detail.header.requesterName)}`,
     `<p style="margin-bottom:10px;">สถานะปัจจุบัน: ${statusTag(detail.header.status)}</p>
+     ${detail.header.status === 'awaiting_afternoon' ? '<p style="color:#b45309;margin:0 0 10px;">รายการที่ยังจ่ายไม่ครบจะแสดงให้จ่ายต่อในรอบบ่าย โดยจำนวนจ่ายสะสมเดิมจะยังคงอยู่ รายการที่จ่ายครบแล้วจะไม่สามารถแก้ไขจำนวนได้</p>' : ''}
      <div class="table-wrap"><table>
        <thead><tr><th>รายการ</th><th>ส่งแลก</th><th>ขอเบิก</th><th>นับได้ ${isCounting ? '' : '(บันทึกแล้ว)'}</th><th>จ่าย ${isCounting ? '(รอบันทึกก่อน)' : ''}</th><th>หมายเหตุ</th></tr></thead>
        <tbody>${rowsHtml}</tbody>
