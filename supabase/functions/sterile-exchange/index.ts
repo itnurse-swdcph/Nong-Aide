@@ -365,29 +365,54 @@ async function adminIssueRequest(body: any) {
   const { requestId, issuerName, lines } = body;
   const { data: existing, error: getErr } = await supabase.from("sterile_requests").select("*").eq("id", requestId).single();
   if (getErr) throw getErr;
+  if (!["processing", "awaiting_afternoon"].includes(existing.status)) {
+    throw new Error("ใบเบิกนี้ยังไม่พร้อมสำหรับบันทึกการจ่าย");
+  }
 
-  for (const l of lines) {
-    await supabase.from("sterile_request_lines")
+  for (const l of lines || []) {
+    const { data: sourceLine, error: lineErr } = await supabase
+      .from("sterile_request_lines")
+      .select("requested_qty, issued_qty")
+      .eq("request_id", requestId)
+      .eq("line_no", l.lineNo)
+      .single();
+    if (lineErr) throw lineErr;
+
+    const requestedQty = Number(sourceLine.requested_qty) || 0;
+    const issuedQty = Math.min(Math.max(Number(l.issuedQty) || 0, 0), requestedQty);
+    const outstandingQty = Math.max(requestedQty - issuedQty, 0);
+    const { error: updateErr } = await supabase.from("sterile_request_lines")
       .update({
-        issued_qty: Number(l.issuedQty) || 0,
-        outstanding_qty: Math.max(Number(l.requestedQty || 0) - Number(l.issuedQty || 0), 0),
+        issued_qty: issuedQty,
+        outstanding_qty: outstandingQty,
         admin_note: l.adminNote !== undefined ? l.adminNote : null
       })
       .eq("request_id", requestId)
       .eq("line_no", l.lineNo);
+    if (updateErr) throw updateErr;
   }
 
+  const { data: totals, error: totalsErr } = await supabase
+    .from("sterile_request_lines")
+    .select("outstanding_qty")
+    .eq("request_id", requestId);
+  if (totalsErr) throw totalsErr;
+  const totalOutstanding = (totals || []).reduce((sum: number, line: any) => sum + (Number(line.outstanding_qty) || 0), 0);
+  const nextStatus = totalOutstanding > 0 ? "awaiting_afternoon" : "issued_waiting_receipt";
   const now = new Date().toISOString();
-  await supabase.from("sterile_requests").update({
-    status: "issued_waiting_receipt",
+  const { error: headerErr } = await supabase.from("sterile_requests").update({
+    status: nextStatus,
     admin_issuer_name: issuerName,
     admin_issued_at: now,
     last_updated_at: now,
     last_updated_by: issuerName,
   }).eq("id", requestId);
-  
-  await logStatus(requestId, existing.request_no, existing.status, "issued_waiting_receipt", null, issuerName, "admin_issue_request");
-  return { requestId, status: "issued_waiting_receipt" };
+  if (headerErr) throw headerErr;
+
+  await logStatus(requestId, existing.request_no, existing.status, nextStatus, null, issuerName,
+    nextStatus === "awaiting_afternoon" ? "admin_issue_partial_waiting_afternoon" : "admin_issue_request",
+    nextStatus === "awaiting_afternoon" ? `ยังจ่ายไม่ครบ คงเหลือรวม ${totalOutstanding}` : undefined);
+  return { requestId, status: nextStatus, totalOutstanding };
 }
 
 async function confirmWardReceipt(body: any) {
