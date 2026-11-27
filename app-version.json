@@ -1,5 +1,5 @@
 {
-  "version": "2026.11.26.03",
-  "updatedAt": "2026-11-26T15:41:00+07:00",
-  "changes": "Add separate afternoon-pending status for partially issued sterile requests"
+  "version": "2026.11.27.01",
+  "updatedAt": "2026-11-27T09:00:00+07:00",
+  "changes": "Split sterile issue and receipt by item; add cancellation controls and reasons"
 }
