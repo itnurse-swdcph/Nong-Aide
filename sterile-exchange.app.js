@@ -446,8 +446,8 @@ function renderUserDashboard() {
 
 function rowHtmlUser(r) {
   let actionBtn = `<button class="table-btn secondary" onclick="viewRequest('${r.requestId}')"><i class="fas fa-eye"></i> ดู</button>`;
-  if (r.status === 'issued_waiting_receipt') {
-    actionBtn += `<button class="table-btn primary" onclick="openReceiveModal('${r.requestId}')"><i class="fas fa-hand-holding"></i> รับของ/ลงชื่อ</button>`;
+  if (Number(r.totalReadyReceipt || 0) > 0) {
+    actionBtn += `<button class="table-btn primary" onclick="openReceiveModal('${r.requestId}')"><i class="fas fa-hand-holding"></i> รับของ/ลงชื่อ (${r.totalReadyReceipt})</button>`;
   }
   if (r.status === 'submitted') {
     actionBtn += `<button class="table-btn primary" onclick="editRequest('${r.requestId}')"><i class="fas fa-pen"></i> แก้ไข</button>`;
@@ -676,7 +676,7 @@ async function viewRequest(requestId) {
   const rowsHtml = detail.lines.map(l => `
     <tr><td>${escapeHtml(l.itemName)}</td><td>${l.carriedQty || 0}</td><td>${l.exchangedQty}</td>
     <td>${l.requestedQty}</td><td>${l.countedQty || '-'}</td><td>${l.issuedQty || '-'}</td>
-    <td>${l.outstandingQty || '-'}</td><td>${escapeHtml(l.wardNote || l.adminNote || '')}</td></tr>`).join('');
+    <td>${l.outstandingQty || '-'}</td><td>${escapeHtml(l.wardNote || '')}${l.adminNote ? '<div><b>หมายเหตุจ่ายกลาง:</b> '+escapeHtml(l.adminNote)+'</div>' : ''}</td></tr>`).join('');
 openModal(`ใบเบิก ${detail.header.requestNo}`, `${detail.header.ward} • วันที่ใบเบิก ${fmtDate(detail.header.requestDate)} • ทำรายการ ${fmtDateTime(detail.header.submittedAt)} • เวร${detail.header.shift}`, `
     <p style="margin-bottom:12px;">สถานะ: ${statusTag(detail.header.status)}</p>
     <div class="table-wrap"><table>
@@ -688,10 +688,12 @@ openModal(`ใบเบิก ${detail.header.requestNo}`, `${detail.header.ward
 
 function openReceiveModal(requestId) {
   callApi('getRequestDetail', { requestId }).then(detail => {
-    const rowsHtml = detail.lines.map(l => `
+    const readyLines = detail.lines.filter(l => l.lineStatus === 'issued_waiting_receipt');
+    if (!readyLines.length) { Swal.fire('ยังไม่มีรายการพร้อมรับ','รายการที่จ่ายครบแล้วจะแสดงให้รับของที่นี่','info'); return; }
+    const rowsHtml = readyLines.map(l => `
       <tr><td>${escapeHtml(l.itemName)}</td><td>${l.requestedQty}</td><td>${l.countedQty || 0}</td>
-      <td>${l.issuedQty || 0}</td><td>${l.outstandingQty || 0}</td><td>${escapeHtml(l.adminNote || '')}</td></tr>`).join('');
-    openModal(`ตรวจสอบและรับของ — ${detail.header.requestNo}`, 'ตรวจสอบรายการให้ครบก่อนลงชื่อผู้รับ', `
+      <td>${l.issuedQty || 0}</td><td>${l.outstandingQty || 0}</td><td>${escapeHtml(l.wardNote || '')}${l.adminNote ? '<div><b>จ่ายกลาง:</b> '+escapeHtml(l.adminNote)+'</div>' : ''}</td></tr>`).join('');
+    openModal(`ตรวจสอบและรับของ — ${detail.header.requestNo}`, detail.header.status === 'awaiting_afternoon' ? 'รับเฉพาะรายการที่จ่ายครบแล้ว ส่วนรายการรอจ่ายรอบบ่ายยังอยู่ในใบเบิกเดิม' : 'ตรวจสอบรายการให้ครบก่อนลงชื่อผู้รับ', `
       <div class="table-wrap"><table>
         <thead><tr><th>รายการ</th><th>ขอเบิก</th><th>นับได้</th><th>จ่าย</th><th>คงค้าง</th><th>หมายเหตุ</th></tr></thead>
         <tbody>${rowsHtml}</tbody>
@@ -710,15 +712,14 @@ async function confirmReceipt(requestId) {
   const receiverName = document.getElementById('wardReceiverName').value.trim();
   if (!receiverName) { toast('warning', 'กรุณากรอกชื่อผู้รับของ'); return; }
   try {
-    await callApi('confirmWardReceipt', { requestId, receiverName });
+    const saved = await callApi('confirmWardReceipt', { requestId, receiverName });
     closeModal();
-    toast('success', 'รับของและปิดงานเรียบร้อยแล้ว');
+    toast('success', saved.status === 'awaiting_afternoon' ? 'รับรายการที่จ่ายครบแล้ว ส่วนที่เหลือยังรอจ่ายรอบบ่าย' : 'รับของและปิดงานเรียบร้อยแล้ว');
     await loadUserWorkspace();
-    const result = await Swal.fire({
-      icon: 'success', title: 'ปิดงานเรียบร้อย', showCancelButton: true,
-      confirmButtonText: 'พิมพ์ใบสรุป', cancelButtonText: 'ปิด'
-    });
-    if (result.isConfirmed) printRequest(requestId, 'summary');
+    if (saved.status === 'completed') {
+      const choice = await Swal.fire({ icon: 'success', title: 'ปิดงานเรียบร้อย', showCancelButton: true, confirmButtonText: 'พิมพ์ใบสรุป', cancelButtonText: 'ปิด' });
+      if (choice.isConfirmed) printRequest(requestId, 'summary');
+    }
   } catch (err) {
     Swal.fire('เกิดข้อผิดพลาด', err.message, 'error');
   }
@@ -782,7 +783,9 @@ function renderAdminAll() {
   document.getElementById('adminProcessingBody').innerHTML = processing.length ? processing.map(r => `
 <tr><td>${escapeHtml(r.requestNo)}</td><td>${escapeHtml(r.ward)}</td><td>${fmtDateTime(r.updatedAt || r.requestDate)}</td>
     <td>${escapeHtml(r.shift)}</td><td>${statusTag(r.status)}</td><td>${r.totalRequested}</td>
-    <td><button class="table-btn primary" onclick="openAdminWorkModal('${r.requestId}')"><i class="fas fa-clipboard-check"></i> จัดการ</button></td></tr>`
+    <td><button class="table-btn primary" onclick="openAdminWorkModal('${r.requestId}')"><i class="fas fa-clipboard-check"></i> จัดการ</button>
+      ${r.status === 'awaiting_afternoon' ? `<button class="table-btn secondary" onclick="adminCancelRequestUI('${r.requestId}','afternoon')"><i class="fas fa-ban"></i> ยกเลิกรายการรอบบ่าย</button>` : ''}
+      ${Number(r.totalIssued || 0) === 0 ? `<button class="table-btn" style="background:#c44f4f;color:#fff" onclick="adminCancelRequestUI('${r.requestId}','all')"><i class="fas fa-trash"></i> ยกเลิกทั้งใบ</button>` : ''}</td></tr>`
   ).join('') : `<tr class="empty-row"><td colspan="7">ไม่มีงานที่กำลังดำเนินการ</td></tr>`;
 
   document.getElementById('adminWaitingBody').innerHTML = waiting.length ? waiting.map(r => `
@@ -797,6 +800,18 @@ function renderAdminAll() {
     <td>${escapeHtml(r.shift)}</td><td>${statusTag(r.status)}</td><td>${r.totalRequested}</td><td>${r.totalIssued}</td><td>${r.totalOutstanding}</td>
     <td><button class="table-btn secondary" onclick="viewRequest('${r.requestId}')"><i class="fas fa-eye"></i> ดู</button></td></tr>`
   ).join('') : `<tr class="empty-row"><td colspan="9">ยังไม่มีประวัติ</td></tr>`;
+}
+
+async function adminCancelRequestUI(requestId, scope) {
+  const title = scope === 'all' ? 'ยืนยันยกเลิกทั้งใบเบิก' : 'ยืนยันยกเลิกรายการรอจ่ายรอบบ่าย';
+  const text = scope === 'all' ? 'ทำได้เมื่อยังไม่มีรายการใดจ่ายของออกไปแล้ว' : 'จะยกเลิกเฉพาะรายการที่ยังรอจ่ายรอบบ่าย รายการที่จ่ายครบแล้วจะยังให้หน่วยงานรับของได้';
+  const result = await Swal.fire({ title, text, input: 'textarea', inputLabel: 'เหตุผลการยกเลิก', inputPlaceholder: 'ระบุเหตุผล...', showCancelButton: true, confirmButtonText: 'ยืนยันยกเลิก', cancelButtonText: 'กลับ', confirmButtonColor: '#c44f4f', inputValidator: v => v && v.trim() ? undefined : 'กรุณาระบุเหตุผลการยกเลิก' });
+  if (!result.isConfirmed) return;
+  try {
+    const saved = await callApi('adminCancelRequest', { requestId, scope, reason: result.value.trim(), actorName: 'จ่ายกลาง' });
+    toast('success', `ยกเลิก ${saved.cancelledCount} รายการแล้ว`);
+    await loadAdminWorkspace();
+  } catch (err) { Swal.fire('ยกเลิกไม่สำเร็จ', err.message, 'error'); }
 }
 
 function adminReceive(requestId) {
@@ -824,7 +839,10 @@ function adminReceive(requestId) {
 async function openAdminWorkModal(requestId) {
   const detail = await callApi('getRequestDetail', { requestId });
   const isCounting = detail.header.status === 'received';
-  const rowsHtml = detail.lines.map(l => `
+  const workLines = detail.header.status === 'awaiting_afternoon'
+    ? detail.lines.filter(l => l.lineStatus === 'awaiting_afternoon')
+    : detail.lines.filter(l => !['cancelled','completed','issued_waiting_receipt'].includes(l.lineStatus));
+  const rowsHtml = workLines.map(l => `
     <tr data-line="${l.lineNo}">
       <td>${escapeHtml(l.itemName)}<div style="color:var(--muted);font-size:.72rem;">${escapeHtml(l.unit)}</div></td>
       <td>${l.exchangedQty}</td>
@@ -841,7 +859,8 @@ async function openAdminWorkModal(requestId) {
   openModal(`จัดการใบเบิก — ${detail.header.requestNo}`,
 `${detail.header.ward} • วันที่ใบเบิก ${fmtDate(detail.header.requestDate)} • ทำรายการ ${fmtDateTime(detail.header.submittedAt)} • เวร${detail.header.shift} • ผู้เบิก: ${escapeHtml(detail.header.requesterName)}`,
     `<p style="margin-bottom:10px;">สถานะปัจจุบัน: ${statusTag(detail.header.status)}</p>
-     ${detail.header.status === 'awaiting_afternoon' ? '<p style="color:#b45309;margin:0 0 10px;">รายการที่ยังจ่ายไม่ครบจะแสดงให้จ่ายต่อในรอบบ่าย โดยจำนวนจ่ายสะสมเดิมจะยังคงอยู่ รายการที่จ่ายครบแล้วจะไม่สามารถแก้ไขจำนวนได้</p>' : ''}
+     ${detail.header.status === 'awaiting_afternoon' ? '<p style="color:#b45309;margin:0 0 10px;">แสดงเฉพาะรายการที่ยังรอจ่ายรอบบ่าย รายการที่จ่ายครบแล้วแยกไปให้หน่วยงานรับของ</p>' : ''}
+     ${!workLines.length ? '<p>ไม่มีรายการค้างจ่ายในใบเบิกนี้</p>' : ''}
      <div class="table-wrap"><table>
        <thead><tr><th>รายการ</th><th>ส่งแลก</th><th>ขอเบิก</th><th>นับได้ ${isCounting ? '' : '(บันทึกแล้ว)'}</th><th>จ่าย ${isCounting ? '(รอบันทึกก่อน)' : ''}</th><th>หมายเหตุ</th></tr></thead>
        <tbody>${rowsHtml}</tbody>
