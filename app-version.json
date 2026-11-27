@@ -1,5 +1,5 @@
 {
-  "version": "2026.11.27.01",
-  "updatedAt": "2026-11-27T09:00:00+07:00",
-  "changes": "Split sterile issue and receipt by item; add cancellation controls and reasons"
+  "version": "2026.11.27.02",
+  "updatedAt": "2026-11-27T09:35:00+07:00",
+  "changes": "Correct request ST-REQ-20261126-007 quantities and refresh status colors"
 }
