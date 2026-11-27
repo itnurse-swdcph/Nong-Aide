@@ -415,12 +415,12 @@ async function loadUserWorkspace() {
 
 function renderUserDashboard() {
   const orderedRequests = userRequests.slice().sort((a, b) => requestSortValue(b) - requestSortValue(a));
-  const open = orderedRequests.filter(r => ['submitted', 'received', 'processing'].includes(r.status)).length;
-  const awaitReceipt = orderedRequests.filter(r => r.status === 'issued_waiting_receipt');
+  const open = orderedRequests.filter(r => ['submitted', 'received', 'processing', 'awaiting_afternoon'].includes(r.status)).length;
+  const awaitReceipt = orderedRequests.filter(r => r.status === 'issued_waiting_receipt' || Number(r.totalReadyReceipt || 0) > 0);
   document.getElementById('userOpenMetric').textContent = open;
   document.getElementById('userAwaitMetric').textContent = awaitReceipt.length;
   document.getElementById('dashSubmitted').textContent = orderedRequests.filter(r => r.status === 'submitted').length;
-  document.getElementById('dashProcessing').textContent = orderedRequests.filter(r => ['received', 'processing'].includes(r.status)).length;
+  document.getElementById('dashProcessing').textContent = orderedRequests.filter(r => ['received', 'processing', 'awaiting_afternoon'].includes(r.status)).length;
   document.getElementById('dashWaitingReceipt').textContent = awaitReceipt.length;
   document.getElementById('dashCompleted').textContent = orderedRequests.filter(r => r.status === 'completed').length;
 
@@ -458,7 +458,7 @@ function rowHtmlUser(r) {
   }
   return `<tr>
 <td>${escapeHtml(r.requestNo)}</td><td>${escapeHtml(fmtDateTime(r.updatedAt || r.requestDate))}</td><td>${escapeHtml(r.shift)}</td>
-    <td>${statusTag(r.status)}</td><td>${r.totalRequested}</td><td>${r.totalIssued}</td><td>${r.totalOutstanding}</td>
+    <td>${statusTag(r.status)}${Number(r.totalReadyReceipt || 0) > 0 ? `<div style="font-size:.72rem;color:#0f766e;margin-top:3px">พร้อมรับของ ${r.totalReadyReceipt} รายการ</div>` : ''}</td><td>${r.totalRequested}</td><td>${r.totalIssued}</td><td>${r.totalOutstanding}</td>
     <td>${actionBtn}</td></tr>`;
 }
 
