@@ -674,9 +674,9 @@ async function submitRequest(event) {
 async function viewRequest(requestId) {
   const detail = await callApi('getRequestDetail', { requestId });
   const rowsHtml = detail.lines.map(l => `
-    <tr><td>${escapeHtml(l.itemName)}</td><td>${l.carriedQty || 0}</td><td>${l.exchangedQty}</td>
+    <tr><td>${escapeHtml(l.itemName)}<div style="font-size:.75rem;color:var(--muted)">${({pending:'รอดำเนินการ',processing:'กำลังเตรียมจ่าย',awaiting_afternoon:'รอจ่ายรอบบ่าย',issued_waiting_receipt:'รอหน่วยงานรับของ',completed:'รับของแล้ว',cancelled:'ยกเลิก'})[l.lineStatus] || ''}</div></td><td>${l.carriedQty || 0}</td><td>${l.exchangedQty}</td>
     <td>${l.requestedQty}</td><td>${l.countedQty || '-'}</td><td>${l.issuedQty || '-'}</td>
-    <td>${l.outstandingQty || '-'}</td><td>${escapeHtml(l.wardNote || '')}${l.adminNote ? '<div><b>หมายเหตุจ่ายกลาง:</b> '+escapeHtml(l.adminNote)+'</div>' : ''}</td></tr>`).join('');
+    <td>${l.outstandingQty || '-'}</td><td>${escapeHtml(l.adminNote || l.wardNote || '')}${l.cancelReason ? '<div><b>เหตุผลยกเลิก:</b> '+escapeHtml(l.cancelReason)+'</div>' : ''}</td></tr>`).join('');
 openModal(`ใบเบิก ${detail.header.requestNo}`, `${detail.header.ward} • วันที่ใบเบิก ${fmtDate(detail.header.requestDate)} • ทำรายการ ${fmtDateTime(detail.header.submittedAt)} • เวร${detail.header.shift}`, `
     <p style="margin-bottom:12px;">สถานะ: ${statusTag(detail.header.status)}</p>
     <div class="table-wrap"><table>
@@ -849,7 +849,7 @@ async function openAdminWorkModal(requestId) {
       <td>${l.requestedQty}</td>
       <td><input type="number" min="0" class="qty-input" id="cnt_${l.lineNo}" value="${l.countedQty !== '' && l.countedQty !== undefined ? l.countedQty : l.requestedQty}" ${isCounting ? '' : 'disabled'}></td>
       <td><input type="number" min="0" class="qty-input" id="iss_${l.lineNo}" value="${l.issuedQty !== null && l.issuedQty !== undefined && l.issuedQty !== '' ? l.issuedQty : (isCounting ? '' : l.countedQty || 0)}" ${isCounting || (detail.header.status === 'awaiting_afternoon' && num(l.outstandingQty) <= 0) ? 'disabled' : ''}></td>
-      <td><input type="text" class="note-input" id="anote_${l.lineNo}" value="${escapeHtml(l.adminNote || '')}" placeholder="หมายเหตุ"></td>
+      <td><input type="text" class="note-input" id="anote_${l.lineNo}" value="${escapeHtml(l.adminNote || l.wardNote || '')}" placeholder="หมายเหตุ (แก้ไขหรือเพิ่มเติมได้)"></td>
     </tr>`).join('');
 
   const buttons = isCounting
