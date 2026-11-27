@@ -769,7 +769,7 @@ async function loadAdminWorkspace() {
 function renderAdminAll() {
   const queue = adminRequests.filter(r => r.status === 'submitted');
   const processing = adminRequests.filter(r => ['received', 'processing', 'awaiting_afternoon'].includes(r.status));
-  const waiting = adminRequests.filter(r => r.status === 'issued_waiting_receipt');
+  const waiting = adminRequests.filter(r => Number(r.totalReadyReceipt || 0) > 0);
 
   document.getElementById('adminQueueMetric').textContent = queue.length;
   document.getElementById('adminProcMetric').textContent = processing.length;
@@ -777,7 +777,8 @@ function renderAdminAll() {
   document.getElementById('adminQueueBody').innerHTML = queue.length ? queue.map(r => `
 <tr><td>${escapeHtml(r.requestNo)}</td><td>${escapeHtml(r.ward)}</td><td>${fmtDateTime(r.updatedAt || r.requestDate)}</td>
     <td>${escapeHtml(r.shift)}</td><td>${escapeHtml(r.requesterName)}</td><td>${r.totalRequested}</td>
-    <td><button class="table-btn primary" onclick="adminReceive('${r.requestId}')"><i class="fas fa-inbox"></i> รับใบเบิก</button></td></tr>`
+    <td><button class="table-btn primary" onclick="adminReceive('${r.requestId}')"><i class="fas fa-inbox"></i> รับใบเบิก</button>
+      <button class="table-btn" style="background:#c44f4f;color:#fff" onclick="adminCancelRequestUI('${r.requestId}','all')"><i class="fas fa-trash"></i> ยกเลิกทั้งใบ</button></td></tr>`
   ).join('') : `<tr class="empty-row"><td colspan="7">ไม่มีใบเบิกรอรับ</td></tr>`;
 
   document.getElementById('adminProcessingBody').innerHTML = processing.length ? processing.map(r => `
